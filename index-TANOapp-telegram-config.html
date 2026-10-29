@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Analizador de mercados de goles</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: una hoja de partido por tarjeta, con el promedio como marcador a la derecha y los 7 criterios como celdas de tablero. */
+:root{
+  --bg:#ECF0EA;
+  --surface:#F8FAF6;
+  --ink:#15201A;
+  --muted:#586960;
+  --line:#CBD5CA;
+  --accent:#1B6B45;
+  --accent-ink:#FFFFFF;
+  --c4:#1B6B45;
+  --c3:#4B7D2A;
+  --c2:#94640A;
+  --c1:#A63B27;
+  --warn-bg:#FBF1DA;
+  --font-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1612;--surface:#17211B;--ink:#E6EDE7;--muted:#93A398;--line:#2B3A31;
+    --accent:#4CC38A;--accent-ink:#06130C;--c4:#4CC38A;--c3:#9BC95B;--c2:#E0B03A;--c1:#EE7F66;--warn-bg:#2A2412;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1612;--surface:#17211B;--ink:#E6EDE7;--muted:#93A398;--line:#2B3A31;
+  --accent:#4CC38A;--accent-ink:#06130C;--c4:#4CC38A;--c3:#9BC95B;--c2:#E0B03A;--c1:#EE7F66;--warn-bg:#2A2412;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px 48px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:44px;line-height:1;font-weight:700;text-transform:uppercase}
+h2{font-size:22px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.sub{margin:6px 0 0;color:var(--muted);max-width:60ch}
+section.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.grow{flex:1 1 240px}
+.market-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.market-option{min-height:56px;padding:7px 10px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;text-align:left}
+.market-option[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.market-main{font-size:14px;font-weight:700}
+.market-help{font-size:11px;opacity:.78;font-weight:400}
+label,.lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+input[type=text],input[type=password],input[type=date],input[type=search],input[type=number],select{
+  font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:9px 10px;min-height:42px;min-width:0;width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit;font-weight:600;min-height:42px;padding:0 16px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.small{font-size:13px;color:var(--muted)}
+.mono{font-family:var(--font-data)}
+.status{font-size:13px;color:var(--muted);min-height:1.4em}
+.status.err{color:var(--c1)}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;min-height:42px}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.criteria summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;min-height:42px;padding:0 2px;font-size:18px;font-weight:600;color:var(--ink)}
+.criteria summary::-webkit-details-marker{display:none}
+.criteria summary::after{content:"⌄";font-size:22px;line-height:1;color:var(--muted);transition:transform .15s}
+.criteria[open] summary::after{transform:rotate(180deg)}
+.criteria-count{color:var(--muted);font-weight:500}
+.criteria-list{display:flex;flex-direction:column;gap:8px}
+.criterion{display:grid;grid-template-columns:24px minmax(90px,110px) auto minmax(90px,112px) auto minmax(90px,112px) auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;min-width:0}
+.criterion-name{font-family:var(--font-data);font-weight:600}
+.criterion input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.criterion input[type=number]{width:100%;font:inherit;font-family:var(--font-data);font-weight:600;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-height:42px}
+.criterion input:disabled{opacity:.55}
+.criteria-foot{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.criteria-reset{border:0;background:transparent;color:var(--muted);padding:0;min-height:32px;text-align:left}
+.criteria-reset:hover{text-decoration:underline}
+.criterion-status{font-size:11px;color:var(--muted)}
+.criterion-status.ok{color:var(--c4);font-weight:600}
+.criterion-status.no{color:var(--c1);font-weight:600}
+
+/* ligas */
+.leagues{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2px 14px;max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:4px;padding:6px;background:var(--bg)}
+.lg{display:flex;gap:10px;align-items:center;padding:6px 8px;border-radius:4px;min-width:0;cursor:pointer;font-size:14px}
+.lg:hover{background:var(--surface)}
+.lg input{width:18px;height:18px;accent-color:var(--accent);flex:none}
+.lg span.n{margin-left:auto;font-family:var(--font-data);font-size:12px;color:var(--muted);flex:none}
+.lg span.t{min-width:0;overflow-wrap:anywhere}
+.lg .c{color:var(--muted)}
+
+/* progreso */
+.prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+
+/* resultados */
+.cards{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0;box-shadow:0 2px 8px rgba(21,32,26,.045)}
+.chead{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.when{font-family:var(--font-data);font-size:13px;color:var(--muted);border-right:1px solid var(--line);padding-right:12px}
+.teams{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;min-width:0;font-size:17px}
+.teams b{font-weight:600}
+.teams span{color:var(--muted);font-size:13px}
+.avg{font-family:var(--font-display);font-size:42px;font-weight:700;line-height:.9;text-align:right;color:var(--c)}
+.avg small{max-width:120px}
+.avg small{display:block;font-family:var(--font-data);font-size:11px;font-weight:400;color:var(--muted);margin-top:4px;letter-spacing:0}
+.fav-btn{min-width:42px;width:42px;padding:0;font-size:24px;line-height:1;color:var(--muted);align-self:start}
+.fav-btn[aria-pressed="true"]{color:#C58A00;border-color:#C58A00;background:var(--warn-bg)}
+.fav-card{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fav-card .fav-info{flex:1;min-width:180px}
+.fav-card .fav-info b{display:block}
+.fav-card .fav-info span{font-size:13px;color:var(--muted)}
+.league{margin:0;font-size:13px;color:var(--muted)}
+.cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.cell{border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--bg);display:flex;flex-direction:column;gap:3px;min-width:0}
+.cell .lab{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.2}
+.cell .pct{font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1;color:var(--c)}
+.cell .cnt{font-family:var(--font-data);font-size:12px;color:var(--muted)}
+.cell .bar{height:3px;background:var(--line);margin-top:3px}
+.cell .bar i{display:block;height:100%;background:var(--c);width:var(--w,0%)}
+.cell.short .cnt::after{content:" *"}
+.h4{--c:var(--c4)}.h3{--c:var(--c3)}.h2{--c:var(--c2)}.h1{--c:var(--c1)}.h0{--c:var(--muted)}
+details{border-top:1px dashed var(--line);padding-top:8px}
+summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
+.detail{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.detail h3{margin:0 0 4px;font-size:13px;font-weight:600}
+.detail ul{list-style:none;margin:0;padding:0;font-family:var(--font-data);font-size:12px;overflow-x:auto}
+.detail li{display:grid;grid-template-columns:70px minmax(200px,1fr) 60px;gap:8px;padding:2px 0;border-bottom:1px solid var(--line)}
+.detail li.y .m{color:var(--c4)}.detail li.n .m{color:var(--c1)}.detail li.na{color:var(--muted)}
+.notes{background:var(--warn-bg);border:1px solid var(--line);border-radius:4px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:4px}
+.notes:empty{display:none}
+.empty{border:1px dashed var(--line);border-radius:6px;padding:26px 18px;color:var(--muted);text-align:center}
+.hidden{display:none!important}
+
+@media (max-width:640px){
+  h1{font-size:36px}
+  .cells{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .market-switch{grid-template-columns:1fr}
+  .market-option{min-height:48px;flex-direction:row;align-items:center;justify-content:space-between}
+  .market-help{font-size:12px}
+  .chead{grid-template-columns:1fr auto}
+  .when{grid-column:1/-1;border-right:0;padding-right:0}
+  .avg{font-size:40px}
+  .criterion{display:flex;flex-wrap:wrap;gap:7px;padding:9px}
+  .criterion-name{min-width:70px;flex:1}
+  .criterion input[type=number]{width:78px}
+  .criterion-phrase{font-size:12px}
+}
+@media (prefers-reduced-motion:reduce){.prog i{transition:none}}
+
+/* Tarjetas compactas para resultados y favoritos */
+.result-card{padding:0;gap:0;overflow:hidden}
+.result-detail{border:0;padding:0;gap:0}
+.result-detail>.fav-summary{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:14px 16px;list-style:none;cursor:pointer}
+.result-detail>.fav-summary::-webkit-details-marker{display:none}
+.fav-teams{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fav-teams .when{border:0;padding:0;font-size:13px;white-space:nowrap}
+.result-teams{font-size:17px;font-weight:600;overflow-wrap:anywhere}
+.fav-average{font-family:var(--font-display);font-size:34px;font-weight:700;line-height:1;color:var(--c);white-space:nowrap}
+.fav-arrow{font-size:13px;color:var(--muted);transition:transform .15s}
+.result-detail[open]>.fav-summary{border-bottom:1px solid var(--line)}
+.result-detail[open]>.fav-summary .fav-arrow{transform:rotate(180deg)}
+.result-expanded{padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.result-expanded .cells{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.result-expanded .cell{padding:10px;gap:5px}
+.result-expanded .cell .pct{font-size:28px}
+.result-expanded .cell .cnt{font-size:13px}
+.result-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fav-legacy{padding:14px 16px}
+.fav-legacy .fav-summary{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.fav-legacy .fav-info{min-width:0;flex:1}
+.fav-legacy .fav-info .when{border:0;padding:0;margin-bottom:5px}
+@media(min-width:760px){.result-expanded .cells{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:640px){.result-detail>.fav-summary{gap:8px;padding:13px}.result-teams{font-size:16px}.fav-average{font-size:30px}.result-expanded{padding:10px}.result-expanded .cells{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+
+/* Navegación principal por pestañas */
+.app-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;position:sticky;top:0;z-index:100;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line)}
+.app-tab{min-height:48px;font-size:17px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+.app-tab.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.app-view{display:flex;flex-direction:column;gap:22px;min-width:0}
+
+/* Tarjetas de favoritos en vivo desplegables */
+.live-search-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,220px);gap:10px}
+.live-card details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.live-card details>summary::-webkit-details-marker{display:none}
+.live-card details>summary:after{content:"＋";font-size:20px;color:var(--muted)}
+.live-card details[open]>summary:after{content:"−"}
+.live-card .live-expanded{padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.live-card .live-headline{font-weight:700;font-size:17px}
+.live-card .live-summary-meta{font-size:12px;color:var(--muted)}
+@media(max-width:560px){.live-search-row{grid-template-columns:1fr}}
+/* Alertas en vivo */
+.live-card{border:1px solid var(--line);border-radius:6px;padding:13px;display:flex;flex-direction:column;gap:10px}
+.live-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.live-teams{font-weight:600;font-size:17px}
+.live-meta{font-size:12px;color:var(--muted)}
+.live-markets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.live-market{border:1px solid var(--line);background:var(--bg);padding:9px;border-radius:4px}
+.live-market strong{display:block;font-family:var(--font-data);font-size:17px}
+.live-market small{color:var(--muted)}
+.live-pick{display:flex;gap:8px;align-items:center}
+.live-pick input{width:18px;height:18px;accent-color:var(--accent)}
+.live-badge{font-size:11px;padding:3px 7px;border-radius:4px;background:var(--warn-bg);color:var(--ink)}
+
+
+/* ---- Login, barra de usuario y panel de accesos ---- */
+.auth-gate{min-height:80vh;display:flex;align-items:center;justify-content:center;padding:24px 0}
+.auth-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:28px 22px;display:flex;flex-direction:column;gap:14px;text-align:center;align-items:stretch}
+.auth-card h1{font-size:40px}
+.auth-card .sub{margin:0 auto}
+.google-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px}
+.userbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.userbar .status{flex:1 1 160px;min-height:0}
+.userbar button{min-height:34px;padding:0 12px}
+.app-tabs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr}
+.access-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.access-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.access-name{font-weight:600;font-size:16px;overflow-wrap:anywhere}
+.access-mail{font-family:var(--font-data);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.access-meta{font-size:12px;color:var(--muted)}
+.access-actions{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em}
+.badge.pendiente{background:var(--warn-bg);color:var(--ink)}
+.badge.aprobado{background:var(--c4);color:var(--accent-ink)}
+.badge.bloqueado{background:var(--c1);color:#fff}
+/* Contador de consultas API-Football */
+.quota-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:14px}
+.quota-bar .qdot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
+.quota-bar.err{border-color:var(--c1)}
+</style>
+</head>
+<body>
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <h1 id="gateTitle">TANOapp</h1>
+    <p id="gateText" class="sub">Verificando sesión…</p>
+    <button id="gateLogin" class="primary google-btn hidden" type="button"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 6.293C4.672 4.166 6.656 3.58 9 3.58z"/></svg> Entrar con Google</button>
+    <button id="gateLogout" class="hidden" type="button">Cerrar sesión / usar otra cuenta</button>
+    <p id="gateErr" class="status err" role="alert"></p>
+  </div>
+</div>
+
+<div class="wrap hidden" id="appShell">
+
+<header>
+  <h1 id="appTitle">Over 0.5 1T</h1>
+  <p class="sub">Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.</p>
+</header>
+
+<div class="userbar">
+  <span id="userLabel" class="mono"></span>
+  <span id="authStatus" class="status" role="status"></span>
+  <button id="btnLogout" type="button">Salir</button>
+</div>
+
+<nav class="app-tabs" role="tablist" aria-label="Secciones de TANOapp">
+  <button id="tabScanner" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="scannerView">Escáner</button>
+  <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
+  <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
+</nav>
+
+<div id="quotaBar" class="quota-bar" role="status" aria-live="polite"><span class="qdot" aria-hidden="true"></span><span class="qtxt">Consultas API-Football: guardá y probá tu clave en el Escáner para ver el consumo.</span></div>
+
+<div id="scannerView" class="app-view" role="tabpanel" aria-labelledby="tabScanner">
+<section class="panel" aria-labelledby="t-favs">
+  <h2 id="t-favs">★ Favoritos compartidos <span id="favoriteCount" class="small">· 0</span></h2>
+  <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSort">Ordenar por</label><select id="favoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
+  <div id="favorites" class="cards"><div class="empty">Todavía no guardaste partidos favoritos.</div></div>
+</section>
+
+<section class="panel" aria-labelledby="t-key">
+  <h2 id="t-key">1. Conexión</h2>
+  <div class="row">
+    <div class="field grow">
+      <label for="key">Clave de API-Football</label>
+      <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu clave (x-apisports-key)">
+    </div>
+    <div class="field" style="width:130px">
+      <label for="conc">En paralelo</label>
+      <select id="conc"><option value="2">2 consultas</option><option value="4" selected>4 consultas</option><option value="6">6 consultas</option><option value="8">8 consultas</option></select>
+    </div>
+    <button id="btnKey" class="primary" type="button">Guardar y probar</button>
+  </div>
+  <div id="quota" class="status" role="status">La clave se guarda solo en este navegador. No forma parte del archivo.</div>
+</section>
+
+<section class="panel" aria-labelledby="t-fx">
+  <h2 id="t-fx">2. Partidos y ligas</h2>
+  <div class="row">
+    <div class="field" style="width:100%">
+      <label for="market">Mercado de goles</label>
+      <div class="market-switch" role="group" aria-label="Elegir mercado">
+        <button type="button" class="market-option" data-market="ht05" aria-pressed="true"><span class="market-main">+0,5 1T</span><span class="market-help">Gol antes del descanso</span></button>
+        <button type="button" class="market-option" data-market="btts" aria-pressed="false"><span class="market-main">Ambos marcan</span><span class="market-help">En el partido</span></button>
+        <button type="button" class="market-option" data-market="over25" aria-pressed="false"><span class="market-main">+2,5 goles</span><span class="market-help">En el partido</span></button>
+      </div>
+    </div>
+    <div class="field" style="width:180px">
+      <label for="date">Fecha (hora Argentina)</label>
+      <input id="date" type="date">
+    </div>
+    <button id="btnFetch" class="primary" type="button">Buscar partidos</button>
+    <label class="check"><input id="onlyNS" type="checkbox" checked><span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;color:var(--ink)">Solo partidos sin empezar</span></label>
+  </div>
+  <div id="fxMsg" class="status" role="status"></div>
+  <div id="leagueTools" class="row hidden">
+    <div class="field grow"><label for="lfilter">Filtrar ligas</label><input id="lfilter" type="search" placeholder="País o liga"></div>
+    <button id="btnAll" type="button">Todas</button>
+    <button id="btnNone" type="button">Ninguna</button>
+  </div>
+  <div id="leagues" class="leagues hidden" role="group" aria-label="Ligas del día"></div>
+  <div class="row">
+    <button id="btnRun" class="primary" type="button" disabled>Analizar</button>
+    <button id="btnCancel" type="button" class="hidden">Cancelar</button>
+  </div>
+  <div id="progWrap" class="hidden"><div class="prog"><i id="progBar"></i></div><div id="progTxt" class="small mono" style="margin-top:6px"></div></div>
+</section>
+
+
+
+
+<section class="panel" aria-labelledby="t-criteria">
+  <details id="criteriaPanel" class="criteria">
+    <summary id="t-criteria">3. Criterios <span class="criteria-count">· <span id="criteriaCount">7</span> activos</span></summary>
+    <div id="criteriaList" class="criteria-list"></div>
+    <div class="criteria-foot">
+      <button id="criteriaReset" class="criteria-reset" type="button">↶ Restablecer criterios predeterminados</button>
+      <span class="small">Son filtros históricos iniciales, no probabilidades ni garantía de rentabilidad. Si un indicador tiene menos partidos válidos que la muestra mínima, el criterio figura como no evaluable.</span>
+    </div>
+  </details>
+</section>
+
+<section class="panel" aria-labelledby="t-res">
+  <h2 id="t-res">4. Resultados</h2>
+  <div id="resTools" class="row hidden">
+    <div class="field" style="width:190px"><label for="sort">Ordenar por</label>
+      <select id="sort"><option value="avg">Promedio descriptivo</option><option value="min">Criterio más bajo</option><option value="time">Hora</option></select></div>
+    <div class="field" style="width:170px"><label for="minAvg">Promedio descriptivo mínimo</label>
+      <select id="minAvg"><option value="0">Todos</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
+    <label class="check"><input id="applyCriteria" type="checkbox"><span>Aplicar criterios</span></label>
+    <button id="btnCopy" type="button">Copiar lista</button>
+  </div>
+  <div id="notes" class="notes"></div>
+  <div id="results" class="cards"><div class="empty">Todavía no hay resultados. Buscá los partidos del día, marcá las ligas y tocá Analizar.</div></div>
+</section>
+</div>
+
+<div id="liveView" class="app-view hidden" role="tabpanel" aria-labelledby="tabLive">
+<section class="panel" id="liveAlertsPanel" aria-labelledby="t-live-alerts">
+  <h2 id="t-live-alerts">Alertas en vivo 1T</h2>
+  <p class="small">Vigilá los favoritos que elegiste en el Escáner. Esta pestaña solo considera partidos en el primer tiempo (1H); excluye descanso, segundo tiempo y prórroga. La automatización por Telegram requiere conectar el monitor seguro del servidor.</p>
+  <div class="row">
+    <div class="field grow"><label for="liveSearch">Buscar partido o equipo</label><input id="liveSearch" type="search" placeholder="Escribí un equipo, por ejemplo River…"></div>
+    <div class="field" style="min-width:170px"><label for="liveFilter">Mostrar</label><select id="liveFilter"><option value="all">Todos mis favoritos próximos o en 1T</option><option value="live">En juego</option><option value="upcoming">Próximos / sin iniciar</option></select></div>
+  </div>
+  <p class="small">Los partidos que marques con ★ en el Escáner aparecerán aquí automáticamente. Esta pantalla no muestra todos los partidos del mundo: solo tu lista de favoritos.</p>
+  <div class="row">
+    <div class="field" style="width:160px"><label for="liveMinOdds">Cuota mínima</label><input id="liveMinOdds" type="number" min="1.01" step="0.01" value="1.50"></div>
+    <label class="check"><input id="liveOnly00" type="checkbox" checked><span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;color:var(--ink)">Solo marcador 0-0</span></label>
+    <label class="check"><input id="liveOver05" type="checkbox" checked><span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;color:var(--ink)">Over 0,5 1T</span></label>
+    <label class="check"><input id="liveOver10" type="checkbox" checked><span style="text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;color:var(--ink)">Over 1,0 1T</span></label>
+    <button id="liveRefresh" type="button" class="primary">Actualizar partidos de 1T</button>
+  </div>
+  <div class="row">
+    <span id="liveStatus" class="status" role="status">Guardá partidos con ★ en el Escáner y luego actualizá el estado en vivo.</span>
+  </div>
+  <div id="liveList" class="cards"><div class="empty">Todavía no hay favoritos cargados. Marcá partidos con ★ en el Escáner.</div></div>
+  <div class="notes">
+    <div><b>Telegram:</b> las alertas las envía el monitor del servidor, incluso si cerrás esta página.</div>
+    <div>El token del bot permanece en el servidor; nunca se guarda en este HTML.</div>
+  </div>
+  <section id="telegramSettings" class="panel hidden" style="margin-top:16px;border:1px solid var(--line)" aria-labelledby="telegramSettingsTitle">
+    <h3 id="telegramSettingsTitle">Configuración de alertas Telegram</h3>
+    <p class="small">Solo visible para el dueño. Los cambios se aplican al monitor del servidor.</p>
+    <div class="row">
+      <label class="check"><input id="tgEnabled" type="checkbox" checked><span>Activar Telegram</span></label>
+      <label class="check"><input id="tgOver05" type="checkbox" checked><span>Over 0,5 1T</span></label>
+      <div class="field" style="width:150px"><label for="tgMin05">Cuota mínima O0,5</label><input id="tgMin05" type="number" min="1.01" step="0.01" value="1.50"></div>
+    </div>
+    <div class="row">
+      <label class="check"><input id="tgOver10" type="checkbox" checked><span>Over 1,0 1T</span></label>
+      <div class="field" style="width:150px"><label for="tgMin10">Cuota mínima O1,0</label><input id="tgMin10" type="number" min="1.01" step="0.01" value="1.65"></div>
+      <div class="field" style="width:140px"><label for="tgMinuteStart">Desde minuto</label><input id="tgMinuteStart" type="number" min="1" max="45" step="1" value="1"></div>
+      <div class="field" style="width:140px"><label for="tgMinuteEnd">Hasta minuto</label><input id="tgMinuteEnd" type="number" min="1" max="45" step="1" value="45"></div>
+    </div>
+    <div class="row" style="align-items:center">
+      <button id="tgSave" type="button" class="primary">Guardar configuración</button>
+      <span id="tgConfigStatus" class="status" role="status">Cargando configuración…</span>
+    </div>
+  </section>
+</section>
+</div>
+
+<div id="accessView" class="app-view hidden" role="tabpanel" aria-labelledby="tabAccess">
+<section class="panel" aria-labelledby="t-access">
+  <h2 id="t-access">Accesos</h2>
+  <p class="small">Cuando alguien entra con Google por primera vez queda como pendiente hasta que vos lo apruebes. Podés bloquear o volver a aprobar a cualquiera cuando quieras. Este panel solo lo ves vos.</p>
+  <div id="accessList" class="cards"><div class="empty">Todavía nadie pidió acceso.</div></div>
+</section>
+</div>
+
+</div>
+
+<script>
+/*PURE*/
+const DONE_ST=['FT','AET','PEN'];
+function compact(resp){
+  const out=[];
+  for(const f of resp||[]){
+    const st=f.fixture&&f.fixture.status&&f.fixture.status.short;
+    if(!DONE_ST.includes(st)) continue;
+    const s=f.score||{}, ht=s.halftime||{}, ft=s.fulltime||{};
+    let fh=null, hts=null;
+    if(Number.isInteger(ht.home)&&Number.isInteger(ht.away)){ fh=ht.home+ht.away; hts=[ht.home,ht.away]; }
+    else if(ft.home===0&&ft.away===0){ fh=0; }
+    const fs=Number.isInteger(ft.home)&&Number.isInteger(ft.away)?[ft.home,ft.away]:null;
+    out.push({i:f.fixture.id,d:f.fixture.timestamp,h:f.teams.home.id,a:f.teams.away.id,hn:f.teams.home.name,an:f.teams.away.name,ht:hts,fh,fs});
+  }
+  out.sort((x,y)=>y.d-x.d);
+  return out;
+}
+function hitFor(g,market){
+  if(market==='btts') return !!g.fs&&g.fs[0]>0&&g.fs[1]>0;
+  if(market==='over25') return !!g.fs&&g.fs[0]+g.fs[1]>=3;
+  return g.fh!==null&&g.fh>=1;
+}
+function stat(games,market){
+  let hits=0,valid=0,min=null,max=null;
+  for(const g of games){
+    const validScore=market==='ht05'?g.fh!==null:!!g.fs;
+    if(!validScore) continue;
+    valid++; if(hitFor(g,market)) hits++;
+    if(min===null||g.d<min) min=g.d;
+    if(max===null||g.d>max) max=g.d;
+  }
+  return {hits,valid,pct:valid?hits*100/valid:null,min,max};
+}
+function tramos(fx,L,V,H,market){
+  // Solo partidos terminados antes del inicio del encuentro analizado.
+  const cutoff=Math.floor(new Date(fx.iso).getTime()/1000);
+  const rec=a=>(a||[]).filter(g=>g.i!==fx.id&&Number.isFinite(g.d)&&g.d<cutoff).sort((x,y)=>y.d-x.d);
+  const l=rec(L), v=rec(V), h=rec(H);
+  const defs=[
+    ['l20','Local · últ. 20','Local: últimos 20 partidos',l.slice(0,20),20],
+    ['lc10','Local · casa 10','Local: últimos 10 jugados en casa',l.filter(g=>g.h===fx.hid).slice(0,10),10],
+    ['l6','Local · últ. 6','Local: últimos 6 partidos',l.slice(0,6),6],
+    ['v20','Visita · últ. 20','Visitante: últimos 20 partidos',v.slice(0,20),20],
+    ['vf10','Visita · fuera 10','Visitante: últimos 10 jugados fuera',v.filter(g=>g.a===fx.aid).slice(0,10),10],
+    ['v6','Visita · últ. 6','Visitante: últimos 6 partidos',v.slice(0,6),6],
+    ['h2h','H2H · últ. 8','Cruces directos: últimos 8',h.slice(0,8),8]
+  ];
+  return defs.map(([k,lab,full,games,target])=>({k,lab,full,target,games,...stat(games,market)}));
+}
+function resumen(tr){
+  const p=tr.filter(t=>t.pct!==null).map(t=>t.pct);
+  const n=p.length;
+  return {n,avg:n?p.reduce((a,b)=>a+b,0)/n:null,min:n?Math.min(...p):null};
+}
+function band(p){ if(p===null||p===undefined) return 'h0'; return p>=85?'h4':p>=70?'h3':p>=55?'h2':'h1'; }
+/*ENDPURE*/
+
+const API='https://v3.football.api-sports.io';
+const marketDefs={ht05:{title:'Over 0.5 1T',short:'Más de 0,5 goles al descanso',period:'primer tiempo'},btts:{title:'Ambos equipos marcan',short:'Ambos marcan',period:'partido completo'},over25:{title:'Más de 2,5 goles',short:'Más de 2,5 goles',period:'partido completo'}};
+const TZ='America/Argentina/Buenos_Aires';
+const TTL=12*3600*1000;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const LS={
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+};
+const fmtDate=ts=>new Date(ts*1000).toLocaleDateString('es-AR',{timeZone:TZ,day:'2-digit',month:'2-digit',year:'2-digit'});
+const fmtTime=iso=>new Date(iso).toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false});
+
+const criterionDefs=[
+  {key:'l20',label:'HL20',minGoals:14,minValid:20},
+  {key:'lc10',label:'HL10H',minGoals:7,minValid:10},
+  {key:'l6',label:'HL6',minGoals:4,minValid:6},
+  {key:'v20',label:'AL20',minGoals:14,minValid:20},
+  {key:'vf10',label:'AL10A',minGoals:7,minValid:10},
+  {key:'v6',label:'AL6',minGoals:4,minValid:6},
+  {key:'h2h',label:'H2H',minGoals:3,minValid:4}
+];
+const defaultCriteria=()=>Object.fromEntries(criterionDefs.map(c=>[c.key,{enabled:true,minGoals:c.minGoals,minValid:c.minValid}]));
+function loadCriteria(){
+  const saved=LS.get('o05:criteria',null), defaults=defaultCriteria();
+  if(!saved||typeof saved!=='object') return defaults;
+  for(const c of criterionDefs){
+    const v=saved[c.key];
+    if(v&&typeof v==='object') defaults[c.key]={enabled:v.enabled!==false,minGoals:Number.isFinite(+v.minGoals)?Math.max(0,+v.minGoals):c.minGoals,minValid:Number.isFinite(+v.minValid)?Math.max(0,+v.minValid):c.minValid};
+  }
+  return defaults;
+}
+const state={key:LS.get('o05:key',''),market:'ht05',fixtures:[],selected:new Set(LS.get('o05:leagues',[])),criteria:loadCriteria(),cancel:false,running:false,results:[],errors:[],calls:0};
+const teamMemo=new Map(), h2hMemo=new Map();
+
+function setStatus(el,txt,err){el.textContent=txt;el.classList.toggle('err',!!err)}
+
+function renderCriteria(){
+  const box=$('#criteriaList');
+  box.innerHTML=criterionDefs.map(c=>{
+    const v=state.criteria[c.key];
+    return `<div class="criterion" data-criterion="${c.key}">
+      <input type="checkbox" aria-label="Activar ${c.label}" ${v.enabled?'checked':''}>
+      <span class="criterion-name">${c.label}</span>
+      <span class="criterion-phrase">al menos</span><input type="number" min="0" step="1" aria-label="Mínimo de aciertos para ${c.label}" value="${v.minGoals}" ${v.enabled?'':'disabled'}>
+      <span class="criterion-phrase">aciertos, con</span><input type="number" min="0" step="1" aria-label="Mínimo de partidos válidos para ${c.label}" value="${v.minValid}" ${v.enabled?'':'disabled'}>
+      <span class="criterion-phrase">válidos</span>
+    </div>`;
+  }).join('');
+  $('#criteriaCount').textContent=criterionDefs.filter(c=>state.criteria[c.key].enabled).length;
+}
+function criterionStatus(t,c){
+  const v=state.criteria[c.key];
+  if(!v.enabled) return 'Inactivo';
+  if(t.valid<v.minValid) return 'No evaluable';
+  return t.hits>=v.minGoals?'Cumple':'No cumple';
+}
+function passesCriteria(r){
+  return criterionDefs.every(c=>{
+    const v=state.criteria[c.key];
+    if(!v.enabled) return true;
+    const t=r.tr.find(x=>x.k===c.key);
+    return t&&t.valid>=v.minValid&&t.hits>=v.minGoals;
+  });
+}
+
+/* ---- API ---- */
+async function api(path,params){
+  const url=new URL(API+path);
+  for(const [k,v] of Object.entries(params||{})) url.searchParams.set(k,v);
+  for(let attempt=0;attempt<4;attempt++){
+    if(state.cancel) throw new Error('Cancelado');
+    let res;
+    try{ res=await fetch(url,{headers:{'x-apisports-key':state.key}}); }
+    catch(e){ const er=new Error('No se pudo conectar con API-Football. Revisá la conexión o si un bloqueador está frenando el pedido.'); er.fatal=true; throw er; }
+    state.calls++;
+    if(res.status===429){ await sleep(8000); continue; }
+    let j;
+    try{ j=await res.json(); }catch(e){ throw new Error('Respuesta inválida de la API (HTTP '+res.status+').'); }
+    const errs=j.errors;
+    const has=errs&&(Array.isArray(errs)?errs.length>0:Object.keys(errs).length>0);
+    if(has){
+      const keys=Array.isArray(errs)?'':Object.keys(errs).join(' ');
+      const msg=Array.isArray(errs)?errs.join(', '):Object.values(errs).join(', ');
+      if(/rateLimit/i.test(keys)){ await sleep(12000); continue; }
+      const er=new Error(msg);
+      if(/token|requests|access|plan/i.test(keys+' '+msg)) er.fatal=true;
+      throw er;
+    }
+    if(path!=='/status') scheduleQuota();
+    return j;
+  }
+  throw new Error('La API limitó las consultas por minuto. Bajá la cantidad en paralelo y reintentá.');
+}
+
+async function checkStatus(){
+  try{
+    const j=await api('/status');
+    const r=j.response||{};
+    const rq=r.requests||{};
+    const plan=(r.subscription&&r.subscription.plan)||'';
+    setStatus($('#quota'),'Clave válida'+(plan?' · plan '+plan:'')+(rq.limit_day!=null?' · consultas hoy: '+rq.current+' de '+rq.limit_day:''));
+    renderQuotaBar(rq);
+    return true;
+  }catch(e){ setStatus($('#quota'),e.message,true); if(e.message!=='Cancelado') renderQuotaBar(null,e.message,true); return false; }
+}
+function renderQuotaBar(rq,msg,err){
+  const bar=$('#quotaBar'); if(!bar) return;
+  const dot=bar.querySelector('.qdot'), txt=bar.querySelector('.qtxt');
+  const cur=rq&&rq.current!=null?Number(rq.current):NaN, lim=rq&&rq.limit_day!=null?Number(rq.limit_day):NaN;
+  bar.classList.toggle('err',!!err);
+  if(!Number.isFinite(cur)||!Number.isFinite(lim)||lim<=0){
+    dot.style.background='var(--muted)';
+    txt.textContent=msg||'Consultas API-Football: guardá y probá tu clave en el Escáner para ver el consumo.';
+    return;
+  }
+  const pct=cur*100/lim, left=Math.max(0,lim-cur), f=n=>n.toLocaleString('es-AR');
+  dot.style.background=pct>=90?'var(--c1)':pct>=70?'var(--c2)':'var(--c4)';
+  txt.innerHTML='Consultas API-Football hoy: <b class="mono">'+f(cur)+' / '+f(lim)+'</b> · quedan <b class="mono">'+f(left)+'</b> ('+Math.round(pct)+'%) <span class="small">· dato informado por API-Football</span>';
+}
+let quotaTimer=null;
+function scheduleQuota(){
+  if(!state.key) return;
+  clearTimeout(quotaTimer);
+  quotaTimer=setTimeout(()=>{ if(!state.running) checkStatus(); },2500);
+}
+
+/* ---- caché ---- */
+function cached(k){const c=LS.get(k,null);return c&&Date.now()-c.ts<TTL?c.g:null}
+function teamGames(id){
+  const ck='o05:v2:t:'+id, c=cached(ck);
+  if(c) return Promise.resolve(c);
+  if(teamMemo.has(id)) return teamMemo.get(id);
+  const p=(async()=>{
+    const j=await api('/fixtures',{team:id,last:40,timezone:TZ});
+    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+  })();
+  teamMemo.set(id,p);
+  // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
+  p.then(()=>{if(teamMemo.get(id)===p)teamMemo.delete(id)},()=>{if(teamMemo.get(id)===p)teamMemo.delete(id)});
+  return p;
+}
+function h2hGames(a,b){
+  const key=[a,b].sort((x,y)=>x-y).join('-'), ck='o05:v2:h:'+key, c=cached(ck);
+  if(c) return Promise.resolve(c);
+  if(h2hMemo.has(key)) return h2hMemo.get(key);
+  const p=(async()=>{
+    const j=await api('/fixtures/headtohead',{h2h:a+'-'+b,last:8,timezone:TZ});
+    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+  })();
+  h2hMemo.set(key,p);
+  // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
+  p.then(()=>{if(h2hMemo.get(key)===p)h2hMemo.delete(key)},()=>{if(h2hMemo.get(key)===p)h2hMemo.delete(key)});
+  return p;
+}
+
+/* ---- ligas ---- */
+function isFutureFixture(f,now=Date.now()){
+  const kickoff=new Date(f.iso).getTime();
+  return Number.isFinite(kickoff)&&kickoff>now;
+}
+function visibleFixtures(){
+  const only=$('#onlyNS').checked;
+  const now=Date.now();
+  return state.fixtures.filter(f=>!only||(isFutureFixture(f,now)&&(f.st==='NS'||f.st==='TBD')));
+}
+function renderLeagues(){
+  const fx=visibleFixtures(), map=new Map();
+  for(const f of fx){
+    if(!map.has(f.lid)) map.set(f.lid,{id:f.lid,n:f.ln,c:f.lc,count:0});
+    map.get(f.lid).count++;
+  }
+  const q=$('#lfilter').value.trim().toLowerCase();
+  const list=[...map.values()].filter(l=>!q||(l.n+' '+l.c).toLowerCase().includes(q))
+    .sort((a,b)=>(b.count-a.count)||a.c.localeCompare(b.c)||a.n.localeCompare(b.n));
+  const box=$('#leagues');
+  box.innerHTML=list.map(l=>`<label class="lg"><input type="checkbox" data-id="${l.id}" ${state.selected.has(l.id)?'checked':''}><span class="t"><span class="c">${esc(l.c)} · </span>${esc(l.n)}</span><span class="n">${l.count}</span></label>`).join('')||'<div class="small" style="padding:8px">Ninguna liga coincide.</div>';
+  box.classList.toggle('hidden',state.fixtures.length===0);
+  $('#leagueTools').classList.toggle('hidden',state.fixtures.length===0);
+  updateRunBtn();
+}
+function selectedFixtures(){return visibleFixtures().filter(f=>state.selected.has(f.lid))}
+function updateRunBtn(){
+  const n=selectedFixtures().length;
+  const b=$('#btnRun');
+  b.disabled=state.running||n===0;
+  b.textContent=n?`Analizar ${n} partido${n===1?'':'s'}`:'Analizar';
+  const tot=visibleFixtures().length;
+  if(state.fixtures.length) setStatus($('#fxMsg'),`${tot} partidos en ${new Set(visibleFixtures().map(f=>f.lid)).size} ligas. Marcá las que querés analizar.`);
+}
+function persistSel(){LS.set('o05:leagues',[...state.selected])}
+
+async function buscar(){
+  if(!state.key){setStatus($('#fxMsg'),'Primero guardá tu clave de API.',true);return}
+  state.cancel=false;
+  setStatus($('#fxMsg'),'Buscando partidos…');
+  $('#btnFetch').disabled=true;
+  try{
+    const j=await api('/fixtures',{date:$('#date').value,timezone:TZ});
+    const now=Date.now();
+    state.fixtures=(j.response||[]).map(f=>({id:f.fixture.id,iso:f.fixture.date,st:f.fixture.status.short,lid:f.league.id,ln:f.league.name,lc:f.league.country||'Mundo',hid:f.teams.home.id,hn:f.teams.home.name,aid:f.teams.away.id,an:f.teams.away.name}));
+    if(!state.fixtures.length) setStatus($('#fxMsg'),'No hay partidos para esa fecha. Desactivá «Solo partidos sin empezar» para ver partidos iniciados si están disponibles en la API.');
+    renderLeagues();
+  }catch(e){ setStatus($('#fxMsg'),e.message,true); }
+  $('#btnFetch').disabled=false;
+}
+
+/* ---- análisis ---- */
+function prog(done,total,extra){
+  $('#progBar').style.width=(total?done*100/total:0)+'%';
+  $('#progTxt').textContent=`${done} de ${total} consultas${extra?' · '+extra:''}`;
+}
+async function analizar(){
+  const fxs=selectedFixtures();
+  if(!fxs.length||state.running) return;
+  state.running=true;state.cancel=false;state.errors=[];state.calls=0;
+  $('#applyCriteria').checked=false;
+  $('#btnRun').disabled=true;$('#btnCancel').classList.remove('hidden');$('#progWrap').classList.remove('hidden');
+  const teams=new Map(), pairs=new Map(), tg=new Map(), hg=new Map();
+  for(const f of fxs){
+    teams.set(f.hid,1);teams.set(f.aid,1);
+    pairs.set([f.hid,f.aid].sort((a,b)=>a-b).join('-'),[f.hid,f.aid]);
+  }
+  const tasks=[];
+  for(const id of teams.keys()) tasks.push(async()=>{tg.set(id,await teamGames(id))});
+  for(const [k,[a,b]] of pairs) tasks.push(async()=>{hg.set(k,await h2hGames(a,b))});
+  const total=tasks.length;let done=0,idx=0;
+  prog(0,total);
+  const worker=async()=>{
+    while(idx<tasks.length&&!state.cancel){
+      const t=tasks[idx++];
+      try{await t()}catch(e){
+        if(e.message!=='Cancelado'){ if(!state.errors.includes(e.message)) state.errors.push(e.message); if(e.fatal) state.cancel=true; }
+      }
+      done++;prog(done,total,state.calls+' llamadas a la API');
+    }
+  };
+  const n=parseInt($('#conc').value,10)||4;
+  await Promise.all(Array.from({length:n},worker));
+  const out=[];
+  for(const f of fxs){
+    const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
+    const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
+    out.push({fx:f,tr,...resumen(tr)});
+  }
+  state.results=out;
+  state.running=false;
+  $('#btnCancel').classList.add('hidden');
+  prog(total,total,state.calls+' llamadas a la API'+(state.cancel?' (cortado)':''));
+  updateRunBtn();
+  renderResults();
+  if(state.key) checkStatus();
+}
+
+/* ---- resultados ---- */
+function cellHtml(t){
+  if(!t.valid){
+    const why=t.games.length?(state.market==='ht05'?'sin marcador HT':'sin marcador final'):'sin partidos';
+    return `<div class="cell h0" title="${esc(t.full)}: ${why}"><span class="lab">${esc(t.lab)}</span><span class="pct">s/d</span><span class="cnt">s/d</span><span class="bar"><i style="--w:0%"></i></span></div>`;
+  }
+  const short=t.games.length<t.target||t.valid<t.games.length;
+  return `<div class="cell ${band(t.pct)}${short?' short':''}" title="${esc(t.full)}: ${t.hits}/${t.valid} válidos; objetivo ${t.target}"><span class="lab">${esc(t.lab)}</span><span class="pct">${Math.round(t.pct)}%</span><span class="cnt">${t.hits}/${t.valid}</span><span class="bar"><i style="--w:${t.pct}%"></i></span></div>`;
+}
+function cardHtml(r,i){
+  const f=r.fx;
+  const dateTime=`${fmtDate(Math.floor(new Date(f.iso).getTime()/1000))} · ${fmtTime(f.iso)}`;
+  return `<article class="card result-card" data-i="${i}">
+    <details class="result-detail">
+      <summary class="fav-summary">
+        <span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.hn)} vs ${esc(f.an)}</span></span>
+        <span class="fav-average ${band(r.avg)}">${r.avg===null?'—':Math.round(r.avg)+'%'}</span><span class="fav-arrow" aria-hidden="true">▾</span>
+      </summary>
+      <div class="result-expanded">
+        <p class="league">${esc(f.lc)} · ${esc(f.ln)} · ${esc(marketDefs[state.market].short)}</p>
+        <div class="result-actions"><span class="small">Promedio descriptivo · ${r.n} de 7 indicadores</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
+        <div class="cells">${r.tr.map(cellHtml).join('')}</div>
+        <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
+      </div>
+    </details>
+  </article>`;
+}
+function sorted(){
+  const m=parseInt($('#minAvg').value,10)||0, s=$('#sort').value;
+  const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, now=Date.now();
+  const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(m===0||(r.avg!==null&&r.avg>=m)));
+  const nv=x=>x===null?-1:x;
+  if(s==='min') list.sort((a,b)=>nv(b.min)-nv(a.min)||nv(b.avg)-nv(a.avg));
+  else if(s==='time') list.sort((a,b)=>a.fx.iso.localeCompare(b.fx.iso));
+  else list.sort((a,b)=>nv(b.avg)-nv(a.avg)||nv(b.min)-nv(a.min));
+  return list;
+}
+function renderResults(){
+  const box=$('#results'), has=state.results.length>0;
+  $('#resTools').classList.toggle('hidden',!has);
+  if(!has){return}
+  const list=sorted();
+  box.innerHTML=list.length?list.map(r=>cardHtml(r,state.results.indexOf(r))).join(''):'<div class="empty">Ningún partido llega al promedio mínimo elegido.</div>';
+  const notes=[];
+  const only=$('#onlyNS').checked;
+  const shownResults=state.results.filter(r=>!only||(isFutureFixture(r.fx)&&(r.fx.st==='NS'||r.fx.st==='TBD')));
+  if($('#applyCriteria').checked){
+    const criteriaFailed=shownResults.filter(r=>!passesCriteria(r)).length;
+    if(criteriaFailed) notes.push(`${criteriaFailed} partidos no cumplen los criterios activos o no tienen la muestra mínima para evaluarlos.`);
+  }
+  const sin=shownResults.filter(r=>r.n<7).length;
+  if(sin) notes.push(`${sin} de ${shownResults.length} partidos tienen menos de 7 criterios con datos. El promedio descriptivo usa solo criterios válidos; no es una probabilidad calibrada.`);
+  const incompletos=shownResults.reduce((n,r)=>n+r.tr.filter(t=>t.valid<t.games.length||t.games.length<t.target).length,0);
+  if(incompletos) notes.push(`${incompletos} indicadores tienen menos partidos válidos que el objetivo. X/N muestra la frecuencia entre partidos con marcador ${state.market==='ht05'?'HT':'final'} conocido; los s/d no entran en N.`);
+  notes.push('Un 100% con pocos partidos no se compara con un 20/20. El promedio de indicadores es descriptivo, no una probabilidad real.');
+  for(const e of state.errors.slice(0,3)) notes.push('Error de la API: '+e);
+  $('#notes').innerHTML=notes.map(n=>`<div>${esc(n)}</div>`).join('');
+}
+function detailHtml(r){
+  return r.tr.map(t=>{
+    const rng=t.valid?` · datos del ${fmtDate(t.min)} al ${fmtDate(t.max)}`:'';
+    const inferidos=state.market==='ht05'?t.games.filter(g=>g.fh===0&&!g.ht).length:0;
+    const inferidosLabel=inferidos?` · ${inferidos} inferido(s) por FT 0-0`:'';
+    const rows=t.games.map(g=>{
+      const validScore=state.market==='ht05'?g.fh!==null:!!g.fs;
+      const hit=validScore&&hitFor(g,state.market);
+      const cls=!validScore?'na':hit?'y':'n';
+      const score=state.market==='ht05'?(g.ht?`${g.ht[0]}-${g.ht[1]}`:(g.fh===0?'0-0*':'s/d')):(g.fs?`${g.fs[0]}-${g.fs[1]}`:'s/d');
+      const mk=!validScore?'s/d':hit?(state.market==='btts'?'ambos marcan':state.market==='over25'?'+2,5':'gol'):(state.market==='btts'?'no marcan ambos':state.market==='over25'?'−2,5':'sin gol');
+      return `<li class="${cls}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}</span><span class="m">${mk}</span></li>`;
+    }).join('')||'<li class="na"><span></span><span>sin partidos</span><span></span></li>';
+    return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos seleccionados${inferidosLabel}${rng}</h3><ul>${rows}</ul></div>`;
+  }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. ':''}Los s/d no se incluyen en el denominador. “Seleccionados” indica partidos incluidos en la muestra, no que todos tengan un marcador verificado.</p>`;
+
+}
+function copyList(){
+  const lines=sorted().map(r=>`${fmtTime(r.fx.iso)} ${r.fx.hn} vs ${r.fx.an} (${r.fx.ln}) · prom ${r.avg===null?'s/d':Math.round(r.avg)+'%'} · `+r.tr.map(t=>t.valid?`${t.hits}/${t.valid}`:'s/d').join(' '));
+  const txt=lines.join('\n');
+  const done=ok=>{const b=$('#btnCopy');const o=b.textContent;b.textContent=ok?'Copiado':'No se pudo copiar';setTimeout(()=>b.textContent=o,1600)};
+  try{navigator.clipboard.writeText(txt).then(()=>done(true),()=>done(false))}catch(e){done(false)}
+}
+
+/* ---- eventos ---- */
+$('#date').value=new Date().toLocaleDateString('en-CA',{timeZone:TZ});
+state.market=LS.get('o05:market','ht05');
+if(!marketDefs[state.market]) state.market='ht05';
+function updateMarketUI(){
+  document.querySelectorAll('.market-option').forEach(button=>{
+    const active=button.dataset.market===state.market;
+    button.setAttribute('aria-pressed',String(active));
+  });
+  $('#appTitle').textContent=marketDefs[state.market].title;
+}
+updateMarketUI();
+document.querySelector('.market-switch').addEventListener('click',e=>{
+  const button=e.target.closest('[data-market]');
+  if(!button||button.dataset.market===state.market) return;
+  state.market=button.dataset.market;LS.set('o05:market',state.market);updateMarketUI();
+  if(state.results.length){state.results=[];$('#resTools').classList.add('hidden');$('#notes').innerHTML='';$('#results').innerHTML='<div class="empty">Cambiaste el mercado. Tocá Analizar para calcular los partidos con esta opción.</div>';}
+});
+$('#key').value=state.key;
+$('#conc').value=LS.get('o05:conc','4');
+renderCriteria();
+$('#criteriaList').addEventListener('change',e=>{
+  const row=e.target.closest('[data-criterion]');
+  if(!row) return;
+  const key=row.dataset.criterion, value=state.criteria[key];
+  if(e.target.type==='checkbox'){
+    value.enabled=e.target.checked;
+    row.querySelectorAll('input[type=number]').forEach(i=>i.disabled=!value.enabled);
+    $('#criteriaCount').textContent=criterionDefs.filter(c=>state.criteria[c.key].enabled).length;
+  }else if(e.target.type==='number'){
+    const field=e.target.getAttribute('aria-label');
+    if(field.startsWith('Mínimo de aciertos')) value.minGoals=Math.max(0,parseInt(e.target.value,10)||0);
+    else value.minValid=Math.max(0,parseInt(e.target.value,10)||0);
+    e.target.value=field.startsWith('Mínimo de aciertos')?value.minGoals:value.minValid;
+  }
+  LS.set('o05:criteria',state.criteria);
+  if(state.results.length) renderResults();
+});
+$('#criteriaReset').addEventListener('click',()=>{
+  state.criteria=defaultCriteria();
+  LS.set('o05:criteria',state.criteria);
+  renderCriteria();
+  if(state.results.length) renderResults();
+});
+$('#btnKey').addEventListener('click',async()=>{
+  state.key=$('#key').value.trim();
+  if(!state.key){setStatus($('#quota'),'Pegá tu clave primero.',true);return}
+  LS.set('o05:key',state.key);LS.set('o05:conc',$('#conc').value);
+  setStatus($('#quota'),'Probando clave…');
+  state.cancel=false;
+  await checkStatus();
+});
+$('#conc').addEventListener('change',()=>LS.set('o05:conc',$('#conc').value));
+$('#btnFetch').addEventListener('click',buscar);
+$('#onlyNS').addEventListener('change',()=>{renderLeagues();if(state.results.length)renderResults();});
+$('#applyCriteria').addEventListener('change',()=>{if(state.results.length)renderResults();});
+$('#lfilter').addEventListener('input',renderLeagues);
+$('#leagues').addEventListener('change',e=>{
+  const id=parseInt(e.target.dataset.id,10);
+  if(e.target.checked) state.selected.add(id); else state.selected.delete(id);
+  persistSel();updateRunBtn();
+});
+$('#btnAll').addEventListener('click',()=>{document.querySelectorAll('#leagues input').forEach(i=>state.selected.add(parseInt(i.dataset.id,10)));persistSel();renderLeagues()});
+$('#btnNone').addEventListener('click',()=>{document.querySelectorAll('#leagues input').forEach(i=>state.selected.delete(parseInt(i.dataset.id,10)));persistSel();renderLeagues()});
+$('#btnRun').addEventListener('click',analizar);
+$('#btnCancel').addEventListener('click',()=>{state.cancel=true});
+$('#sort').addEventListener('change',renderResults);
+$('#minAvg').addEventListener('change',renderResults);
+$('#btnCopy').addEventListener('click',copyList);
+$('#results').addEventListener('toggle',e=>{
+  const d=e.target;
+  if(d.tagName!=='DETAILS'||!d.open) return;
+  const box=d.querySelector('.detail');
+  if(box.dataset.ready) return;
+  const r=state.results[parseInt(d.closest('.card').dataset.i,10)];
+  box.innerHTML=detailHtml(r);box.dataset.ready='1';
+},true);
+
+/* ---- Favoritos locales: acceso libre, sin Google ni autenticación ---- */
+const favoriteState = { user:null, db:null, auth:null, items:new Map(), stop:null, ready:true };
+const FAVORITES_STORAGE_KEY = 'tanoapp_favorites_v1';
+function authMessage(message, err=false){
+  // Mantener compatibilidad con los mensajes existentes sin requerir un panel de cuenta.
+  const el=$('#authStatus');
+  if(el){el.textContent=message;el.classList.toggle('err',!!err);}
+}
+function loadLocalFavorites(){
+  try{
+    const raw=localStorage.getItem(FAVORITES_STORAGE_KEY);
+    const data=raw?JSON.parse(raw):[];
+    favoriteState.items=new Map(Array.isArray(data)?data.map(f=>[String(f.id),f]):[]);
+  }catch(e){favoriteState.items=new Map();}
+}
+function saveLocalFavorites(){
+  try{localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify([...favoriteState.items.values()]));}
+  catch(e){console.warn('[TANOapp] No se pudieron guardar favoritos en este navegador.',e);}
+}
+function renderFavorites(){
+  const box=$('#favorites');
+  const mode=$('#favoriteSort')?.value||'date';
+  const items=[...favoriteState.items.values()];
+  const pct=f=>f.analysis&&typeof f.analysis.avg==='number'?f.analysis.avg:null;
+  items.sort((a,b)=>{
+    if(mode==='high'||mode==='low'){
+      const pa=pct(a),pb=pct(b);
+      if(pa===null&&pb!==null)return 1;if(pb===null&&pa!==null)return -1;
+      if(pa!==null&&pb!==null&&pa!==pb)return mode==='high'?pb-pa:pa-pb;
+    }
+    return (a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||'');
+  });
+  $('#favoriteCount').textContent='· '+items.length;
+  if(!items.length){box.innerHTML='<div class="empty">Todavía no guardaste partidos favoritos.</div>';return;}
+  box.innerHTML=items.map(f=>{
+    const fx=f.fixture||{id:f.id,hn:f.home,an:f.away,iso:f.kickoff,lc:'',ln:f.league||'',st:'NS'};
+    const dateIso=fx.iso||f.kickoff;
+    const dateTime=dateIso?`${fmtDate(Math.floor(new Date(dateIso).getTime()/1000))} · ${fmtTime(dateIso)}`:(f.dateText||'Fecha no disponible');
+    const a=f.analysis;
+    if(a&&Array.isArray(a.tr)){
+      const r={fx,tr:a.tr,avg:a.avg,n:a.n};
+      let html=cardHtml(r,-1);
+      html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
+      html=html.replace(`data-favorite-id="${fx.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆`, `data-favorite-id="${esc(f.id)}" aria-label="Quitar de favoritos" aria-pressed="true" title="Quitar de favoritos">★`);
+      return html;
+    }
+    return `<article class="card result-card fav-legacy"><div class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">—</span><button class="fav-btn" type="button" data-favorite-id="${esc(f.id)}" aria-pressed="true" aria-label="Quitar de favoritos" title="Quitar de favoritos">★</button></div><div class="result-expanded"><p class="league">${esc(f.league||'')} · ${esc(f.market||'')}</p><p class="small">Este favorito no tiene indicadores guardados. Volvé a analizar el partido y guardalo nuevamente para conservar el análisis.</p></div></article>`;
+  }).join('');
+  document.querySelectorAll('#favorites [data-favorite-id]').forEach(btn=>{
+    const on=favoriteState.items.has(String(btn.dataset.favoriteId));
+    btn.setAttribute('aria-pressed',String(on));btn.textContent=on?'★':'☆';
+    btn.title=on?'Quitar de favoritos':'Guardar en favoritos';
+    btn.setAttribute('aria-label',on?'Quitar de favoritos':'Guardar en favoritos');
+  });
+}
+async function toggleFavorite(fixtureId){
+  const id=String(fixtureId);
+  if(favoriteState.items.has(id)){
+    favoriteState.items.delete(id);
+  }else{
+    const r=state.results.find(x=>String(x.fx.id)===id);
+    const f=r?r.fx:state.fixtures.find(x=>String(x.id)===id);
+    if(!f){authMessage('No pude encontrar los datos de ese partido. Volvé a analizarlo.',true);return;}
+    favoriteState.items.set(id,{
+      id,home:f.hn,away:f.an,league:(f.lc?f.lc+' · ':'')+(f.ln||''),kickoff:f.iso,
+      dateText:fmtDate(Math.floor(new Date(f.iso).getTime()/1000))+' · '+fmtTime(f.iso),
+      market:marketDefs[state.market].short,
+      fixture:{id:String(f.id),hn:f.hn,an:f.an,iso:f.iso,lc:f.lc||'',ln:f.ln||'',st:f.st||'NS'},
+      analysis:r?{avg:r.avg,n:r.n,tr:r.tr}:null,savedAt:Date.now()
+    });
+  }
+  syncFavoriteToCloud(id);
+  renderFavorites();renderResults();renderLive();
+}
+function initLocalFavorites(){
+  favoriteState.items=new Map();
+  renderFavorites();
+}
+/* Puente con Firebase (el módulo de más abajo define window.tanoCloud) */
+function syncFavoriteToCloud(id){
+  const c=window.tanoCloud;
+  if(!c){authMessage('Sin conexión con tu cuenta. Recargá la página.',true);return}
+  if(favoriteState.items.has(id)) c.saveFavorite(id,favoriteState.items.get(id));
+  else c.removeFavorite(id);
+}
+window.tanoSetFavorites=function(list){
+  favoriteState.items=new Map((list||[]).map(f=>[String(f.id),f]));
+  renderFavorites();renderResults();renderLive();
+};
+window.tanoGetLegacyFavorites=function(){
+  try{const raw=localStorage.getItem(FAVORITES_STORAGE_KEY);const d=raw?JSON.parse(raw):[];return Array.isArray(d)?d:[]}
+  catch(e){return []}
+};
+$('#results').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-favorite-id]');
+  if(btn) toggleFavorite(btn.dataset.favoriteId);
+});
+$('#favorites').addEventListener('click',e=>{
+  const remove=e.target.closest('[data-remove-favorite]');
+  if(remove){toggleFavorite(remove.dataset.removeFavorite);return}
+  const btn=e.target.closest('[data-favorite-id]');
+  if(btn) toggleFavorite(btn.dataset.favoriteId);
+});
+$('#favorites').addEventListener('toggle',e=>{
+  const d=e.target;
+  if(d.tagName!=='DETAILS'||!d.open) return;
+  const card=d.closest('[data-fav-detail]');
+  if(!card) return;
+  if(!card) return;
+  const box=d.querySelector('.detail');
+  if(!box||box.dataset.ready) return;
+  const fav=favoriteState.items.get(String(card.dataset.favDetail));
+  if(fav&&fav.analysis&&Array.isArray(fav.analysis.tr)){box.innerHTML=detailHtml({tr:fav.analysis.tr});box.dataset.ready='1';}
+},true);
+$('#favoriteSort')?.addEventListener('change',renderFavorites);
+const originalCardHtml=cardHtml;
+cardHtml=function(r,i){
+  const result=originalCardHtml(r,i);
+  const id=String(r.fx.id), saved=favoriteState.items.has(id);
+  return result.replace(`data-favorite-id="${id}" aria-label="Guardar favorito" aria-pressed="false" title="Guardar en favoritos">☆`,
+    `data-favorite-id="${id}" aria-label="${saved?'Quitar de favoritos':'Guardar favorito'}" aria-pressed="${saved}" title="${saved?'Quitar de favoritos':'Guardar en favoritos'}">${saved?'★':'☆'}`);
+};
+
+/* ---- Monitor visual de partidos en vivo (sin envío de Telegram desde el navegador) ---- */
+const liveState={fixtures:[],outOfFirstHalf:new Set(),selected:new Set(LS.get('o05:liveSelected',[])),odds:new Map(),busy:false};
+const liveEsc=esc;
+function liveStatus(msg,err=false){setStatus($('#liveStatus'),msg,err)}
+function currentLiveConfig(){
+  return {minOdds:Math.max(1.01,Number($('#liveMinOdds').value)||1.50),only00:$('#liveOnly00').checked,over05:$('#liveOver05').checked,over10:$('#liveOver10').checked};
+}
+function liveScore(f){
+  const h=Number.isInteger(f.goals?.home)?f.goals.home:null;
+  const a=Number.isInteger(f.goals?.away)?f.goals.away:null;
+  return {h,a,text:h===null||a===null?'—':`${h}-${a}`};
+}
+function renderLive(){
+  const box=$('#liveList'),cfg=currentLiveConfig();
+  const query=($('#liveSearch')?.value||'').trim().toLocaleLowerCase('es');
+  const filter=$('#liveFilter')?.value||'all';
+  const favorites=[...favoriteState.items.values()];
+  const liveById=new Map(liveState.fixtures.map(f=>[String(f.fixture.id),f]));
+  let shown=favorites.map(fav=>({fav,live:liveById.get(String(fav.id))||null})).filter(({fav,live})=>{
+    // No mostrar partidos que ya están en descanso, segundo tiempo o prórroga.
+    if(liveState.outOfFirstHalf.has(String(fav.id)))return false;
+    const text=[fav.home,fav.away,fav.league,live?.teams?.home?.name,live?.teams?.away?.name].join(' ').toLocaleLowerCase('es');
+    if(query&&!text.includes(query))return false;
+    if(filter==='live'&&!live)return false;
+    if(filter==='upcoming'&&live)return false;
+    if(live&&cfg.only00){const sc=liveScore(live);if(!(sc.h===0&&sc.a===0))return false;}
+    return true;
+  });
+  shown.sort((a,b)=>{
+    if(a.live&&!b.live)return -1;if(!a.live&&b.live)return 1;
+    return String(a.fav.kickoff||'').localeCompare(String(b.fav.kickoff||''));
+  });
+  if(!favorites.length){box.innerHTML='<div class="empty">No hay favoritos sincronizados. Andá al Escáner y tocá ★ en los partidos que quieras vigilar.</div>';return;}
+  if(!shown.length){box.innerHTML='<div class="empty">No hay favoritos que coincidan con la búsqueda/filtro. Los partidos en descanso o en segundo tiempo no se muestran en esta pestaña.</div>';return;}
+  box.innerHTML=shown.map(({fav,live})=>{
+    const id=String(fav.id),sc=live?liveScore(live):{text:'—'};
+    const status=live?.fixture?.status||{},league=live?.league||{};
+    const home=live?.teams?.home?.name||fav.home||'Local',away=live?.teams?.away?.name||fav.away||'Visitante';
+    const odds=liveState.odds.get(id)||{};
+    const mk=(key,label,enabled)=>{
+      if(!enabled)return '';
+      const x=odds[key];
+      return `<div class="live-market"><small>${label}</small><strong>${x&&x.price?Number(x.price).toFixed(2):'Cuota sin consultar'}</strong><small>${x?liveEsc(x.bookmaker||'Casa no informada'):'Consultá las cuotas si el partido está en juego'}</small></div>`;
+    };
+    const alert05=cfg.over05&&odds.over05&&Number(odds.over05.price)>=cfg.minOdds;
+    const alert10=cfg.over10&&odds.over10&&Number(odds.over10.price)>=cfg.minOdds;
+    const matchStatus=live?`${status.elapsed==null?'En juego':status.elapsed+"'"} · ${status.short||'LIVE'}`:'Todavía no detectado en vivo';
+    const leagueText=league.name?`${league.country||''} · ${league.name}`:(fav.league||'Liga no informada');
+    return `<article class="live-card">
+      <details>
+        <summary>
+          <div><div class="live-headline">${liveEsc(home)} vs ${liveEsc(away)}</div>
+          <div class="live-summary-meta">${liveEsc(leagueText)} · ${liveEsc(matchStatus)}</div></div>
+          <strong class="mono" style="font-size:24px;white-space:nowrap">${live?sc.text:'—'}</strong>
+        </summary>
+        <div class="live-expanded">
+          <div class="live-top"><div><div class="live-teams">${liveEsc(home)} vs ${liveEsc(away)}</div>
+          <div class="live-meta">${liveEsc(leagueText)} · ${liveEsc(matchStatus)}</div></div>
+          <div><strong class="mono" style="font-size:24px">${live?sc.text:'—'}</strong></div></div>
+          ${!live?`<div class="small">Este encuentro está en tus favoritos. Cuando aparezca en el feed de partidos en vivo de API-Football, se mostrará aquí con su marcador y minuto. ${fav.kickoff?'Inicio previsto: '+liveEsc(fav.dateText||fav.kickoff):''}</div>`:''}
+          <div class="live-markets">${mk('over05','Over 0,5 goles 1T',cfg.over05)}${mk('over10','Over 1,0 goles 1T',cfg.over10)}</div>
+          ${(alert05||alert10)?'<div class="live-badge">Cumple cuota mínima configurada; falta conectar el envío automático</div>':''}
+          ${live?`<div class="row"><button type="button" data-live-odds="${id}">Consultar cuotas 1T</button></div>`:'<div class="small">Las cuotas se habilitan cuando el partido esté en juego.</div>'}
+        </div>
+      </details>
+    </article>`;
+  }).join('');
+}
+async function loadLiveFixtures(){
+  if(!state.key){liveStatus('Primero guardá y probá tu clave de API-Football.',true);return;}
+  if(liveState.busy)return;
+  liveState.busy=true;$('#liveRefresh').disabled=true;liveStatus('Consultando partidos en vivo…');
+  try{
+    const j=await api('/fixtures',{live:'all',timezone:TZ});
+    const allLive=(j.response||[]).filter(f=>f.fixture?.id);
+    // Solo consideramos "en vivo" los encuentros que API-Football marca explícitamente como primer tiempo.
+    // HT, 2H y prórroga se excluyen de la vigilancia de alertas del 1T.
+    liveState.fixtures=allLive.filter(f=>f.fixture?.status?.short==='1H');
+    liveState.outOfFirstHalf=new Set(allLive
+      .filter(f=>['HT','2H','ET','BT','P','FT','AET','PEN'].includes(f.fixture?.status?.short))
+      .map(f=>String(f.fixture.id)));
+    const favIds=new Set([...favoriteState.items.keys()].map(String));
+    const matches=liveState.fixtures.filter(f=>favIds.has(String(f.fixture.id))).length;
+    liveStatus(`${matches} de tus favoritos están actualmente en el primer tiempo. Se excluyen descanso, segundo tiempo y prórroga.`);
+    renderLive();
+  }catch(e){liveStatus('No se pudieron cargar los partidos: '+e.message,true);}
+  finally{liveState.busy=false;$('#liveRefresh').disabled=false;}
+}
+function findFirstHalfOdds(response){
+  const found={};
+  const consider=(bet,bookmakerName='',bookmakerStatus={})=>{
+    const name=String(bet.name||bet.bet||'').toLowerCase();
+    // IMPORTANTE: los IDs de mercados en vivo son distintos de los IDs prepartido.
+    // No se filtra por IDs prepartido; se exige que el nombre identifique el primer tiempo.
+    const isFirstHalf=/(1st\s*half|first\s*half|half\s*time|1er\s*tiempo|primer\s*tiempo|1ª?\s*parte|1st\s*period)/i.test(name);
+    if(!isFirstHalf)return;
+    if(bookmakerStatus.blocked===true||bookmakerStatus.finished===true||bookmakerStatus.stopped===true)return;
+    for(const value of (bet.values||[])){
+      if(value.suspended===true)continue;
+      const v=String(value.value||'').toLowerCase().replace(',','.');
+      if(!/\bover\b|\bmore\b|\bmas de\b/.test(v))continue;
+      const handicap=String(value.handicap||'').replace(',','.').trim();
+      const match=v.match(/(?:over|more|mas de)\s*([0-9]+(?:\.[0-9]+)?)/i);
+      const line=handicap|| (match&&match[1]) || '';
+      const n=Number(line);
+      const key=n===0.5?'over05':n===1?'over10':null;
+      const price=Number(value.odd||value.price);
+      if(!key||!Number.isFinite(price)||price<=1)continue;
+      const candidate={price,bookmaker:bookmakerName||'Casa no informada por API-Football',market:bet.name||'',marketId:bet.id??null,line:n,main:value.main===true,suspended:false};
+      // Si la API marca main=true, priorizarlo. Si no, conservar la primera cuota válida.
+      if(!found[key]||(candidate.main&&!found[key].main))found[key]=candidate;
+    }
+  };
+  for(const item of response||[]){
+    const fixtureStatus=item.status||item.fixture?.status||{};
+    const bookmakerRows=item.bookmakers||item.odds?.bookmakers||[];
+    if(Array.isArray(bookmakerRows)&&bookmakerRows.length){
+      for(const bookmaker of bookmakerRows){
+        for(const bet of bookmaker.bets||bookmaker.odds||[])consider(bet,bookmaker.name||bookmaker.title||'',fixtureStatus);
+      }
+    }
+    // /odds/live suele devolver los mercados directamente en item.odds, sin el anidamiento
+    // bookmaker -> bets que utiliza /odds (prepartido). Soportar ambos formatos.
+    const directOdds=Array.isArray(item.odds)?item.odds:[];
+    for(const bet of directOdds)consider(bet,bet.bookmaker||item.bookmaker?.name||'',fixtureStatus);
+    if(Array.isArray(item.bets))for(const bet of item.bets)consider(bet,item.bookmaker?.name||'',fixtureStatus);
+  }
+  return found;
+}
+async function loadLiveOdds(id){
+  if(!state.key){liveStatus('Primero guardá y probá tu clave de API-Football.',true);return;}
+  const f=liveState.fixtures.find(x=>String(x.fixture.id)===String(id));
+  if(!f)return;
+  liveStatus('Consultando cuotas en vivo del primer tiempo…');
+  try{
+    // Usar el endpoint correcto para cuotas in-play. /odds es el endpoint prepartido.
+    const j=await api('/odds/live',{fixture:id});
+    const rows=j.response||[];
+    const odds=findFirstHalfOdds(rows);
+    liveState.odds.set(String(id),odds);
+    renderLive();
+    const n=Object.keys(odds).length;
+    if(n)liveStatus(`Cuotas en vivo encontradas para ${f.teams.home.name} vs ${f.teams.away.name}: ${n} línea(s). La API puede no informar el nombre de la casa en este endpoint.`);
+    else liveStatus('API-Football no devolvió líneas Over 0,5/1,0 identificables para el primer tiempo en este partido. Puede que el mercado no esté cubierto, esté suspendido o use un nombre distinto.');
+  }catch(e){liveStatus('Error al consultar cuotas en vivo: '+e.message,true);}
+}
+$('#liveRefresh').addEventListener('click',loadLiveFixtures);
+$('#liveList').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-live-odds]');
+  if(btn)loadLiveOdds(btn.dataset.liveOdds);
+});
+['liveMinOdds','liveOnly00','liveOver05','liveOver10','liveFilter'].forEach(id=>$('#'+id).addEventListener('change',renderLive));
+$('#liveSearch').addEventListener('input',renderLive);
+
+initLocalFavorites();
+if(state.key) checkStatus();
+
+
+// Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
+(function(){
+  const tabs={scanner:['tabScanner','scannerView','Over 0.5 1T'],live:['tabLive','liveView','En Vivo'],access:['tabAccess','accessView','Accesos']};
+  function showTab(which){
+    for(const [k,[tabId,viewId,title]] of Object.entries(tabs)){
+      const on=k===which;
+      document.getElementById(viewId).classList.toggle('hidden',!on);
+      const t=document.getElementById(tabId);
+      t.classList.toggle('active',on);
+      t.setAttribute('aria-selected',String(on));
+      if(on) document.getElementById('appTitle').textContent=title;
+    }
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  window.tanoShowTab=showTab;
+  for(const [k,[tabId]] of Object.entries(tabs)) document.getElementById(tabId).addEventListener('click',()=>showTab(k));
+})();
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const OWNER_EMAIL = 'tanogralatto@gmail.com';
+const cfg = {
+  apiKey: "AIzaSyDL0LkEW3IAdBZcOARMjzAewgB_lh1edjI",
+  authDomain: "appuestasclaude.firebaseapp.com",
+  projectId: "appuestasclaude",
+  storageBucket: "appuestasclaude.firebasestorage.app",
+  messagingSenderId: "1020425173076",
+  appId: "1:1020425173076:web:4ca5edab0f72c92a7ad5c1"
+};
+const fapp = initializeApp(cfg);
+const auth = getAuth(fapp);
+const db = getFirestore(fapp);
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: 'select_account' });
+
+const q = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean = o => JSON.parse(JSON.stringify(o));
+const TZ = 'America/Argentina/Buenos_Aires';
+
+let unsubOwn = null, unsubFavs = null, unsubUsers = null;
+let inApp = false, inAppUid = null, importChecked = false;
+
+function friendly(e) {
+  const code = (e && e.code) || '';
+  if (code === 'auth/unauthorized-domain') return 'Este dominio no está autorizado en Firebase. Agregalo en Authentication > Settings > Authorized domains.';
+  if (code === 'permission-denied' || /permission/i.test((e && e.message) || '')) return 'Firebase rechazó el pedido: faltan pegar las reglas de seguridad de TANOapp en Firestore.';
+  if (code === 'auth/network-request-failed') return 'No hay conexión. Revisá internet y reintentá.';
+  return (e && e.message) || 'Error desconocido.';
+}
+
+function showGate(state, extra) {
+  q('#authGate').classList.remove('hidden');
+  q('#appShell').classList.add('hidden');
+  const t = q('#gateTitle'), p = q('#gateText'), li = q('#gateLogin'), lo = q('#gateLogout'), er = q('#gateErr');
+  li.classList.add('hidden'); lo.classList.add('hidden'); er.textContent = '';
+  if (state === 'checking') { t.textContent = 'TANOapp'; p.textContent = 'Verificando sesión…'; }
+  else if (state === 'login') { t.textContent = 'TANOapp'; p.textContent = 'Entrá con tu cuenta de Google. Si es tu primera vez, el dueño tiene que aprobar tu acceso.'; li.classList.remove('hidden'); if (extra) er.textContent = extra; }
+  else if (state === 'pending') { t.textContent = 'Acceso pendiente'; p.textContent = 'Tu solicitud fue enviada. Cuando el dueño la apruebe vas a entrar automáticamente; esta pantalla se actualiza sola.'; lo.classList.remove('hidden'); }
+  else if (state === 'blocked') { t.textContent = 'Acceso denegado'; p.textContent = 'El dueño no habilitó esta cuenta.'; lo.classList.remove('hidden'); }
+  else { t.textContent = 'TANOapp'; p.textContent = 'No se pudo verificar tu acceso.'; lo.classList.remove('hidden'); er.textContent = extra || ''; }
+}
+
+function stopAll() {
+  if (unsubTelegramConfig) { unsubTelegramConfig(); unsubTelegramConfig = null; }
+  if (unsubOwn) { unsubOwn(); unsubOwn = null; }
+  if (unsubFavs) { unsubFavs(); unsubFavs = null; }
+  if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+}
+function leaveApp() {
+  if (unsubFavs) { unsubFavs(); unsubFavs = null; }
+  if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+  inApp = false; inAppUid = null; importChecked = false;
+  window.tanoCloud = null;
+  if (window.tanoSetFavorites) window.tanoSetFavorites([]);
+  q('#tabAccess').classList.add('hidden');
+  if (window.tanoShowTab) window.tanoShowTab('scanner');
+}
+
+function setMsg(m, err) { const el = q('#authStatus'); el.textContent = m || ''; el.classList.toggle('err', !!err); }
+
+let unsubTelegramConfig = null;
+let telegramConfigLoaded = false;
+function telegramStatus(message, error=false) {
+  const el = q('#tgConfigStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('err', !!error);
+}
+function setTelegramForm(data={}) {
+  q('#tgEnabled').checked = data.enabled !== false;
+  q('#tgOver05').checked = !data.over05 || data.over05.enabled !== false;
+  q('#tgMin05').value = Number(data.over05?.minOdds ?? 1.50).toFixed(2);
+  q('#tgOver10').checked = !data.over10 || data.over10.enabled !== false;
+  q('#tgMin10').value = Number(data.over10?.minOdds ?? 1.65).toFixed(2);
+  q('#tgMinuteStart').value = Number(data.minuteStart ?? 1);
+  q('#tgMinuteEnd').value = Number(data.minuteEnd ?? 45);
+}
+function startTelegramSettings(user) {
+  const panel = q('#telegramSettings');
+  if (!panel) return;
+  panel.classList.remove('hidden');
+  if (unsubTelegramConfig) { unsubTelegramConfig(); unsubTelegramConfig = null; }
+  telegramConfigLoaded = false;
+  telegramStatus('Cargando configuración…');
+  const ref = doc(db, 'tanoapp_telegram_config', 'global');
+  unsubTelegramConfig = onSnapshot(ref, snap => {
+    setTelegramForm(snap.exists() ? snap.data() : {});
+    telegramConfigLoaded = true;
+    telegramStatus(snap.exists() ? 'Configuración cargada.' : 'Aún no hay configuración guardada; se usarán los valores iniciales.');
+  }, e => telegramStatus('No se pudo leer la configuración: ' + friendly(e), true));
+  q('#tgSave').onclick = async () => {
+    if (!telegramConfigLoaded) { telegramStatus('Esperá a que termine de cargar.', true); return; }
+    const min05 = Number(q('#tgMin05').value), min10 = Number(q('#tgMin10').value);
+    const start = Number(q('#tgMinuteStart').value), end = Number(q('#tgMinuteEnd').value);
+    if (!Number.isFinite(min05) || min05 < 1.01 || !Number.isFinite(min10) || min10 < 1.01) {
+      telegramStatus('Las cuotas mínimas deben ser iguales o mayores a 1,01.', true); return;
+    }
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end > 45 || start > end) {
+      telegramStatus('El rango debe estar entre 1 y 45, y el minuto inicial no puede superar al final.', true); return;
+    }
+    const btn = q('#tgSave'); btn.disabled = true;
+    telegramStatus('Guardando…');
+    try {
+      await setDoc(ref, {
+        enabled: q('#tgEnabled').checked,
+        over05: { enabled: q('#tgOver05').checked, minOdds: min05 },
+        over10: { enabled: q('#tgOver10').checked, minOdds: min10 },
+        minuteStart: start, minuteEnd: end,
+        updatedBy: user.email || '', updatedAt: serverTimestamp()
+      }, { merge: true });
+      telegramStatus('Configuración guardada correctamente.');
+    } catch (e) {
+      telegramStatus('No se pudo guardar: ' + friendly(e) + ' Revisá las reglas de Firestore.', true);
+    } finally { btn.disabled = false; }
+  };
+}
+
+function enterApp(user, isOwner) {
+  if (inApp && inAppUid === user.uid) return;
+  inApp = true; inAppUid = user.uid; importChecked = false;
+  q('#authGate').classList.add('hidden');
+  q('#appShell').classList.remove('hidden');
+  q('#userLabel').textContent = (user.displayName ? user.displayName + ' · ' : '') + (user.email || '');
+  setMsg('');
+  const favCol = collection(db, 'tanoapp_favoritos'); // lista compartida entre todos los usuarios aprobados
+  window.tanoCloud = {
+    saveFavorite: (id, item) => setDoc(doc(favCol, String(id)), clean({ ...item, id: String(id), guardadoPor: user.email || '', actualizado: Date.now() }))
+      .catch(e => setMsg('No se pudo guardar el favorito: ' + friendly(e), true)),
+    removeFavorite: id => deleteDoc(doc(favCol, String(id)))
+      .catch(e => setMsg('No se pudo quitar el favorito: ' + friendly(e), true))
+  };
+  unsubFavs = onSnapshot(favCol, snap => {
+    const list = snap.docs.map(d => d.data());
+    window.tanoSetFavorites(list);
+    if (!importChecked) { importChecked = true; if (isOwner) importLegacy(user, favCol, list); }
+  }, e => setMsg(friendly(e), true));
+  if (isOwner) {
+    q('#tabAccess').classList.remove('hidden');
+    startOwnerPanel();
+    startTelegramSettings(user);
+  }
+}
+
+// Importa una sola vez los favoritos que el dueño ya tenía en este navegador (sin duplicar los que ya estén en la lista compartida).
+async function importLegacy(user, favCol, existing) {
+  const flag = 'tanoapp_import_shared_' + user.uid;
+  try {
+    if (localStorage.getItem(flag)) return;
+    const have = new Set((existing || []).map(f => String(f.id)));
+    const legacy = (window.tanoGetLegacyFavorites ? window.tanoGetLegacyFavorites() : [])
+      .filter(f => f && f.id != null && !have.has(String(f.id)));
+    if (!legacy.length) { localStorage.setItem(flag, '1'); return; }
+    for (let i = 0; i < legacy.length; i += 400) {
+      const batch = writeBatch(db);
+      legacy.slice(i, i + 400).forEach(f => batch.set(doc(favCol, String(f.id)), clean({ ...f, id: String(f.id), guardadoPor: user.email || '', actualizado: Date.now() })));
+      await batch.commit();
+    }
+    localStorage.setItem(flag, '1');
+    setMsg('Se importaron ' + legacy.length + ' favoritos de este navegador.');
+  } catch (e) { setMsg('No se pudieron importar los favoritos: ' + friendly(e), true); }
+}
+
+function fmtTs(ts) {
+  try { return ts && ts.toDate ? ts.toDate().toLocaleString('es-AR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'; }
+  catch (e) { return '—'; }
+}
+
+function startOwnerPanel() {
+  unsubUsers = onSnapshot(collection(db, 'acceso_tanoapp'), snap => {
+    const rank = { pendiente: 0, aprobado: 1, bloqueado: 2 };
+    const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+      .sort((a, b) => (rank[a.estado] ?? 3) - (rank[b.estado] ?? 3) || String(a.email).localeCompare(String(b.email)));
+    const pend = users.filter(u => u.estado === 'pendiente').length;
+    q('#tabAccess').textContent = pend ? 'Accesos (' + pend + ')' : 'Accesos';
+    const box = q('#accessList');
+    if (!users.length) { box.innerHTML = '<div class="empty">Todavía nadie pidió acceso.</div>'; return; }
+    box.innerHTML = users.map(u => {
+      const est = ['pendiente', 'aprobado', 'bloqueado'].includes(u.estado) ? u.estado : 'pendiente';
+      const approve = est !== 'aprobado' ? '<button class="primary" type="button" data-uid="' + esc(u.uid) + '" data-act="aprobado">Aprobar</button>' : '';
+      const block = est !== 'bloqueado' ? '<button type="button" data-uid="' + esc(u.uid) + '" data-act="bloqueado">Bloquear</button>' : '';
+      return '<article class="access-card"><div class="access-top"><div><div class="access-name">' + esc(u.nombre || 'Sin nombre') + '</div><div class="access-mail">' + esc(u.email) + '</div></div><span class="badge ' + est + '">' + est + '</span></div>'
+        + '<div class="access-meta">Pidió acceso: ' + fmtTs(u.creado) + ' · Último ingreso: ' + fmtTs(u.ultimoIngreso) + '</div>'
+        + '<div class="access-actions">' + approve + block + '</div></article>';
+    }).join('');
+  }, e => { q('#accessList').innerHTML = '<div class="empty">' + esc(friendly(e)) + '</div>'; });
+}
+
+q('#accessList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  b.disabled = true;
+  try { await updateDoc(doc(db, 'acceso_tanoapp', b.dataset.uid), { estado: b.dataset.act, decididoEn: serverTimestamp() }); }
+  catch (err) { alert('No se pudo cambiar el acceso: ' + friendly(err)); b.disabled = false; }
+});
+
+function watchOwnAccess(user) {
+  showGate('checking');
+  const ref = doc(db, 'acceso_tanoapp', user.uid);
+  unsubOwn = onSnapshot(ref, async snap => {
+    if (!snap.exists()) {
+      try { await setDoc(ref, { email: user.email || '', nombre: user.displayName || '', estado: 'pendiente', creado: serverTimestamp(), ultimoIngreso: serverTimestamp() }); }
+      catch (e) { showGate('error', friendly(e)); }
+      return;
+    }
+    const estado = snap.data().estado;
+    if (estado === 'aprobado') {
+      const first = !inApp;
+      enterApp(user, false);
+      if (first) updateDoc(ref, { ultimoIngreso: serverTimestamp(), nombre: user.displayName || '' }).catch(() => {});
+    } else if (estado === 'bloqueado') { leaveApp(); showGate('blocked'); }
+    else { leaveApp(); showGate('pending'); }
+  }, e => showGate('error', friendly(e)));
+}
+
+onAuthStateChanged(auth, user => {
+  stopAll(); leaveApp();
+  if (!user) { showGate('login'); return; }
+  const isOwner = user.emailVerified && (user.email || '').toLowerCase() === OWNER_EMAIL;
+  if (isOwner) enterApp(user, true);
+  else watchOwnAccess(user);
+});
+
+getRedirectResult(auth).catch(e => showGate('login', friendly(e)));
+
+q('#gateLogin').addEventListener('click', async () => {
+  q('#gateErr').textContent = '';
+  try { await signInWithPopup(auth, provider); }
+  catch (e) {
+    const c = e && e.code;
+    if (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request') return;
+    if (c === 'auth/popup-blocked' || c === 'auth/operation-not-supported-in-this-environment' || c === 'auth/web-storage-unsupported') {
+      try { await signInWithRedirect(auth, provider); return; } catch (e2) { e = e2; }
+    }
+    q('#gateErr').textContent = friendly(e);
+  }
+});
+const logout = async () => { try { await signOut(auth); } catch (e) { setMsg(friendly(e), true); } };
+q('#gateLogout').addEventListener('click', logout);
+q('#btnLogout').addEventListener('click', logout);
+</script>
+</body>
+</html>
