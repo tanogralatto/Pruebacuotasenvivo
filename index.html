@@ -242,6 +242,12 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .userbar .status{flex:1 1 160px;min-height:0}
 .userbar button{min-height:34px;padding:0 12px}
 .app-tabs{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:1fr}
+@media(max-width:640px){
+  #appShell.owner .app-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #appShell:not(.owner) .app-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-tabs{grid-auto-flow:row;grid-auto-columns:auto;gap:6px}
+  .app-tab{min-width:0;min-height:48px;padding:6px 4px;font-size:13px;line-height:1.15;white-space:normal;overflow-wrap:anywhere}
+}
 .access-card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .access-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .access-name{font-weight:600;font-size:16px;overflow-wrap:anywhere}
@@ -1373,6 +1379,7 @@ function startTelegramSettings(user) {
 function enterApp(user, isOwner) {
   if (inApp && inAppUid === user.uid) return;
   inApp = true; inAppUid = user.uid; importChecked = false;
+  q('#appShell').classList.toggle('owner', isOwner);
   q('#authGate').classList.add('hidden');
   q('#appShell').classList.remove('hidden');
   q('#userLabel').textContent = (user.displayName ? user.displayName + ' · ' : '') + (user.email || '');
