@@ -252,6 +252,18 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .badge.pendiente{background:var(--warn-bg);color:var(--ink)}
 .badge.aprobado{background:var(--c4);color:var(--accent-ink)}
 .badge.bloqueado{background:var(--c1);color:#fff}
+.alert-history-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.alert-stat{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.alert-stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.alert-stat strong{font-family:var(--font-data);font-size:18px}
+.alert-history-card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:7px}
+.alert-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.alert-history-meta{font-size:13px;color:var(--muted)}
+.alert-result{font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;background:var(--warn-bg);white-space:nowrap}
+.alert-result.won{background:var(--c4);color:var(--accent-ink)}
+.alert-result.lost{background:var(--c1);color:#fff}
+.alert-result.push{background:var(--c2);color:#fff}
+.alert-result.unavailable{color:var(--muted)}
 /* Contador de consultas API-Football */
 .quota-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:14px}
 .quota-bar .qdot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
@@ -287,6 +299,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
   <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram</button>
   <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
+  <button id="tabAlertHistory" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="alertHistoryView">Historial Telegram</button>
 </nav>
 
 <div id="quotaBar" class="quota-bar" role="status" aria-live="polite"><span class="qdot" aria-hidden="true"></span><span class="qtxt">Consultas API-Football: guardá y probá tu clave en el Escáner para ver el consumo.</span></div>
@@ -432,6 +445,15 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       <button id="tgSave" type="button" class="primary">Guardar configuración</button>
       <span id="tgConfigStatus" class="status" role="status">Cargando configuración…</span>
     </div>
+  </section>
+</div>
+
+<div id="alertHistoryView" class="app-view hidden" role="tabpanel" aria-labelledby="tabAlertHistory">
+  <section class="panel" aria-labelledby="alertHistoryTitle">
+    <h2 id="alertHistoryTitle">Historial de alertas Telegram</h2>
+    <p class="small">Últimas 100 alertas enviadas. El resultado se completa con el marcador del descanso cuando API-Football confirma el final del partido.</p>
+    <div id="alertHistorySummary" class="alert-history-summary"></div>
+    <div id="alertHistoryList" class="cards"><div class="empty">Cargando historial…</div></div>
   </section>
 </div>
 
@@ -1202,7 +1224,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Over 0.5 1T'],live:['tabLive','liveView','En Vivo'],telegram:['tabTelegram','telegramView','Configuración Telegram'],access:['tabAccess','accessView','Accesos']};
+  const tabs={scanner:['tabScanner','scannerView','Over 0.5 1T'],live:['tabLive','liveView','En Vivo'],telegram:['tabTelegram','telegramView','Configuración Telegram'],access:['tabAccess','accessView','Accesos'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram']};
   function showTab(which){
     for(const [k,[tabId,viewId,title]] of Object.entries(tabs)){
       const on=k===which;
@@ -1222,7 +1244,7 @@ if(state.key) checkStatus();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch }
+import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, limit }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const OWNER_EMAIL = 'tanogralatto@gmail.com';
@@ -1245,7 +1267,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp
 const clean = o => JSON.parse(JSON.stringify(o));
 const TZ = 'America/Argentina/Buenos_Aires';
 
-let unsubOwn = null, unsubFavs = null, unsubUsers = null;
+let unsubOwn = null, unsubFavs = null, unsubUsers = null, unsubAlerts = null;
 let inApp = false, inAppUid = null, importChecked = false;
 
 function friendly(e) {
@@ -1273,6 +1295,7 @@ function stopAll() {
   if (unsubOwn) { unsubOwn(); unsubOwn = null; }
   if (unsubFavs) { unsubFavs(); unsubFavs = null; }
   if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+  if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
 }
 function leaveApp() {
   if (unsubFavs) { unsubFavs(); unsubFavs = null; }
@@ -1282,6 +1305,7 @@ function leaveApp() {
   if (window.tanoSetFavorites) window.tanoSetFavorites([]);
   q('#tabAccess').classList.add('hidden');
   q('#tabTelegram').classList.add('hidden');
+  q('#tabAlertHistory').classList.add('hidden');
   if (window.tanoShowTab) window.tanoShowTab('scanner');
 }
 
@@ -1368,8 +1392,10 @@ function enterApp(user, isOwner) {
   if (isOwner) {
     q('#tabAccess').classList.remove('hidden');
     q('#tabTelegram').classList.remove('hidden');
+    q('#tabAlertHistory').classList.remove('hidden');
     startOwnerPanel();
     startTelegramSettings(user);
+    startAlertHistory();
   }
 }
 
@@ -1395,6 +1421,58 @@ async function importLegacy(user, favCol, existing) {
 function fmtTs(ts) {
   try { return ts && ts.toDate ? ts.toDate().toLocaleString('es-AR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '—'; }
   catch (e) { return '—'; }
+}
+
+function startAlertHistory() {
+  if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
+  const list = q('#alertHistoryList'), summary = q('#alertHistorySummary');
+  const alertsQuery = query(collection(db, 'tanoapp_telegram_alerts'), orderBy('created_at', 'desc'), limit(100));
+  list.innerHTML = '<div class="empty">Cargando historial…</div>';
+  unsubAlerts = onSnapshot(alertsQuery, snap => {
+    const alerts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const settled = alerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
+    const counts = {
+      won: alerts.filter(a => a.result_status === 'won').length,
+      lost: alerts.filter(a => a.result_status === 'lost').length,
+      push: alerts.filter(a => a.result_status === 'push').length,
+      pending: alerts.filter(a => a.result_status === 'pending').length
+    };
+    const balance = settled.reduce((sum, a) => sum + (Number(a.profit_units) || 0), 0);
+    summary.innerHTML = [
+      ['Alertas', alerts.length],
+      ['Aciertos', counts.won],
+      ['Fallos', counts.lost],
+      ['Reembolsos', counts.push],
+      ['Pendientes', counts.pending],
+      ['Balance hipotético · 1 unidad', (balance > 0 ? '+' : '') + balance.toFixed(2) + ' u.']
+    ].map(([label, value]) => '<div class="alert-stat"><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>').join('');
+
+    if (!alerts.length) {
+      list.innerHTML = '<div class="empty">Todavía no hay alertas registradas.</div>';
+      return;
+    }
+    const outcome = {
+      won: ['Acertó', 'won'], lost: ['Falló', 'lost'], push: ['Reembolso', 'push'],
+      pending: ['Pendiente', 'pending'], unavailable: ['Sin resultado', 'unavailable']
+    };
+    list.innerHTML = alerts.map(a => {
+      const status = outcome[a.result_status] || ['Sin resultado', 'unavailable'];
+      const marketLabel = a.market_type === 'over05' ? 'Más de 0,5 goles · 1T' : a.market_type === 'over10' ? 'Más de 1,0 goles · 1T' : (a.market || a.market_type || 'Mercado');
+      const match = (a.home || 'Local') + ' ' + (a.score_at_alert || '—') + ' ' + (a.away || 'Visitante');
+      const settle = a.halftime_score ? ' · Descanso: ' + a.halftime_score : '';
+      const n = Number(a.profit_units);
+      const profit = Number.isFinite(n) ? ' · Balance: ' + (n > 0 ? '+' : '') + n.toFixed(2) + ' u.' : '';
+      return '<article class="alert-history-card">'
+        + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong><div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
+        + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
+        + '<div class="alert-history-meta">' + esc(marketLabel) + ' · Cuota ' + esc(Number(a.odd).toFixed(2)) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + profit + '</div>'
+        + (a.result_note ? '<div class="small">' + esc(a.result_note) + '</div>' : '')
+        + '</article>';
+    }).join('');
+  }, e => {
+    summary.innerHTML = '';
+    list.innerHTML = '<div class="empty">No se pudo leer el historial: ' + esc(friendly(e)) + ' Revisá que Firestore permita al dueño leer tanoapp_telegram_alerts.</div>';
+  });
 }
 
 function startOwnerPanel() {
