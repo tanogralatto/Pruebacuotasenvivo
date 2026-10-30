@@ -267,6 +267,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <nav class="app-tabs" role="tablist" aria-label="Secciones de TANOapp">
   <button id="tabScanner" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="scannerView">Escáner</button>
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
+  <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram</button>
   <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
 </nav>
 
@@ -380,7 +381,12 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
     <div><b>Telegram:</b> las alertas las envía el monitor del servidor, incluso si cerrás esta página.</div>
     <div>El token del bot permanece en el servidor; nunca se guarda en este HTML.</div>
   </div>
-  <section id="telegramSettings" class="panel hidden" style="margin-top:16px;border:1px solid var(--line)" aria-labelledby="telegramSettingsTitle">
+
+</section>
+</div>
+
+<div id="telegramView" class="app-view hidden" role="tabpanel" aria-labelledby="tabTelegram">
+  <section id="telegramSettings" class="panel" style="margin-top:16px;border:1px solid var(--line)" aria-labelledby="telegramSettingsTitle">
     <h3 id="telegramSettingsTitle">Configuración de alertas Telegram</h3>
     <p class="small">Solo visible para el dueño. Los cambios se aplican al monitor del servidor.</p>
     <div class="row">
@@ -400,7 +406,6 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       <span id="tgConfigStatus" class="status" role="status">Cargando configuración…</span>
     </div>
   </section>
-</section>
 </div>
 
 <div id="accessView" class="app-view hidden" role="tabpanel" aria-labelledby="tabAccess">
@@ -932,7 +937,7 @@ function renderFavorites(){
       html=html.replace(`data-favorite-id="${fx.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆`, `data-favorite-id="${esc(f.id)}" aria-label="Quitar de favoritos" aria-pressed="true" title="Quitar de favoritos">★`);
       return html;
     }
-    return `<article class="card result-card fav-legacy"><div class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">—</span><button class="fav-btn" type="button" data-favorite-id="${esc(f.id)}" aria-pressed="true" aria-label="Quitar de favoritos" title="Quitar de favoritos">★</button></div><div class="result-expanded"><p class="league">${esc(f.league||'')} · ${esc(f.market||'')}</p><p class="small">Este favorito no tiene indicadores guardados. Volvé a analizar el partido y guardalo nuevamente para conservar el análisis.</p></div></article>`;
+    return `<article class="card result-card fav-legacy"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">—</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">Favorito sin análisis guardado</span><button class="fav-btn" type="button" data-favorite-id="${esc(f.id)}" aria-pressed="true" aria-label="Quitar de favoritos" title="Quitar de favoritos">★</button></div><p class="league">${esc(f.league||'')} · ${esc(f.market||'')}</p><p class="small">Este favorito no tiene indicadores guardados. Volvé a analizar el partido y guardalo nuevamente para conservar el análisis.</p></div></details></article>`;
   }).join('');
   document.querySelectorAll('#favorites [data-favorite-id]').forEach(btn=>{
     const on=favoriteState.items.has(String(btn.dataset.favoriteId));
@@ -1169,7 +1174,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Over 0.5 1T'],live:['tabLive','liveView','En Vivo'],access:['tabAccess','accessView','Accesos']};
+  const tabs={scanner:['tabScanner','scannerView','Over 0.5 1T'],live:['tabLive','liveView','En Vivo'],telegram:['tabTelegram','telegramView','Configuración Telegram'],access:['tabAccess','accessView','Accesos']};
   function showTab(which){
     for(const [k,[tabId,viewId,title]] of Object.entries(tabs)){
       const on=k===which;
@@ -1248,6 +1253,7 @@ function leaveApp() {
   window.tanoCloud = null;
   if (window.tanoSetFavorites) window.tanoSetFavorites([]);
   q('#tabAccess').classList.add('hidden');
+  q('#tabTelegram').classList.add('hidden');
   if (window.tanoShowTab) window.tanoShowTab('scanner');
 }
 
@@ -1333,6 +1339,7 @@ function enterApp(user, isOwner) {
   }, e => setMsg(friendly(e), true));
   if (isOwner) {
     q('#tabAccess').classList.remove('hidden');
+    q('#tabTelegram').classList.remove('hidden');
     startOwnerPanel();
     startTelegramSettings(user);
   }
