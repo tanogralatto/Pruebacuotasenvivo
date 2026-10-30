@@ -222,7 +222,14 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .live-market small{color:var(--muted)}
 .live-pick{display:flex;gap:8px;align-items:center}
 .live-pick input{width:18px;height:18px;accent-color:var(--accent)}
+.live-favorites{border:1px solid var(--line);border-radius:6px;padding:0;background:var(--surface);overflow:hidden}
+.live-favorites>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;min-height:48px;color:var(--ink);font-size:16px;font-weight:600}
+.live-favorites>summary::-webkit-details-marker{display:none}
+.live-favorites>summary::after{content:"＋";font-size:20px;color:var(--muted)}
+.live-favorites[open]>summary::after{content:"−"}
+.live-favorites-content{padding:0 10px 10px}
 .live-badge{font-size:11px;padding:3px 7px;border-radius:4px;background:var(--warn-bg);color:var(--ink)}
+@media(max-width:640px){.live-favorites>summary{padding:11px 12px}.live-favorites-content{padding:0 8px 8px}}
 
 
 /* ---- Login, barra de usuario y panel de accesos ---- */
@@ -391,7 +398,12 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
   <div class="row">
     <span id="liveStatus" class="status" role="status">Guardá partidos con ★ en el Escáner y luego actualizá el estado en vivo.</span>
   </div>
-  <div id="liveList" class="cards"><div class="empty">Todavía no hay favoritos cargados. Marcá partidos con ★ en el Escáner.</div></div>
+  <details id="liveFavoritesDetails" class="live-favorites">
+    <summary><span>Favoritos próximos o en 1T <span id="liveFavoriteCount" class="small">· 0</span></span></summary>
+    <div class="live-favorites-content">
+      <div id="liveList" class="cards"><div class="empty">Todavía no hay favoritos cargados. Marcá partidos con ★ en el Escáner.</div></div>
+    </div>
+  </details>
   <div class="notes">
     <div><b>Telegram:</b> las alertas las envía el monitor del servidor, incluso si cerrás esta página.</div>
     <div>El token del bot permanece en el servidor; nunca se guarda en este HTML.</div>
@@ -1061,6 +1073,7 @@ function renderLive(){
     if(a.live&&!b.live)return -1;if(!a.live&&b.live)return 1;
     return String(a.fav.kickoff||'').localeCompare(String(b.fav.kickoff||''));
   });
+  $('#liveFavoriteCount').textContent='· '+shown.length;
   if(!favorites.length){box.innerHTML='<div class="empty">No hay favoritos sincronizados. Andá al Escáner y tocá ★ en los partidos que quieras vigilar.</div>';return;}
   if(!shown.length){box.innerHTML='<div class="empty">No hay favoritos que coincidan con la búsqueda/filtro. Los partidos en descanso o en segundo tiempo no se muestran en esta pestaña.</div>';return;}
   box.innerHTML=shown.map(({fav,live})=>{
