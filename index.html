@@ -1435,7 +1435,7 @@ function startAlertHistory() {
       won: alerts.filter(a => a.result_status === 'won').length,
       lost: alerts.filter(a => a.result_status === 'lost').length,
       push: alerts.filter(a => a.result_status === 'push').length,
-      pending: alerts.filter(a => a.result_status === 'pending').length
+      pending: alerts.filter(a => !a.result_status || a.result_status === 'pending').length
     };
     const balance = settled.reduce((sum, a) => sum + (Number(a.profit_units) || 0), 0);
     summary.innerHTML = [
@@ -1456,7 +1456,7 @@ function startAlertHistory() {
       pending: ['Pendiente', 'pending'], unavailable: ['Sin resultado', 'unavailable']
     };
     list.innerHTML = alerts.map(a => {
-      const status = outcome[a.result_status] || ['Sin resultado', 'unavailable'];
+      const status = outcome[a.result_status] || (!a.result_status ? ['Pendiente', 'pending'] : ['Sin resultado', 'unavailable']);
       const marketLabel = a.market_type === 'over05' ? 'Más de 0,5 goles · 1T' : a.market_type === 'over10' ? 'Más de 1,0 goles · 1T' : (a.market || a.market_type || 'Mercado');
       const match = (a.home || 'Local') + ' ' + (a.score_at_alert || '—') + ' ' + (a.away || 'Visitante');
       const settle = a.halftime_score ? ' · Descanso: ' + a.halftime_score : '';
