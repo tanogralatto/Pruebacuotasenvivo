@@ -157,6 +157,17 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 }
 @media (prefers-reduced-motion:reduce){.prog i{transition:none}}
 
+/* Sección completa de favoritos del Escáner, plegada al cargar. */
+.favorites-panel{padding:0!important;gap:0;border-top:1px solid var(--line)}
+.favorites-panel-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;cursor:pointer;padding:18px;min-height:58px}
+.favorites-panel-summary::-webkit-details-marker{display:none}
+.favorites-panel-summary h2{font-size:22px}
+.favorites-panel-summary::after{content:"＋";font-size:20px;color:var(--muted)}
+.favorites-panel[open]>.favorites-panel-summary::after{content:"−"}
+.favorites-panel-content{display:flex;flex-direction:column;gap:14px;padding:0 18px 18px;min-width:0}
+.favorites-panel .field{max-width:360px}
+@media(max-width:640px){.favorites-panel-summary{padding:14px}.favorites-panel-summary h2{font-size:19px}.favorites-panel-content{padding:0 14px 14px}}
+
 /* Tarjetas compactas para resultados y favoritos */
 .result-card{padding:0;gap:0;overflow:hidden}
 .result-detail{border:0;padding:0;gap:0}
@@ -274,11 +285,15 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="quotaBar" class="quota-bar" role="status" aria-live="polite"><span class="qdot" aria-hidden="true"></span><span class="qtxt">Consultas API-Football: guardá y probá tu clave en el Escáner para ver el consumo.</span></div>
 
 <div id="scannerView" class="app-view" role="tabpanel" aria-labelledby="tabScanner">
-<section class="panel" aria-labelledby="t-favs">
-  <h2 id="t-favs">★ Favoritos compartidos <span id="favoriteCount" class="small">· 0</span></h2>
-  <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSort">Ordenar por</label><select id="favoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
-  <div id="favorites" class="cards"><div class="empty">Todavía no guardaste partidos favoritos.</div></div>
-</section>
+<details id="scannerFavorites" class="panel favorites-panel" aria-labelledby="t-favs">
+  <summary class="favorites-panel-summary">
+    <h2 id="t-favs">★ Favoritos compartidos <span id="favoriteCount" class="small">· 0</span></h2>
+  </summary>
+  <div class="favorites-panel-content">
+    <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSort">Ordenar por</label><select id="favoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
+    <div id="favorites" class="cards"><div class="empty">Todavía no guardaste partidos favoritos.</div></div>
+  </div>
+</details>
 
 <section class="panel" aria-labelledby="t-key">
   <h2 id="t-key">1. Conexión</h2>
