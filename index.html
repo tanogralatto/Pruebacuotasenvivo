@@ -394,8 +394,8 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
   <button id="tabFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="favoritesView">Favoritos</button>
   <button id="tabVipFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="vipFavoritesView">Favoritos VIP</button>
-  <button id="tabStrategy" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="ghStrategyView">Gol HT +0,5</button>
-  <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram</button>
+  <button id="tabStrategy" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="ghStrategyView">Estrategia AEG</button>
+  <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram VIP</button>
   <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
   <button id="tabAlertHistory" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="alertHistoryView">Historial Telegram</button>
 </nav>
@@ -547,7 +547,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="ghStrategyView" class="app-view hidden" role="tabpanel" aria-labelledby="tabStrategy">
   <section class="panel" aria-labelledby="ghStrategyTitle">
     <div class="gh-section-title">
-      <h2 id="ghStrategyTitle">Estrategia Gol HT +0,5</h2>
+      <h2 id="ghStrategyTitle">Estrategia AEG</h2>
       <span class="gh-mode">MODO PRUEBA · SIN ALERTAS</span>
     </div>
     <p class="small">Filtro Pregame independiente del Escáner. Reproduce los criterios estadísticos de la clase con partidos e historiales de API-Football. La cuota real y el EV de BetPractice no están disponibles en esa API, así que se muestran las cuotas de casas como referencia sin convertirlas en un EV propio.</p>
@@ -1535,7 +1535,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Escáner','Buscá partidos, elegí la fecha y las ligas, y analizá los resultados. Guardá los que te interesen con la estrella; aparecerán en Favoritos.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],favorites:['tabFavorites','favoritesView','Favoritos','Partidos guardados desde el Escáner. Desde aquí podés enviarlos a Favoritos VIP o quitarlos.'],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos destinados a las alertas VIP de Telegram.'],strategy:['tabStrategy','ghStrategyView','Gol HT +0,5','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram','Configuración del monitor de alertas Telegram.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
+  const tabs={scanner:['tabScanner','scannerView','Escáner','Buscá partidos, elegí la fecha y las ligas, y analizá los resultados. Guardá los que te interesen con la estrella; aparecerán en Favoritos.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],favorites:['tabFavorites','favoritesView','Favoritos','Partidos guardados desde el Escáner. Desde aquí podés enviarlos a Favoritos VIP o quitarlos.'],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos destinados a las alertas VIP de Telegram.'],strategy:['tabStrategy','ghStrategyView','Estrategia AEG','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram VIP','Configuración del monitor de alertas Telegram VIP.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
   function showTab(which){
     for(const [k,[tabId,viewId,title,subtitle]] of Object.entries(tabs)){
       const on=k===which;
