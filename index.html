@@ -1488,7 +1488,7 @@ async function ghEvaluateCandidates(){
   const maxCalls=Math.max(0,Math.min(20,Number(settings.oddsLimit)||0));
   if(!eligible.length){ghRenderCandidates([]);ghCandidateStatus('0 candidatos pasan muestra, porcentaje, cuota justa, promedios y racha. No se consultaron cuotas.',false);return}
   eligible.sort((a,b)=>b.p-a.p);
-  const chosen=eligible.slice(0,maxCalls);
+  const queryable=eligible.filter(c=>!c.manual),chosen=queryable.slice(0,maxCalls);
   ghBusy=true;document.getElementById('ghAnalyze').disabled=true;
   let calls=0;
   try{
@@ -1506,11 +1506,11 @@ async function ghEvaluateCandidates(){
       if(calls<chosen.length)await sleep(250);
     }
     ghRenderCandidates(eligible);
-    const skipped=eligible.length-chosen.length;
-    ghCandidateStatus(eligible.length+' candidatos históricos; '+chosen.length+' consultados (hasta '+settings.oddsLimit+' llamadas de cuota; '+calls+' llamadas nuevas).'+(skipped?' '+skipped+' sin consultar por el límite configurado.':''),false);
+    const skipped=queryable.length-chosen.length,manualCount=eligible.filter(c=>c.manual).length;
+    ghCandidateStatus(eligible.length+' candidatos históricos; '+manualCount+' para revisión manual; '+chosen.length+' consultados (hasta '+settings.oddsLimit+' llamadas de cuota; '+calls+' llamadas nuevas).'+(skipped?' '+skipped+' sin consultar por el límite configurado.':''),false);
   }finally{ghBusy=false;document.getElementById('ghAnalyze').disabled=false}
 }
-document.getElementById('ghAnalyze').addEventListener('click',ghEvaluateCandidates);
+document.getElementById('ghAnalyze').addEventListener('click',()=>{document.getElementById('ghSettingsForm').requestSubmit();if(document.getElementById('ghStatus').classList.contains('err'))return;ghEvaluateCandidates()});
 
 </script>
 <script type="module">
