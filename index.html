@@ -344,6 +344,13 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 #ghStrategyView .gh-candidate-note{font-size:11px;color:var(--muted)}
 @media(max-width:760px){#ghStrategyView .gh-candidate-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:480px){#ghStrategyView .gh-candidate-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+#ghStrategyView .gh-league-tools{display:flex;flex-direction:column;gap:10px}
+#ghStrategyView .gh-leagues{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;max-height:260px;overflow:auto;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+#ghStrategyView .gh-league{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:12px;min-width:0;cursor:pointer}
+#ghStrategyView .gh-league input{flex:none;width:16px;height:16px;accent-color:var(--accent)}
+#ghStrategyView .gh-league span{min-width:0;overflow-wrap:anywhere}
+#ghStrategyView .gh-league small{margin-left:auto;color:var(--muted);font-family:var(--font-data);flex:none}
+
 </style>
 </head>
 <body>
@@ -518,6 +525,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
           <div class="gh-field"><label for="ghFairMax">Cuota justa máxima</label><input id="ghFairMax" type="number" min="1.01" step="0.01" value="1.25"></div>
           <div class="gh-field"><label for="ghMinEv">Valor esperado mínimo (%)</label><input id="ghMinEv" type="number" step="0.1" value="0"></div>
           <div class="gh-field"><label for="ghOddsLimit">Máximo de cuotas Pregame a consultar</label><input id="ghOddsLimit" type="number" min="0" max="20" step="1" value="5"><small>Limita llamadas API por análisis</small></div>
+          <div class="gh-field"><label for="ghMaxFixtures">Máximo de partidos a evaluar</label><input id="ghMaxFixtures" type="number" min="1" max="50" step="1" value="10"><small>Se toman primero por hora de inicio</small></div>
           <label class="check"><input id="ghAllowNeutral" type="checkbox"><span>Permitir valor neutral como excepción</span></label>
           <div class="small">Pregame compara cuota justa con cuota de la casa. La cuota justa no está activa hasta validar el modelo.</div>
         </div>
@@ -550,11 +558,24 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       </div>
     </form>
   </section>
+  <section class="panel" aria-labelledby="ghFixtureTitle">
+    <h2 id="ghFixtureTitle">Partidos y ligas de la estrategia</h2>
+    <p class="small">Esta búsqueda es independiente del Escáner. Elegí fecha y competiciones para crear tu propia lista de candidatos.</p>
+    <div class="gh-actions">
+      <div class="gh-field" style="width:190px"><label for="ghDate">Fecha (hora Argentina)</label><input id="ghDate" type="date"></div>
+      <button id="ghLoadFixtures" class="primary" type="button">Buscar partidos</button>
+      <span id="ghFixtureStatus" class="status" role="status" aria-live="polite">Elegí la fecha y buscá partidos.</span>
+    </div>
+    <div class="gh-league-tools">
+      <div class="gh-actions"><strong>Competiciones</strong><button id="ghAllLeagues" type="button">Todas</button><button id="ghNoLeagues" type="button">Ninguna</button></div>
+      <div id="ghLeagueList" class="gh-leagues"><div class="empty">Primero buscá los partidos de la fecha.</div></div>
+    </div>
+    <div class="gh-actions"><button id="ghAnalyze" class="primary" type="button" disabled>Evaluar estrategia</button><span id="ghCandidateStatus" class="status" role="status" aria-live="polite">La evaluación no usa los filtros del Escáner.</span></div>
+    <p class="small">Estimación de consumo: una búsqueda de partidos, hasta un historial por equipo no cacheado y hasta el máximo de consultas de cuotas que configuraste. El caché reduce las llamadas repetidas.</p>
+  </section>
   <section class="panel" aria-labelledby="ghTrialTitle">
-    <h2 id="ghTrialTitle">Candidatos de prueba</h2>
-    <p class="small">Primero analizá partidos +0,5 1T en el Escáner. Esta evaluación reutiliza esas muestras históricas y solo consulta cuotas Pregame para los candidatos que superen los filtros.</p>
-    <div class="gh-actions"><button id="ghAnalyze" class="primary" type="button">Evaluar candidatos</button><span id="ghCandidateStatus" class="status" role="status" aria-live="polite">Sin evaluación en esta sesión.</span></div>
-    <div id="ghCandidateList" class="gh-candidates"><div class="empty">Corré el Escáner con el mercado +0,5 1T y luego evaluá los candidatos.</div></div>
+    <h2 id="ghTrialTitle">Candidatos ordenados por valor</h2>
+    <div id="ghCandidateList" class="gh-candidates"><div class="empty">Buscá partidos y elegí las competiciones para evaluar.</div></div>
   </section>
 </div>
 
@@ -1376,8 +1397,8 @@ if(state.key) checkStatus();
 })();
 
 const ghKey='tano:golht:settings:v1';
-const ghDefaults={fairMin:1.10,fairMax:1.25,minEv:0,oddsLimit:5,allowNeutral:false,minSample:30,minRate:80,avgFirst:3.0,avgSecond:2.8,overStreak:8,underMax:2,seasonCurrent:true,seasonPrevious:true,liveMin:1.50,minuteStart:10,minuteEnd:18,only00:true};
-const ghFields={fairMin:'ghFairMin',fairMax:'ghFairMax',minEv:'ghMinEv',oddsLimit:'ghOddsLimit',minSample:'ghMinSample',minRate:'ghMinRate',avgFirst:'ghAvgFirst',avgSecond:'ghAvgSecond',overStreak:'ghOverStreak',underMax:'ghUnderMax',liveMin:'ghLiveMin',minuteStart:'ghMinuteStart',minuteEnd:'ghMinuteEnd'};
+const ghDefaults={fairMin:1.10,fairMax:1.25,minEv:0,oddsLimit:5,maxFixtures:10,allowNeutral:false,minSample:30,minRate:80,avgFirst:3.0,avgSecond:2.8,overStreak:8,underMax:2,seasonCurrent:true,seasonPrevious:true,liveMin:1.50,minuteStart:10,minuteEnd:18,only00:true};
+const ghFields={fairMin:'ghFairMin',fairMax:'ghFairMax',minEv:'ghMinEv',oddsLimit:'ghOddsLimit',maxFixtures:'ghMaxFixtures',minSample:'ghMinSample',minRate:'ghMinRate',avgFirst:'ghAvgFirst',avgSecond:'ghAvgSecond',overStreak:'ghOverStreak',underMax:'ghUnderMax',liveMin:'ghLiveMin',minuteStart:'ghMinuteStart',minuteEnd:'ghMinuteEnd'};
 function ghApply(config){
   const saved={...ghDefaults,...(config&&typeof config==='object'?config:{})};
   for(const [key,id] of Object.entries(ghFields)){const el=document.getElementById(id);if(el)el.value=saved[key]}
@@ -1395,8 +1416,9 @@ document.getElementById('ghSettingsForm').addEventListener('submit',event=>{
   const validAverages=Number.isFinite(next.avgFirst)&&next.avgFirst>=0&&Number.isFinite(next.avgSecond)&&next.avgSecond>=0;
   const validRuns=Number.isInteger(next.overStreak)&&next.overStreak>=0&&Number.isInteger(next.underMax)&&next.underMax>=0;
   const validOddsLimit=Number.isInteger(next.oddsLimit)&&next.oddsLimit>=0&&next.oddsLimit<=20;
+  const validMaxFixtures=Number.isInteger(next.maxFixtures)&&next.maxFixtures>=1&&next.maxFixtures<=50;
   const validMinutes=Number.isInteger(next.minuteStart)&&Number.isInteger(next.minuteEnd)&&next.minuteStart>=1&&next.minuteEnd<=44&&next.minuteStart<=next.minuteEnd;
-  if(!validOdds||!validSample||!validAverages||!validRuns||!validOddsLimit||!validMinutes||!Number.isFinite(next.minEv)){ghStatus('Revisá los valores: cuotas ≥1,01, porcentajes 0–100 y minutos entre 1 y 44 en orden.',true);return}
+  if(!validOdds||!validSample||!validAverages||!validRuns||!validOddsLimit||!validMaxFixtures||!validMinutes||!Number.isFinite(next.minEv)){ghStatus('Revisá los valores: cuotas ≥1,01, porcentajes 0–100 y minutos entre 1 y 44 en orden.',true);return}
   if(!next.seasonCurrent&&!next.seasonPrevious){ghStatus('Seleccioná al menos una temporada.',true);return}
   if(!LS.set(ghKey,next)){ghStatus('No se pudieron guardar los parámetros en este navegador.',true);return}
   ghStatus('Parámetros guardados en este navegador. No modifican el Escáner ni las alertas.');
