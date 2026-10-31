@@ -564,6 +564,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
     </div>
     <div class="gh-league-tools">
       <div class="gh-actions"><strong>Competiciones</strong><button id="ghAllLeagues" type="button">Todas</button><button id="ghNoLeagues" type="button">Ninguna</button></div>
+      <div class="field" style="max-width:340px"><label for="ghLeagueFilter">Filtrar ligas</label><input id="ghLeagueFilter" type="search" placeholder="País o nombre de liga" autocomplete="off"></div>
       <div id="ghLeagueList" class="gh-leagues"><div class="empty">Primero buscá los partidos de la fecha.</div></div>
     </div>
     <div class="gh-actions"><button id="ghAnalyze" class="primary" type="button" disabled>Evaluar estrategia</button><span id="ghCandidateStatus" class="status" role="status" aria-live="polite">La evaluación no usa los filtros del Escáner.</span></div>
@@ -1506,8 +1507,12 @@ function ghFixtureStatus(text,error=false){const el=document.getElementById('ghF
 function ghRenderLeagues(){
   const counts=new Map();
   for(const f of ghFixtures){const k=String(f.lid);const v=counts.get(k)||{name:f.ln,country:f.lc,count:0};v.count++;counts.set(k,v)}
+  const term=(document.getElementById('ghLeagueFilter')?.value||'').trim().toLocaleLowerCase();
+  const leagues=[...counts.entries()]
+    .filter(([,l])=>!term||(l.name+' '+l.country).toLocaleLowerCase().includes(term))
+    .sort((a,b)=>a[1].country.localeCompare(b[1].country)||a[1].name.localeCompare(b[1].name));
   const box=document.getElementById('ghLeagueList');
-  box.innerHTML=[...counts.entries()].sort((a,b)=>a[1].country.localeCompare(b[1].country)||a[1].name.localeCompare(b[1].name)).map(([id,l])=>'<label class="gh-league"><input type="checkbox" data-gh-league="'+esc(id)+'" '+(ghSelectedLeagues.has(id)?'checked':'')+'><span>'+esc(l.country)+' · '+esc(l.name)+'</span><small>'+l.count+'</small></label>').join('')||'<div class="empty">No hay partidos futuros en esa fecha.</div>';
+  box.innerHTML=leagues.map(([id,l])=>'<label class="gh-league"><input type="checkbox" data-gh-league="'+esc(id)+'" '+(ghSelectedLeagues.has(id)?'checked':'')+'><span>'+esc(l.country)+' · '+esc(l.name)+'</span><small>'+l.count+'</small></label>').join('')||(term?'<div class="empty">Ninguna liga coincide con la búsqueda.</div>':'<div class="empty">No hay partidos futuros en esa fecha.</div>');
   document.getElementById('ghAnalyze').disabled=ghSelectedLeagues.size===0||!ghFixtures.length;
 }
 async function ghLoadFixtures(){
@@ -1528,8 +1533,9 @@ async function ghLoadFixtures(){
 }
 document.getElementById('ghDate').value=ghLocalDate();
 document.getElementById('ghLoadFixtures').addEventListener('click',ghLoadFixtures);
-document.getElementById('ghAllLeagues').addEventListener('click',()=>{ghSelectedLeagues=new Set(ghFixtures.map(f=>String(f.lid)));ghRenderLeagues()});
-document.getElementById('ghNoLeagues').addEventListener('click',()=>{ghSelectedLeagues.clear();ghRenderLeagues()});
+document.getElementById('ghAllLeagues').addEventListener('click',()=>{document.querySelectorAll('#ghLeagueList [data-gh-league]').forEach(input=>ghSelectedLeagues.add(String(input.dataset.ghLeague)));ghRenderLeagues()});
+document.getElementById('ghNoLeagues').addEventListener('click',()=>{document.querySelectorAll('#ghLeagueList [data-gh-league]').forEach(input=>ghSelectedLeagues.delete(String(input.dataset.ghLeague)));ghRenderLeagues()});
+document.getElementById('ghLeagueFilter').addEventListener('input',ghRenderLeagues);
 document.getElementById('ghLeagueList').addEventListener('change',event=>{
   const input=event.target.closest('[data-gh-league]');if(!input)return;
   const id=String(input.dataset.ghLeague);if(input.checked)ghSelectedLeagues.add(id);else ghSelectedLeagues.delete(id);ghRenderLeagues();
