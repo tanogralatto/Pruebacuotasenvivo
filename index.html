@@ -1439,9 +1439,11 @@ function ghBestPrematchOver05(response){
         for(const value of bet.values||[]){
           const label=String(value.value||'').toLowerCase().replace(',','.');
           if(!/\bover\b|\bmore\b|\bmas de\b/.test(label)||value.suspended===true)continue;
-          const line=String(value.handicap||'').replace(',','.').trim()||(label.match(/(?:over|more|mas de)\s*([0-9]+(?:\.[0-9]+)?)/i)||[])[1];
+          const handicap=Number(String(value.handicap||'').replace(',','.').trim());
+          const parsed=Number((label.match(/(?:over|more|mas de)\s*([0-9]+(?:\.[0-9]+)?)/i)||[])[1]);
+          const line=Number.isFinite(handicap)?handicap:parsed;
           const price=Number(value.odd||value.price);
-          if(Number(line)!==0.5||!Number.isFinite(price)||price<=1)continue;
+          if(line!==0.5||!Number.isFinite(price)||price<=1)continue;
           candidates.push({price,bookmaker:book.name||'Casa no informada',market:bet.name||'',bookmakerId:book.id??null});
         }
       }
@@ -1468,6 +1470,7 @@ async function ghEvaluateCandidates(){
   if(!state.key){ghCandidateStatus('Guardá y probá primero tu clave de API-Football.',true);return}
   if(state.market!=='ht05'){ghCandidateStatus('En el Escáner seleccioná el mercado +0,5 1T.',true);return}
   if(!state.results.length||!state.strategyHistory?.size){ghCandidateStatus('Primero corré el Escáner para cargar los partidos +0,5 1T de la fecha.',true);return}
+  state.cancel=false;
   const settings=LS.get(ghKey,ghDefaults),teams=state.strategyHistory;
   const eligible=[];
   const rows=state.results.filter(r=>isFutureFixture(r.fx)&&(r.fx.st==='NS'||r.fx.st==='TBD'));
