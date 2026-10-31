@@ -1318,7 +1318,7 @@ $('#results').addEventListener('click',e=>{
   if(!btn)return;
   e.preventDefault();e.stopPropagation();
   const id=String(btn.dataset.favoriteId);
-  if(favoriteState.items.has(id)&&favoriteGroup(favoriteState.items.get(id))==='common')removeFavorite(id);
+  if(favoriteState.items.has(id))removeFavorite(id);
   else saveFavoriteToGroup(id,'common','scanner');
 });
 $('#favoriteDestinationDialog').addEventListener('click',e=>{
