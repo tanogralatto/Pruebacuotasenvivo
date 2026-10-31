@@ -527,6 +527,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
   <section class="panel" aria-labelledby="vipFavoritesTitle">
     <h2 id="vipFavoritesTitle">★ Favoritos VIP <span id="vipFavoriteCount" class="small">· 0</span></h2>
     <p class="small">Partidos destinados a las alertas VIP de Telegram. Podés devolverlos a Favoritos o quitarlos.</p>
+    <div class="field" style="max-width:360px;margin-bottom:12px"><label for="vipFavoriteSort">Ordenar por</label><select id="vipFavoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
     <div id="vipFavorites" class="cards"><div class="empty">Todavía no agregaste partidos VIP. Guardá uno desde el Escáner y elegí Favoritos VIP.</div></div>
   </section>
 </div>
@@ -1233,8 +1234,17 @@ function renderFavorites(){
 }
 function renderVipFavorites(){
   const box=$('#vipFavorites');if(!box)return;
-  const items=[...favoriteState.items.values()].filter(f=>favoriteGroup(f)==='vip')
-    .sort((a,b)=>(a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||''));
+  const mode=$('#vipFavoriteSort')?.value||'date';
+  const items=[...favoriteState.items.values()].filter(f=>favoriteGroup(f)==='vip');
+  const pct=f=>f.analysis&&typeof f.analysis.avg==='number'?f.analysis.avg:null;
+  items.sort((a,b)=>{
+    if(mode==='high'||mode==='low'){
+      const pa=pct(a),pb=pct(b);
+      if(pa===null&&pb!==null)return 1;if(pb===null&&pa!==null)return -1;
+      if(pa!==null&&pb!==null&&pa!==pb)return mode==='high'?pb-pa:pa-pb;
+    }
+    return (a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||'');
+  });
   $('#vipFavoriteCount').textContent='· '+items.length;
   if(!items.length){box.innerHTML='<div class="empty">Todavía no agregaste partidos VIP. Enviá uno desde Favoritos.</div>';return;}
   box.innerHTML=items.map(f=>renderSavedFavoriteCard(f,'vip')).join('');
@@ -1365,6 +1375,7 @@ function loadSavedFavoriteDetails(e){
 $('#favorites').addEventListener('toggle',loadSavedFavoriteDetails,true);
 $('#vipFavorites').addEventListener('toggle',loadSavedFavoriteDetails,true);
 $('#favoriteSort')?.addEventListener('change',renderFavorites);
+$('#vipFavoriteSort')?.addEventListener('change',renderVipFavorites);
 const originalCardHtml=cardHtml;
 cardHtml=function(r,i){
   const result=originalCardHtml(r,i);
