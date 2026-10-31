@@ -1768,7 +1768,7 @@ document.getElementById('ghAnalyze').addEventListener('click',()=>{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, getDocs }
+import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, startAt, getDocs }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const OWNER_EMAIL = 'tanogralatto@gmail.com';
@@ -1971,6 +1971,7 @@ function startAlertHistory() {
   let latestDocs = [];
   let olderPages = [];
   let cursor = null;
+  let firstOlderPage = true;
   let loadingMore = false;
   let hasMore = true;
 
@@ -2030,11 +2031,12 @@ function startAlertHistory() {
     loadingMore = true;
     renderHistory();
     try {
-      const page = await getDocs(query(alertsRef, orderBy('created_at', 'desc'), startAfter(cursor), limit(100)));
+      const page = await getDocs(query(alertsRef, orderBy('created_at', 'desc'), firstOlderPage ? startAt(cursor) : startAfter(cursor), limit(100)));
       const docs = page.docs;
       if (docs.length) {
         olderPages.push(docs);
         cursor = docs[docs.length - 1];
+        firstOlderPage = false;
       }
       hasMore = docs.length === 100;
       renderHistory();
@@ -2054,7 +2056,13 @@ function startAlertHistory() {
   moreButton.classList.add('hidden');
   unsubAlerts = onSnapshot(query(alertsRef, orderBy('created_at', 'desc'), limit(100)), snap => {
     latestDocs = snap.docs;
-    cursor = latestDocs.length ? latestDocs[latestDocs.length - 1] : null;
+    // Once older pages are loaded, keep their cursor stable. startAt on the
+    // first older page includes the boundary document, avoiding gaps if new
+    // alerts arrive and the live first page shifts while browsing history.
+    if (!olderPages.length) {
+      cursor = latestDocs.length ? latestDocs[latestDocs.length - 1] : null;
+      firstOlderPage = true;
+    }
     hasMore = latestDocs.length === 100;
     renderHistory();
   }, e => {
