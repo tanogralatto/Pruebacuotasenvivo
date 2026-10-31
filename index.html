@@ -735,6 +735,7 @@ const API='https://v3.football.api-sports.io';
 const marketDefs={ht05:{title:'Over 0.5 1T',short:'Más de 0,5 goles al descanso',period:'primer tiempo'},btts:{title:'Ambos equipos marcan',short:'Ambos marcan',period:'partido completo'},over25:{title:'Más de 2,5 goles',short:'Más de 2,5 goles',period:'partido completo'}};
 const TZ='America/Argentina/Buenos_Aires';
 const TTL=12*3600*1000;
+const FIXTURE_TTL=2*60*1000;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -867,7 +868,10 @@ function teamGames(id){
   if(teamMemo.has(id)) return teamMemo.get(id);
   const p=(async()=>{
     const j=await api('/fixtures',{team:id,last:99,timezone:TZ});
-    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+    if(!Array.isArray(j.response)) throw new Error('Respuesta inválida al consultar el historial del equipo.');
+    const g=compact(j.response);
+    LS.set(ck,{ts:Date.now(),g});
+    return g;
   })();
   teamMemo.set(id,p);
   // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
@@ -880,7 +884,10 @@ function h2hGames(a,b){
   if(h2hMemo.has(key)) return h2hMemo.get(key);
   const p=(async()=>{
     const j=await api('/fixtures/headtohead',{h2h:a+'-'+b,last:8,timezone:TZ});
-    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+    if(!Array.isArray(j.response)) throw new Error('Respuesta inválida al consultar el historial H2H.');
+    const g=compact(j.response);
+    LS.set(ck,{ts:Date.now(),g});
+    return g;
   })();
   h2hMemo.set(key,p);
   // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
@@ -930,8 +937,17 @@ async function buscar(){
   setStatus($('#fxMsg'),'Buscando partidos…');
   $('#btnFetch').disabled=true;
   try{
-    const j=await api('/fixtures',{date:$('#date').value,timezone:TZ});
-    const now=Date.now();
+    const date=$('#date').value;
+    const ck='o05:v1:fixtures:'+date;
+    const saved=LS.get(ck,null);
+    let j;
+    if(saved&&Array.isArray(saved.response)&&Date.now()-saved.ts<FIXTURE_TTL){
+      j={response:saved.response};
+    }else{
+      j=await api('/fixtures',{date,timezone:TZ});
+      // Guardar únicamente respuestas con la estructura esperada.
+      if(Array.isArray(j.response)) LS.set(ck,{ts:Date.now(),response:j.response});
+    }
     state.fixtures=(j.response||[]).map(f=>({id:f.fixture.id,iso:f.fixture.date,st:f.fixture.status.short,lid:f.league.id,season:f.league.season,ln:f.league.name,lc:f.league.country||'Mundo',hid:f.teams.home.id,hn:f.teams.home.name,aid:f.teams.away.id,an:f.teams.away.name}));
     if(!state.fixtures.length) setStatus($('#fxMsg'),'No hay partidos para esa fecha. Desactivá «Solo partidos sin empezar» para ver partidos iniciados si están disponibles en la API.');
     renderLeagues();
