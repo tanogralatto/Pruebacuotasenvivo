@@ -655,9 +655,10 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="alertHistoryView" class="app-view hidden" role="tabpanel" aria-labelledby="tabAlertHistory">
   <section class="panel" aria-labelledby="alertHistoryTitle">
     <h2 id="alertHistoryTitle">Historial de alertas Telegram</h2>
-    <p class="small">Últimas 100 alertas enviadas. El resultado se completa con el marcador del descanso cuando API-Football confirma el final del partido.</p>
+    <p class="small">Historial de alertas enviadas. Se cargan las 100 más recientes; podés traer anteriores sin generar consultas a API-Football.</p>
     <div id="alertHistorySummary" class="alert-history-summary"></div>
     <div id="alertHistoryList" class="cards"><div class="empty">Cargando historial…</div></div>
+    <div style="display:flex;justify-content:center;margin-top:14px"><button id="loadOlderAlerts" type="button">Cargar anteriores</button></div>
   </section>
 </div>
 
@@ -1320,8 +1321,7 @@ $('#results').addEventListener('click',e=>{
   if(!btn)return;
   e.preventDefault();e.stopPropagation();
   const id=String(btn.dataset.favoriteId);
-  if(favoriteState.items.has(id))removeFavorite(id);
-  else saveFavoriteToGroup(id,'common','scanner');
+  showFavoriteDestinationDialog(id);
 });
 $('#favoriteDestinationDialog').addEventListener('click',e=>{
   const destination=e.target.closest('[data-favorite-destination]');
@@ -1768,7 +1768,7 @@ document.getElementById('ghAnalyze').addEventListener('click',()=>{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, limit }
+import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, getDocs }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const OWNER_EMAIL = 'tanogralatto@gmail.com';
@@ -1966,10 +1966,20 @@ function fmtTs(ts) {
 function startAlertHistory() {
   if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
   const list = q('#alertHistoryList'), summary = q('#alertHistorySummary');
-  const alertsQuery = query(collection(db, 'tanoapp_telegram_alerts'), orderBy('created_at', 'desc'), limit(100));
-  list.innerHTML = '<div class="empty">Cargando historial…</div>';
-  unsubAlerts = onSnapshot(alertsQuery, snap => {
-    const alerts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const moreButton = q('#loadOlderAlerts');
+  const alertsRef = collection(db, 'tanoapp_telegram_alerts');
+  let latestDocs = [];
+  let olderPages = [];
+  let cursor = null;
+  let loadingMore = false;
+  let hasMore = true;
+
+  function renderHistory() {
+    const allDocs = [...latestDocs, ...olderPages.flat()];
+    const seen = new Set();
+    const alerts = allDocs
+      .filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; })
+      .map(d => ({ id: d.id, ...d.data() }));
     const settled = alerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
     const counts = {
       won: alerts.filter(a => a.result_status === 'won').length,
@@ -1979,7 +1989,7 @@ function startAlertHistory() {
     };
     const balance = settled.reduce((sum, a) => sum + (Number(a.profit_units) || 0), 0);
     summary.innerHTML = [
-      ['Alertas', alerts.length],
+      ['Alertas cargadas', alerts.length],
       ['Aciertos', counts.won],
       ['Fallos', counts.lost],
       ['Reembolsos', counts.push],
@@ -1989,6 +1999,7 @@ function startAlertHistory() {
 
     if (!alerts.length) {
       list.innerHTML = '<div class="empty">Todavía no hay alertas registradas.</div>';
+      moreButton.classList.add('hidden');
       return;
     }
     const outcome = {
@@ -2009,9 +2020,47 @@ function startAlertHistory() {
         + (a.result_note ? '<div class="small">' + esc(a.result_note) + '</div>' : '')
         + '</article>';
     }).join('');
+    moreButton.classList.toggle('hidden', !hasMore);
+    moreButton.disabled = loadingMore;
+    moreButton.textContent = loadingMore ? 'Cargando…' : (hasMore ? 'Cargar anteriores' : 'No hay más alertas');
+  }
+
+  moreButton.onclick = async () => {
+    if (loadingMore || !hasMore || !cursor) return;
+    loadingMore = true;
+    renderHistory();
+    try {
+      const page = await getDocs(query(alertsRef, orderBy('created_at', 'desc'), startAfter(cursor), limit(100)));
+      const docs = page.docs;
+      if (docs.length) {
+        olderPages.push(docs);
+        cursor = docs[docs.length - 1];
+      }
+      hasMore = docs.length === 100;
+      renderHistory();
+    } catch (e) {
+      moreButton.disabled = false;
+      moreButton.textContent = 'Reintentar cargar anteriores';
+      list.insertAdjacentHTML('afterbegin', '<div class="empty">No se pudieron cargar alertas anteriores: ' + esc(friendly(e)) + '</div>');
+    } finally {
+      loadingMore = false;
+      moreButton.disabled = false;
+      moreButton.textContent = hasMore ? 'Cargar anteriores' : 'No hay más alertas';
+      moreButton.classList.toggle('hidden', !hasMore);
+    }
+  };
+
+  list.innerHTML = '<div class="empty">Cargando historial…</div>';
+  moreButton.classList.add('hidden');
+  unsubAlerts = onSnapshot(query(alertsRef, orderBy('created_at', 'desc'), limit(100)), snap => {
+    latestDocs = snap.docs;
+    cursor = latestDocs.length ? latestDocs[latestDocs.length - 1] : null;
+    hasMore = latestDocs.length === 100;
+    renderHistory();
   }, e => {
     summary.innerHTML = '';
     list.innerHTML = '<div class="empty">No se pudo leer el historial: ' + esc(friendly(e)) + ' Revisá que Firestore permita al dueño leer tanoapp_telegram_alerts.</div>';
+    moreButton.classList.add('hidden');
   });
 }
 
