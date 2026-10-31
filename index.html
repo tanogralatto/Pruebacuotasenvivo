@@ -564,7 +564,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
     </div>
     <div class="gh-league-tools">
       <div class="gh-actions"><strong>Competiciones</strong><button id="ghAllLeagues" type="button">Todas</button><button id="ghNoLeagues" type="button">Ninguna</button></div>
-      <div class="field" style="max-width:340px"><label for="ghLeagueFilter">Filtrar ligas</label><input id="ghLeagueFilter" type="search" placeholder="País o nombre de liga" autocomplete="off"></div>
+      <div class="field" style="max-width:340px"><label for="ghLeagueFilter">Filtrar ligas</label><input id="ghLeagueFilter" name="gh-league-filter-search" type="search" placeholder="País o nombre de liga" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true"></div>
       <div id="ghLeagueList" class="gh-leagues"><div class="empty">Primero buscá los partidos de la fecha.</div></div>
     </div>
     <div class="gh-actions"><button id="ghAnalyze" class="primary" type="button" disabled>Evaluar estrategia</button><span id="ghCandidateStatus" class="status" role="status" aria-live="polite">La evaluación no usa los filtros del Escáner.</span></div>
