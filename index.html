@@ -392,6 +392,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <nav class="app-tabs" role="tablist" aria-label="Secciones de TANOapp">
   <button id="tabScanner" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="scannerView">Escáner</button>
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
+  <button id="tabFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="favoritesView">Favoritos</button>
   <button id="tabVipFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="vipFavoritesView">Favoritos VIP</button>
   <button id="tabStrategy" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="ghStrategyView">Gol HT +0,5</button>
   <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram</button>
@@ -402,16 +403,6 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="quotaBar" class="quota-bar" role="status" aria-live="polite"><span class="qdot" aria-hidden="true"></span><span class="qtxt">Consultas API-Football: guardá y probá tu clave en el Escáner para ver el consumo.</span></div>
 
 <div id="scannerView" class="app-view" role="tabpanel" aria-labelledby="tabScanner">
-<details id="scannerFavorites" class="panel favorites-panel" aria-labelledby="t-favs">
-  <summary class="favorites-panel-summary">
-    <h2 id="t-favs">★ Favoritos <span id="favoriteCount" class="small">· 0</span></h2>
-  </summary>
-  <div class="favorites-panel-content">
-    <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSort">Ordenar por</label><select id="favoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
-    <div id="favorites" class="cards"><div class="empty">Todavía no guardaste partidos favoritos.</div></div>
-  </div>
-</details>
-
 <section class="panel" aria-labelledby="t-key">
   <h2 id="t-key">1. Conexión</h2>
   <div class="row">
@@ -523,10 +514,19 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 </div>
 
 
+<div id="favoritesView" class="app-view hidden" role="tabpanel" aria-labelledby="tabFavorites">
+  <section class="panel" aria-labelledby="favoritesTitle">
+    <h2 id="favoritesTitle">★ Favoritos <span id="favoriteCount" class="small">· 0</span></h2>
+    <p class="small">Partidos guardados desde el Escáner. Desde aquí podés enviarlos a Favoritos VIP o quitarlos.</p>
+    <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSort">Ordenar por</label><select id="favoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
+    <div id="favorites" class="cards"><div class="empty">Todavía no guardaste partidos favoritos.</div></div>
+  </section>
+</div>
+
 <div id="vipFavoritesView" class="app-view hidden" role="tabpanel" aria-labelledby="tabVipFavorites">
   <section class="panel" aria-labelledby="vipFavoritesTitle">
     <h2 id="vipFavoritesTitle">★ Favoritos VIP <span id="vipFavoriteCount" class="small">· 0</span></h2>
-    <p class="small">Lista VIP independiente. Desde el Escáner elegí “Favoritos VIP” al guardar un partido. Estas alertas se envían al grupo VIP de Telegram.</p>
+    <p class="small">Partidos destinados a las alertas VIP de Telegram. Podés devolverlos a Favoritos o quitarlos.</p>
     <div id="vipFavorites" class="cards"><div class="empty">Todavía no agregaste partidos VIP. Guardá uno desde el Escáner y elegí Favoritos VIP.</div></div>
   </section>
 </div>
@@ -1191,6 +1191,26 @@ function refreshFavoriteViews(){
   renderFavorites();renderVipFavorites();renderResults();renderLive();
   if(Array.isArray(ghLastCandidates))ghRenderCandidates(ghLastCandidates);
 }
+function renderSavedFavoriteCard(f,group){
+  const fx=f.fixture||{id:f.id,hn:f.home,an:f.away,iso:f.kickoff,lc:'',ln:f.league||'',st:'NS'};
+  const dateIso=fx.iso||f.kickoff;
+  const dateTime=dateIso?`${fmtDate(Math.floor(new Date(dateIso).getTime()/1000))} · ${fmtTime(dateIso)}`:(f.dateText||'Fecha no disponible');
+  const a=f.analysis;
+  const action=group==='vip'
+    ? `<button type="button" data-move-favorite="${esc(f.id)}">Pasar a Favoritos</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`
+    : `<button type="button" class="primary" data-move-favorite="${esc(f.id)}">Enviar a Favoritos VIP</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`;
+  const actions=`<div class="saved-favorite-actions">${action}</div>`;
+  const origin='<p class="favorite-origin">Guardado desde: '+esc(favoriteOriginLabel(f))+'</p>';
+  if(a&&Array.isArray(a.tr)){
+    const r={fx,tr:a.tr,avg:a.avg,n:a.n};
+    let html=cardHtml(r,-1);
+    html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
+    html=html.replace(/<button class="fav-btn"[^>]*>.*?<\/button>/,actions);
+    html=html.replace('<p class="league">',origin+'<p class="league">');
+    return html;
+  }
+  return `<article class="card result-card fav-legacy" data-fav-detail="${esc(f.id)}"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">${typeof a?.avg==='number'?Math.round(a.avg)+'%':'—'}</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">${a&&Array.isArray(a.tr)?'Promedio descriptivo · '+a.n+' de 7 indicadores':'Análisis histórico no guardado'}</span>${actions}</div>${origin}<p class="league">${esc(fx.lc||'')} · ${esc(fx.ln||f.league||'')} · ${esc(f.market||'')}</p>${a&&Array.isArray(a.tr)?'<div class="cells">'+a.tr.map(cellHtml).join('')+'</div>':'<p class="small">Este partido se guardó sin los indicadores históricos. Si vuelve a aparecer en el Escáner, guardalo de nuevo para conservar el análisis.</p>'}</div></details></article>`;
+}
 function renderFavorites(){
   const box=$('#favorites');
   const mode=$('#favoriteSort')?.value||'date';
@@ -1206,37 +1226,15 @@ function renderFavorites(){
   });
   $('#favoriteCount').textContent='· '+items.length;
   if(!items.length){box.innerHTML='<div class="empty">Todavía no guardaste partidos en Favoritos.</div>';return;}
-  box.innerHTML=items.map(f=>{
-    const fx=f.fixture||{id:f.id,hn:f.home,an:f.away,iso:f.kickoff,lc:'',ln:f.league||'',st:'NS'};
-    const dateIso=fx.iso||f.kickoff;
-    const dateTime=dateIso?`${fmtDate(Math.floor(new Date(dateIso).getTime()/1000))} · ${fmtTime(dateIso)}`:(f.dateText||'Fecha no disponible');
-    const a=f.analysis;
-    const origin='<p class="favorite-origin">Origen: '+esc(favoriteOriginLabel(f))+'</p>';
-    if(a&&Array.isArray(a.tr)){
-      const r={fx,tr:a.tr,avg:a.avg,n:a.n};
-      let html=cardHtml(r,-1);
-      html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
-      html=html.replace('<p class="league">',origin+'<p class="league">');
-      return html;
-    }
-    return `<article class="card result-card fav-legacy"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">—</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">Favorito sin análisis guardado</span><button class="fav-btn" type="button" data-favorite-id="${esc(f.id)}" aria-pressed="true" aria-label="Quitar de favoritos" title="Quitar de favoritos">★</button></div>${origin}<p class="league">${esc(f.league||'')} · ${esc(f.market||'')}</p><p class="small">Este favorito no tiene indicadores guardados. Volvé a analizar el partido y guardalo nuevamente para conservar el análisis.</p></div></details></article>`;
-  }).join('');
-  document.querySelectorAll('#favorites [data-favorite-id]').forEach(btn=>{
-    btn.setAttribute('aria-pressed','true');btn.textContent='★';
-    btn.title='Quitar de favoritos';btn.setAttribute('aria-label','Quitar de favoritos');
-  });
+  box.innerHTML=items.map(f=>renderSavedFavoriteCard(f,'common')).join('');
 }
 function renderVipFavorites(){
   const box=$('#vipFavorites');if(!box)return;
   const items=[...favoriteState.items.values()].filter(f=>favoriteGroup(f)==='vip')
     .sort((a,b)=>(a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||''));
   $('#vipFavoriteCount').textContent='· '+items.length;
-  if(!items.length){box.innerHTML='<div class="empty">Todavía no agregaste partidos VIP. Guardá uno desde el Escáner y elegí Favoritos VIP.</div>';return;}
-  box.innerHTML=items.map(f=>{
-    const fx=f.fixture||{hn:f.home,an:f.away,iso:f.kickoff,ln:f.league||''};
-    const date=fx.iso?`${fmtDate(Math.floor(new Date(fx.iso).getTime()/1000))} · ${fmtTime(fx.iso)}`:(f.dateText||'Fecha no disponible');
-    return '<article class="vip-favorite"><div class="vip-favorite-info"><strong>'+esc(fx.hn||f.home||'Local')+' vs '+esc(fx.an||f.away||'Visitante')+'</strong><small>'+esc(fx.lc||'')+(fx.lc&&fx.ln?' · ':'')+esc(fx.ln||f.league||'')+' · '+esc(date)+'</small><small>Origen: '+esc(favoriteOriginLabel(f))+'</small></div><button type="button" data-move-favorite="'+esc(f.id)+'">Pasar a Favoritos</button><button type="button" data-remove-favorite="'+esc(f.id)+'">Quitar</button></article>';
-  }).join('');
+  if(!items.length){box.innerHTML='<div class="empty">Todavía no agregaste partidos VIP. Enviá uno desde Favoritos.</div>';return;}
+  box.innerHTML=items.map(f=>renderSavedFavoriteCard(f,'vip')).join('');
 }
 function saveFavoriteToGroup(id,group,origin){
   const key=String(id),found=favoriteForView(key,origin);
@@ -1319,7 +1317,9 @@ $('#results').addEventListener('click',e=>{
   const btn=e.target.closest('[data-favorite-id]');
   if(!btn)return;
   e.preventDefault();e.stopPropagation();
-  showFavoriteDestinationDialog(btn.dataset.favoriteId);
+  const id=String(btn.dataset.favoriteId);
+  if(favoriteState.items.has(id)&&favoriteGroup(favoriteState.items.get(id))==='common')removeFavorite(id);
+  else saveFavoriteToGroup(id,'common','scanner');
 });
 $('#favoriteDestinationDialog').addEventListener('click',e=>{
   const destination=e.target.closest('[data-favorite-destination]');
@@ -1335,8 +1335,10 @@ $('#favoriteDestinationDialog').addEventListener('click',e=>{
   }
 });
 $('#favorites').addEventListener('click',e=>{
-  const remove=e.target.closest('[data-remove-favorite],[data-favorite-id]');
-  if(remove){e.preventDefault();removeFavorite(remove.dataset.removeFavorite||remove.dataset.favoriteId);}
+  const move=e.target.closest('[data-move-favorite]');
+  if(move){moveFavoriteToGroup(move.dataset.moveFavorite,'vip');return}
+  const remove=e.target.closest('[data-remove-favorite]');
+  if(remove){removeFavorite(remove.dataset.removeFavorite);return}
 });
 $('#vipFavorites').addEventListener('click',e=>{
   const move=e.target.closest('[data-move-favorite]');
@@ -1348,17 +1350,18 @@ $('#ghCandidateList').addEventListener('click',e=>{
   const btn=e.target.closest('[data-gh-favorite]');
   if(btn){e.preventDefault();toggleGolHtFavorite(btn.dataset.ghFavorite);}
 });
-$('#favorites').addEventListener('toggle',e=>{
+function loadSavedFavoriteDetails(e){
   const d=e.target;
-  if(d.tagName!=='DETAILS'||!d.open) return;
+  if(d.tagName!=='DETAILS'||!d.open)return;
   const card=d.closest('[data-fav-detail]');
-  if(!card) return;
-  if(!card) return;
+  if(!card)return;
   const box=d.querySelector('.detail');
-  if(!box||box.dataset.ready) return;
+  if(!box||box.dataset.ready)return;
   const fav=favoriteState.items.get(String(card.dataset.favDetail));
   if(fav&&fav.analysis&&Array.isArray(fav.analysis.tr)){box.innerHTML=detailHtml({tr:fav.analysis.tr});box.dataset.ready='1';}
-},true);
+}
+$('#favorites').addEventListener('toggle',loadSavedFavoriteDetails,true);
+$('#vipFavorites').addEventListener('toggle',loadSavedFavoriteDetails,true);
 $('#favoriteSort')?.addEventListener('change',renderFavorites);
 const originalCardHtml=cardHtml;
 cardHtml=function(r,i){
@@ -1530,7 +1533,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Escáner','Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos que separaste para las alertas VIP.'],strategy:['tabStrategy','ghStrategyView','Gol HT +0,5','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram','Configuración del monitor de alertas Telegram.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
+  const tabs={scanner:['tabScanner','scannerView','Escáner','Buscá partidos, elegí la fecha y las ligas, y analizá los resultados. Guardá los que te interesen con la estrella; aparecerán en Favoritos.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],favorites:['tabFavorites','favoritesView','Favoritos','Partidos guardados desde el Escáner. Desde aquí podés enviarlos a Favoritos VIP o quitarlos.'],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos destinados a las alertas VIP de Telegram.'],strategy:['tabStrategy','ghStrategyView','Gol HT +0,5','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram','Configuración del monitor de alertas Telegram.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
   function showTab(which){
     for(const [k,[tabId,viewId,title,subtitle]] of Object.entries(tabs)){
       const on=k===which;
