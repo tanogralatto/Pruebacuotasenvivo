@@ -351,6 +351,18 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 #ghStrategyView .gh-league span{min-width:0;overflow-wrap:anywhere}
 #ghStrategyView .gh-league small{margin-left:auto;color:var(--muted);font-family:var(--font-data);flex:none}
 
+.favorite-origin{font-size:11px!important;color:var(--accent)!important;font-weight:700;letter-spacing:.03em}
+.vip-favorite{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px}
+.vip-favorite-info{flex:1;min-width:200px}
+.vip-favorite-info strong{display:block}
+.vip-favorite-info small{display:block;color:var(--muted);margin-top:3px}
+.favorite-dialog{width:min(420px,calc(100% - 28px));border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.35)}
+.favorite-dialog::backdrop{background:rgba(0,0,0,.58)}
+.favorite-dialog form{display:flex;flex-direction:column;gap:12px}
+.favorite-dialog h2,.favorite-dialog p{margin:0}
+.favorite-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.favorite-dialog-remove{color:var(--danger,#b83b3b)}
+.favorite-dialog-close{align-self:flex-end}
 </style>
 </head>
 <body>
@@ -380,6 +392,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <nav class="app-tabs" role="tablist" aria-label="Secciones de TANOapp">
   <button id="tabScanner" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="scannerView">Escáner</button>
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
+  <button id="tabVipFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="vipFavoritesView">Favoritos VIP</button>
   <button id="tabStrategy" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="ghStrategyView">Gol HT +0,5</button>
   <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram</button>
   <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
@@ -391,7 +404,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="scannerView" class="app-view" role="tabpanel" aria-labelledby="tabScanner">
 <details id="scannerFavorites" class="panel favorites-panel" aria-labelledby="t-favs">
   <summary class="favorites-panel-summary">
-    <h2 id="t-favs">★ Favoritos compartidos <span id="favoriteCount" class="small">· 0</span></h2>
+    <h2 id="t-favs">★ Favoritos <span id="favoriteCount" class="small">· 0</span></h2>
   </summary>
   <div class="favorites-panel-content">
     <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSort">Ordenar por</label><select id="favoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
@@ -479,7 +492,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="liveView" class="app-view hidden" role="tabpanel" aria-labelledby="tabLive">
 <section class="panel" id="liveAlertsPanel" aria-labelledby="t-live-alerts">
   <h2 id="t-live-alerts">Alertas en vivo 1T</h2>
-  <p class="small">Vigilá los favoritos que elegiste en el Escáner. Esta pestaña solo considera partidos en el primer tiempo (1H); excluye descanso, segundo tiempo y prórroga. La automatización por Telegram requiere conectar el monitor seguro del servidor.</p>
+  <p class="small">Vigilá tus Favoritos y Favoritos VIP. Esta pestaña solo considera partidos en el primer tiempo (1H); excluye descanso, segundo tiempo y prórroga. La automatización por Telegram requiere conectar el monitor seguro del servidor.</p>
   <div class="row">
     <div class="field grow"><label for="liveSearch">Buscar partido o equipo</label><input id="liveSearch" type="search" placeholder="Escribí un equipo, por ejemplo River…"></div>
     <div class="field" style="min-width:170px"><label for="liveFilter">Mostrar</label><select id="liveFilter"><option value="all">Todos mis favoritos próximos o en 1T</option><option value="live">En juego</option><option value="upcoming">Próximos / sin iniciar</option></select></div>
@@ -509,6 +522,27 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 </section>
 </div>
 
+
+<div id="vipFavoritesView" class="app-view hidden" role="tabpanel" aria-labelledby="tabVipFavorites">
+  <section class="panel" aria-labelledby="vipFavoritesTitle">
+    <h2 id="vipFavoritesTitle">★ Favoritos VIP <span id="vipFavoriteCount" class="small">· 0</span></h2>
+    <p class="small">Lista VIP independiente. Desde el Escáner elegí “Favoritos VIP” al guardar un partido. Estas alertas se envían al grupo VIP de Telegram.</p>
+    <div id="vipFavorites" class="cards"><div class="empty">Todavía no agregaste partidos VIP. Guardá uno desde el Escáner y elegí Favoritos VIP.</div></div>
+  </section>
+</div>
+<dialog id="favoriteDestinationDialog" class="favorite-dialog">
+  <form method="dialog">
+    <h2>Guardar partido</h2>
+    <p id="favoriteDialogMatch" class="small"></p>
+    <p class="small">Elegí dónde querés guardarlo:</p>
+    <div class="favorite-dialog-actions">
+      <button type="button" data-favorite-destination="common">Favoritos</button>
+      <button type="button" data-favorite-destination="vip" class="primary">Favoritos VIP</button>
+    </div>
+    <button id="favoriteDialogRemove" type="button" class="favorite-dialog-remove">Quitar de favoritos</button>
+    <button type="submit" class="favorite-dialog-close">Cancelar</button>
+  </form>
+</dialog>
 
 <div id="ghStrategyView" class="app-view hidden" role="tabpanel" aria-labelledby="tabStrategy">
   <section class="panel" aria-labelledby="ghStrategyTitle">
@@ -592,6 +626,10 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       <div class="field" style="width:150px"><label for="tgMin10">Cuota mínima O1,0</label><input id="tgMin10" type="number" min="1.01" step="0.01" value="1.65"></div>
       <div class="field" style="width:140px"><label for="tgMinuteStart">Desde minuto</label><input id="tgMinuteStart" type="number" min="1" max="45" step="1" value="1"></div>
       <div class="field" style="width:140px"><label for="tgMinuteEnd">Hasta minuto</label><input id="tgMinuteEnd" type="number" min="1" max="45" step="1" value="45"></div>
+    </div>
+    <div class="row">
+      <div class="field grow"><label for="tgVipChatId">Chat ID del grupo Telegram VIP</label><input id="tgVipChatId" type="text" autocomplete="off" placeholder="-1001234567890"></div>
+      <span class="small">Agregá el bot al grupo VIP y pegá aquí su chat ID. Las alertas VIP usan los mismos mercados, cuotas mínimas y minutos que el monitor actual; se envían solo a ese grupo.</span>
     </div>
     <div class="row" style="align-items:center">
       <button id="tgSave" type="button" class="primary">Guardar configuración</button>
@@ -1112,10 +1150,37 @@ function saveLocalFavorites(){
   try{localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify([...favoriteState.items.values()]));}
   catch(e){console.warn('[TANOapp] No se pudieron guardar favoritos en este navegador.',e);}
 }
+function favoriteGroup(f){return f&&String(f.group||'common').toLowerCase()==='vip'?'vip':'common'}
+function favoriteSources(f){
+  if(!f)return [];
+  const sources=Array.isArray(f.sources)?f.sources.filter(x=>x==='scanner'||x==='golht'):[];
+  if(sources.length)return [...new Set(sources)];
+  if(f.source==='golht'||f.origin==='golht')return ['golht'];
+  return ['scanner'];
+}
+function favoriteOriginLabel(f){
+  const labels={scanner:'Escáner',golht:'Gol HT +0,5'};
+  return favoriteSources(f).map(s=>labels[s]).filter(Boolean).join(' · ')||'Escáner';
+}
+function favoriteForView(id,origin){
+  const key=String(id);
+  if(origin==='golht'){
+    const candidate=(ghLastCandidates||[]).find(x=>String(x.fx.id)===key);
+    const fx=candidate?.fx||(ghFixtures||[]).find(x=>String(x.id)===key);
+    return fx?{fx,candidate,analysis:null}:null;
+  }
+  const result=state.results.find(x=>String(x.fx.id)===key);
+  const fx=result?.fx||state.fixtures.find(x=>String(x.id)===key);
+  return fx?{fx,result,analysis:result?{avg:result.avg,n:result.n,tr:result.tr}:null}:null;
+}
+function refreshFavoriteViews(){
+  renderFavorites();renderVipFavorites();renderResults();renderLive();
+  if(Array.isArray(ghLastCandidates))ghRenderCandidates(ghLastCandidates);
+}
 function renderFavorites(){
   const box=$('#favorites');
   const mode=$('#favoriteSort')?.value||'date';
-  const items=[...favoriteState.items.values()];
+  const items=[...favoriteState.items.values()].filter(f=>favoriteGroup(f)==='common');
   const pct=f=>f.analysis&&typeof f.analysis.avg==='number'?f.analysis.avg:null;
   items.sort((a,b)=>{
     if(mode==='high'||mode==='low'){
@@ -1126,52 +1191,102 @@ function renderFavorites(){
     return (a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||'');
   });
   $('#favoriteCount').textContent='· '+items.length;
-  if(!items.length){box.innerHTML='<div class="empty">Todavía no guardaste partidos favoritos.</div>';return;}
+  if(!items.length){box.innerHTML='<div class="empty">Todavía no guardaste partidos en Favoritos.</div>';return;}
   box.innerHTML=items.map(f=>{
     const fx=f.fixture||{id:f.id,hn:f.home,an:f.away,iso:f.kickoff,lc:'',ln:f.league||'',st:'NS'};
     const dateIso=fx.iso||f.kickoff;
     const dateTime=dateIso?`${fmtDate(Math.floor(new Date(dateIso).getTime()/1000))} · ${fmtTime(dateIso)}`:(f.dateText||'Fecha no disponible');
     const a=f.analysis;
+    const origin='<p class="favorite-origin">Origen: '+esc(favoriteOriginLabel(f))+'</p>';
     if(a&&Array.isArray(a.tr)){
       const r={fx,tr:a.tr,avg:a.avg,n:a.n};
       let html=cardHtml(r,-1);
       html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
-      html=html.replace(`data-favorite-id="${fx.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆`, `data-favorite-id="${esc(f.id)}" aria-label="Quitar de favoritos" aria-pressed="true" title="Quitar de favoritos">★`);
+      html=html.replace('<p class="league">',origin+'<p class="league">');
       return html;
     }
-    return `<article class="card result-card fav-legacy"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">—</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">Favorito sin análisis guardado</span><button class="fav-btn" type="button" data-favorite-id="${esc(f.id)}" aria-pressed="true" aria-label="Quitar de favoritos" title="Quitar de favoritos">★</button></div><p class="league">${esc(f.league||'')} · ${esc(f.market||'')}</p><p class="small">Este favorito no tiene indicadores guardados. Volvé a analizar el partido y guardalo nuevamente para conservar el análisis.</p></div></details></article>`;
+    return `<article class="card result-card fav-legacy"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">—</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">Favorito sin análisis guardado</span><button class="fav-btn" type="button" data-favorite-id="${esc(f.id)}" aria-pressed="true" aria-label="Quitar de favoritos" title="Quitar de favoritos">★</button></div>${origin}<p class="league">${esc(f.league||'')} · ${esc(f.market||'')}</p><p class="small">Este favorito no tiene indicadores guardados. Volvé a analizar el partido y guardalo nuevamente para conservar el análisis.</p></div></details></article>`;
   }).join('');
   document.querySelectorAll('#favorites [data-favorite-id]').forEach(btn=>{
-    const on=favoriteState.items.has(String(btn.dataset.favoriteId));
-    btn.setAttribute('aria-pressed',String(on));btn.textContent=on?'★':'☆';
-    btn.title=on?'Quitar de favoritos':'Guardar en favoritos';
-    btn.setAttribute('aria-label',on?'Quitar de favoritos':'Guardar en favoritos');
+    btn.setAttribute('aria-pressed','true');btn.textContent='★';
+    btn.title='Quitar de favoritos';btn.setAttribute('aria-label','Quitar de favoritos');
   });
 }
-async function toggleFavorite(fixtureId){
+function renderVipFavorites(){
+  const box=$('#vipFavorites');if(!box)return;
+  const items=[...favoriteState.items.values()].filter(f=>favoriteGroup(f)==='vip')
+    .sort((a,b)=>(a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||''));
+  $('#vipFavoriteCount').textContent='· '+items.length;
+  if(!items.length){box.innerHTML='<div class="empty">Todavía no agregaste partidos VIP. Guardá uno desde el Escáner y elegí Favoritos VIP.</div>';return;}
+  box.innerHTML=items.map(f=>{
+    const fx=f.fixture||{hn:f.home,an:f.away,iso:f.kickoff,ln:f.league||''};
+    const date=fx.iso?`${fmtDate(Math.floor(new Date(fx.iso).getTime()/1000))} · ${fmtTime(fx.iso)}`:(f.dateText||'Fecha no disponible');
+    return '<article class="vip-favorite"><div class="vip-favorite-info"><strong>'+esc(fx.hn||f.home||'Local')+' vs '+esc(fx.an||f.away||'Visitante')+'</strong><small>'+esc(fx.lc||'')+(fx.lc&&fx.ln?' · ':'')+esc(fx.ln||f.league||'')+' · '+esc(date)+'</small><small>Origen: '+esc(favoriteOriginLabel(f))+'</small></div><button type="button" data-move-favorite="'+esc(f.id)+'">Pasar a Favoritos</button><button type="button" data-remove-favorite="'+esc(f.id)+'">Quitar</button></article>';
+  }).join('');
+}
+function saveFavoriteToGroup(id,group,origin){
+  const key=String(id),found=favoriteForView(key,origin);
+  const current=favoriteState.items.get(key);
+  if(!found&&!current){authMessage('No pude encontrar los datos de ese partido. Volvé a cargar la lista.',true);return}
+  const fx=found?.fx||current.fixture||{id:key,hn:current.home,an:current.away,iso:current.kickoff,lc:'',ln:current.league||'',st:'NS'};
+  const sources=new Set(favoriteSources(current));sources.add(origin);
+  const fixture={
+    id:key,hn:fx.hn||current?.fixture?.hn||current?.home||'',
+    an:fx.an||current?.fixture?.an||current?.away||'',
+    iso:fx.iso||current?.fixture?.iso||current?.kickoff||'',
+    lc:fx.lc||current?.fixture?.lc||'',
+    ln:fx.ln||current?.fixture?.ln||current?.league||'',
+    st:fx.st||current?.fixture?.st||'NS'
+  };
+  const record={
+    ...(current||{}),id:key,group:group==='vip'?'vip':'common',sources:[...sources],
+    home:fixture.hn,away:fixture.an,league:(fixture.lc?fixture.lc+' · ':'')+fixture.ln,
+    kickoff:fixture.iso,dateText:fixture.iso?fmtDate(Math.floor(new Date(fixture.iso).getTime()/1000))+' · '+fmtTime(fixture.iso):'Fecha no disponible',
+    market:origin==='golht'?'Over 0,5 HT':(current?.market||marketDefs[state.market].short),
+    fixture,
+    analysis:found?.analysis||current?.analysis||null,
+    strategyAnalysis:origin==='golht'&&found?.candidate?{
+      sampleA:found.candidate.a.n,sampleB:found.candidate.b.n,
+      rateA:found.candidate.a.rate,rateB:found.candidate.b.rate,
+      averageA:found.candidate.a.avg,averageB:found.candidate.b.avg
+    }:(current?.strategyAnalysis||null),
+    savedAt:current?.savedAt||Date.now(),updatedAt:Date.now()
+  };
+  favoriteState.items.set(key,record);syncFavoriteToCloud(key);authMessage('');
+  refreshFavoriteViews();
+}
+function removeFavorite(fixtureId){
   const id=String(fixtureId);
-  if(favoriteState.items.has(id)){
-    favoriteState.items.delete(id);
-  }else{
-    const r=state.results.find(x=>String(x.fx.id)===id);
-    const f=r?r.fx:state.fixtures.find(x=>String(x.id)===id);
-    if(!f){authMessage('No pude encontrar los datos de ese partido. Volvé a analizarlo.',true);return;}
-    favoriteState.items.set(id,{
-      id,home:f.hn,away:f.an,league:(f.lc?f.lc+' · ':'')+(f.ln||''),kickoff:f.iso,
-      dateText:fmtDate(Math.floor(new Date(f.iso).getTime()/1000))+' · '+fmtTime(f.iso),
-      market:marketDefs[state.market].short,
-      fixture:{id:String(f.id),hn:f.hn,an:f.an,iso:f.iso,lc:f.lc||'',ln:f.ln||'',st:f.st||'NS'},
-      analysis:r?{avg:r.avg,n:r.n,tr:r.tr}:null,savedAt:Date.now()
-    });
-  }
-  syncFavoriteToCloud(id);
-  renderFavorites();renderResults();renderLive();
+  if(!favoriteState.items.has(id))return;
+  favoriteState.items.delete(id);syncFavoriteToCloud(id);refreshFavoriteViews();
 }
-function initLocalFavorites(){
-  favoriteState.items=new Map();
-  renderFavorites();
+function removeFavoriteSource(fixtureId,origin){
+  const id=String(fixtureId),current=favoriteState.items.get(id);if(!current)return;
+  const sources=favoriteSources(current).filter(s=>s!==origin);
+  if(!sources.length){removeFavorite(id);return}
+  favoriteState.items.set(id,{...current,sources,updatedAt:Date.now()});
+  syncFavoriteToCloud(id);refreshFavoriteViews();
 }
-/* Puente con Firebase (el módulo de más abajo define window.tanoCloud) */
+function toggleGolHtFavorite(fixtureId){
+  const id=String(fixtureId),current=favoriteState.items.get(id);
+  if(current&&favoriteSources(current).includes('golht'))removeFavoriteSource(id,'golht');
+  else saveFavoriteToGroup(id,'common','golht');
+}
+function moveFavoriteToGroup(fixtureId,group){
+  const id=String(fixtureId),current=favoriteState.items.get(id);if(!current)return;
+  favoriteState.items.set(id,{...current,group:group==='vip'?'vip':'common',updatedAt:Date.now()});
+  syncFavoriteToCloud(id);refreshFavoriteViews();
+}
+function showFavoriteDestinationDialog(fixtureId){
+  const id=String(fixtureId),found=favoriteForView(id,'scanner'),current=favoriteState.items.get(id);
+  if(!found){authMessage('No pude encontrar los datos de ese partido. Volvé a cargar la lista.',true);return}
+  const dialog=$('#favoriteDestinationDialog');
+  $('#favoriteDialogMatch').textContent=found.fx.hn+' vs '+found.fx.an+' · '+found.fx.ln;
+  $('#favoriteDialogRemove').classList.toggle('hidden',!current);
+  dialog.dataset.fixtureId=id;
+  dialog.showModal();
+}
+function initLocalFavorites(){favoriteState.items=new Map();renderFavorites();renderVipFavorites()}/* Puente con Firebase (el módulo de más abajo define window.tanoCloud) */
 function syncFavoriteToCloud(id){
   const c=window.tanoCloud;
   if(!c){authMessage('Sin conexión con tu cuenta. Recargá la página.',true);return}
@@ -1180,7 +1295,7 @@ function syncFavoriteToCloud(id){
 }
 window.tanoSetFavorites=function(list){
   favoriteState.items=new Map((list||[]).map(f=>[String(f.id),f]));
-  renderFavorites();renderResults();renderLive();
+  refreshFavoriteViews();
 };
 window.tanoGetLegacyFavorites=function(){
   try{const raw=localStorage.getItem(FAVORITES_STORAGE_KEY);const d=raw?JSON.parse(raw):[];return Array.isArray(d)?d:[]}
@@ -1188,13 +1303,36 @@ window.tanoGetLegacyFavorites=function(){
 };
 $('#results').addEventListener('click',e=>{
   const btn=e.target.closest('[data-favorite-id]');
-  if(btn) toggleFavorite(btn.dataset.favoriteId);
+  if(!btn)return;
+  e.preventDefault();e.stopPropagation();
+  showFavoriteDestinationDialog(btn.dataset.favoriteId);
+});
+$('#favoriteDestinationDialog').addEventListener('click',e=>{
+  const destination=e.target.closest('[data-favorite-destination]');
+  if(destination){
+    const id=$('#favoriteDestinationDialog').dataset.fixtureId;
+    saveFavoriteToGroup(id,destination.dataset.favoriteDestination,'scanner');
+    $('#favoriteDestinationDialog').close();
+    return;
+  }
+  if(e.target.closest('#favoriteDialogRemove')){
+    removeFavorite($('#favoriteDestinationDialog').dataset.fixtureId);
+    $('#favoriteDestinationDialog').close();
+  }
 });
 $('#favorites').addEventListener('click',e=>{
+  const remove=e.target.closest('[data-remove-favorite],[data-favorite-id]');
+  if(remove){e.preventDefault();removeFavorite(remove.dataset.removeFavorite||remove.dataset.favoriteId);}
+});
+$('#vipFavorites').addEventListener('click',e=>{
+  const move=e.target.closest('[data-move-favorite]');
+  if(move){moveFavoriteToGroup(move.dataset.moveFavorite,'common');return}
   const remove=e.target.closest('[data-remove-favorite]');
-  if(remove){toggleFavorite(remove.dataset.removeFavorite);return}
-  const btn=e.target.closest('[data-favorite-id]');
-  if(btn) toggleFavorite(btn.dataset.favoriteId);
+  if(remove)removeFavorite(remove.dataset.removeFavorite);
+});
+$('#ghCandidateList').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-gh-favorite]');
+  if(btn){e.preventDefault();toggleGolHtFavorite(btn.dataset.ghFavorite);}
 });
 $('#favorites').addEventListener('toggle',e=>{
   const d=e.target;
@@ -1265,11 +1403,12 @@ function renderLive(){
     const alert10=cfg.over10&&odds.over10&&Number(odds.over10.price)>=cfg.minOdds;
     const matchStatus=live?`${status.elapsed==null?'En juego':status.elapsed+"'"} · ${status.short||'LIVE'}`:'Todavía no detectado en vivo';
     const leagueText=league.name?`${league.country||''} · ${league.name}`:(fav.league||'Liga no informada');
+    const favoriteGroupText=favoriteGroup(fav)==='vip'?'FAVORITOS VIP':'FAVORITOS';
     return `<article class="live-card">
       <details>
         <summary>
           <div><div class="live-headline">${liveEsc(home)} vs ${liveEsc(away)}</div>
-          <div class="live-summary-meta">${liveEsc(leagueText)} · ${liveEsc(matchStatus)}</div></div>
+          <div class="live-summary-meta">${liveEsc(favoriteGroupText)} · ${liveEsc(leagueText)} · ${liveEsc(matchStatus)}</div></div>
           <strong class="mono" style="font-size:24px;white-space:nowrap">${live?sc.text:'—'}</strong>
         </summary>
         <div class="live-expanded">
@@ -1377,7 +1516,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Escáner','Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],strategy:['tabStrategy','ghStrategyView','Gol HT +0,5','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram','Configuración del monitor de alertas Telegram.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
+  const tabs={scanner:['tabScanner','scannerView','Escáner','Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos que separaste para las alertas VIP.'],strategy:['tabStrategy','ghStrategyView','Gol HT +0,5','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram','Configuración del monitor de alertas Telegram.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
   function showTab(which){
     for(const [k,[tabId,viewId,title,subtitle]] of Object.entries(tabs)){
       const on=k===which;
@@ -1483,6 +1622,7 @@ function ghBestPrematchOver05(response){
   return candidates[0]||null;
 }
 function ghRenderCandidates(rows){
+  ghLastCandidates=rows;
   const box=document.getElementById('ghCandidateList');
   if(!rows.length){box.innerHTML='<div class="empty">No hay partidos que cumplan el filtro Pregame con los datos disponibles.</div>';return}
   box.innerHTML=rows.map(c=>{
@@ -1490,14 +1630,16 @@ function ghRenderCandidates(rows){
     const frac=x=>x?x.hits+'/'+x.n+' ('+pct(x.rate)+')':'s/d';
     const avg=x=>x==null?'s/d':x.toFixed(2);
     const status=c.manual?'Revisión manual de racha Under':'Cumple filtro estadístico';
+    const id=String(c.fx.id),saved=favoriteState.items.get(id),isSaved=!!(saved&&favoriteGroup(saved)==='common'&&favoriteSources(saved).includes('golht'));
+    const favButton='<button class="fav-btn" type="button" data-gh-favorite="'+esc(id)+'" aria-pressed="'+isSaved+'" title="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'" aria-label="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'">'+(isSaved?'★':'☆')+'</button>';
     const pattern=t=>t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
     const underNote=[pattern(c.a),pattern(c.b)].filter(Boolean).join(' ');
     const quote=c.quote?'Cuota '+c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+(c.quote.updatedAt?' · actualizada '+esc(c.quote.updatedAt):''):'Cuota Pregame no disponible';
-    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span></div><div class="gh-candidate-metrics"><div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Cuota de casa Over 0,5 HT</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(underNote?esc(underNote)+' ':'')+'API-Football no informa la cuota real de BetPractice; esta cuota de casa no se usa para inventar un EV. Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
+    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span>'+favButton+'</div><div class="gh-candidate-metrics"><div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Cuota de casa Over 0,5 HT</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(underNote?esc(underNote)+' ':'')+'API-Football no informa la cuota real de BetPractice; esta cuota de casa no se usa para inventar un EV. Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
   }).join('');
 }
 
-let ghBusy=false,ghFixtures=[],ghSelectedLeagues=new Set(),ghLoadedDate='';
+let ghBusy=false,ghFixtures=[],ghSelectedLeagues=new Set(),ghLoadedDate='',ghLastCandidates=[];
 function ghLocalDate(){
   const parts=new Intl.DateTimeFormat('en',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
   const values=Object.fromEntries(parts.map(p=>[p.type,p.value]));
@@ -1691,6 +1833,7 @@ function setTelegramForm(data={}) {
   q('#tgMin10').value = Number(data.over10?.minOdds ?? 1.65).toFixed(2);
   q('#tgMinuteStart').value = Number(data.minuteStart ?? 1);
   q('#tgMinuteEnd').value = Number(data.minuteEnd ?? 45);
+  q('#tgVipChatId').value = String(data.vipChatId || '');
 }
 function startTelegramSettings(user) {
   const panel = q('#telegramSettings');
@@ -1724,9 +1867,10 @@ function startTelegramSettings(user) {
         over05: { enabled: q('#tgOver05').checked, minOdds: min05 },
         over10: { enabled: q('#tgOver10').checked, minOdds: min10 },
         minuteStart: start, minuteEnd: end,
+        vipChatId: q('#tgVipChatId').value.trim(),
         updatedBy: user.email || '', updatedAt: serverTimestamp()
       }, { merge: true });
-      telegramStatus('Configuración guardada correctamente. La búsqueda en vivo ' + (q('#tgLiveSearch').checked ? 'quedó ACTIVADA.' : 'quedó DESACTIVADA.'));
+      telegramStatus('Configuración guardada. Las alertas VIP irán al grupo configurado cuando agregues favoritos VIP.');
     } catch (e) {
       telegramStatus('No se pudo guardar: ' + friendly(e) + ' Revisá las reglas de Firestore.', true);
     } finally { btn.disabled = false; }
@@ -1829,7 +1973,7 @@ function startAlertHistory() {
       return '<article class="alert-history-card">'
         + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong><div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
         + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
-        + '<div class="alert-history-meta">' + esc(marketLabel) + ' · Cuota ' + esc(Number(a.odd).toFixed(2)) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + profit + '</div>'
+        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 Favoritos VIP · ' : 'Favoritos · ') + esc(marketLabel) + ' · Cuota ' + esc(Number(a.odd).toFixed(2)) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + profit + '</div>'
         + (a.result_note ? '<div class="small">' + esc(a.result_note) + '</div>' : '')
         + '</article>';
     }).join('');
