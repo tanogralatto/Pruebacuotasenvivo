@@ -627,9 +627,23 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       <div class="field" style="width:140px"><label for="tgMinuteStart">Desde minuto</label><input id="tgMinuteStart" type="number" min="1" max="45" step="1" value="1"></div>
       <div class="field" style="width:140px"><label for="tgMinuteEnd">Hasta minuto</label><input id="tgMinuteEnd" type="number" min="1" max="45" step="1" value="45"></div>
     </div>
+    <details class="panel" style="margin:12px 0;padding:14px">
+      <summary><strong>Parámetros independientes de Favoritos VIP</strong></summary>
+      <p class="small">Estos ajustes solo afectan las alertas enviadas al grupo VIP. No modifican los parámetros de Favoritos normales.</p>
+      <div class="row">
+        <label class="check"><input id="tgVipOver05" type="checkbox" checked><span>Over 0,5 1T VIP</span></label>
+        <div class="field" style="width:150px"><label for="tgVipMin05">Cuota mínima O0,5 VIP</label><input id="tgVipMin05" type="number" min="1.01" step="0.01" value="1.50"></div>
+        <label class="check"><input id="tgVipOver10" type="checkbox" checked><span>Over 1,0 1T VIP</span></label>
+        <div class="field" style="width:150px"><label for="tgVipMin10">Cuota mínima O1,0 VIP</label><input id="tgVipMin10" type="number" min="1.01" step="0.01" value="1.65"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="width:140px"><label for="tgVipMinuteStart">VIP desde minuto</label><input id="tgVipMinuteStart" type="number" min="1" max="45" step="1" value="1"></div>
+        <div class="field" style="width:140px"><label for="tgVipMinuteEnd">VIP hasta minuto</label><input id="tgVipMinuteEnd" type="number" min="1" max="45" step="1" value="45"></div>
+      </div>
+    </details>
     <div class="row">
       <div class="field grow"><label for="tgVipChatId">Chat ID del grupo Telegram VIP</label><input id="tgVipChatId" type="text" autocomplete="off" placeholder="-1001234567890"></div>
-      <span class="small">Agregá el bot al grupo VIP y pegá aquí su chat ID. Las alertas VIP usan los mismos mercados, cuotas mínimas y minutos que el monitor actual; se envían solo a ese grupo.</span>
+      <span class="small">Agregá el bot al grupo VIP y pegá aquí su chat ID. Las alertas VIP usan los parámetros VIP de arriba.</span>
     </div>
     <div class="row" style="align-items:center">
       <button id="tgSave" type="button" class="primary">Guardar configuración</button>
@@ -1833,6 +1847,12 @@ function setTelegramForm(data={}) {
   q('#tgMin10').value = Number(data.over10?.minOdds ?? 1.65).toFixed(2);
   q('#tgMinuteStart').value = Number(data.minuteStart ?? 1);
   q('#tgMinuteEnd').value = Number(data.minuteEnd ?? 45);
+  q('#tgVipOver05').checked = data.vipOver05?.enabled !== false;
+  q('#tgVipMin05').value = Number(data.vipOver05?.minOdds ?? 1.50).toFixed(2);
+  q('#tgVipOver10').checked = data.vipOver10?.enabled !== false;
+  q('#tgVipMin10').value = Number(data.vipOver10?.minOdds ?? 1.65).toFixed(2);
+  q('#tgVipMinuteStart').value = Number(data.vipMinuteStart ?? 1);
+  q('#tgVipMinuteEnd').value = Number(data.vipMinuteEnd ?? 45);
   q('#tgVipChatId').value = String(data.vipChatId || '');
 }
 function startTelegramSettings(user) {
@@ -1852,11 +1872,15 @@ function startTelegramSettings(user) {
     if (!telegramConfigLoaded) { telegramStatus('Esperá a que termine de cargar.', true); return; }
     const min05 = Number(q('#tgMin05').value), min10 = Number(q('#tgMin10').value);
     const start = Number(q('#tgMinuteStart').value), end = Number(q('#tgMinuteEnd').value);
-    if (!Number.isFinite(min05) || min05 < 1.01 || !Number.isFinite(min10) || min10 < 1.01) {
-      telegramStatus('Las cuotas mínimas deben ser iguales o mayores a 1,01.', true); return;
+    const vipMin05 = Number(q('#tgVipMin05').value), vipMin10 = Number(q('#tgVipMin10').value);
+    const vipStart = Number(q('#tgVipMinuteStart').value), vipEnd = Number(q('#tgVipMinuteEnd').value);
+    if (![min05, min10, vipMin05, vipMin10].every(v => Number.isFinite(v) && v >= 1.01)) {
+      telegramStatus('Todas las cuotas mínimas deben ser iguales o mayores a 1,01.', true); return;
     }
-    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end > 45 || start > end) {
-      telegramStatus('El rango debe estar entre 1 y 45, y el minuto inicial no puede superar al final.', true); return;
+    if (![start, end, vipStart, vipEnd].every(Number.isInteger) ||
+        start < 1 || end > 45 || start > end ||
+        vipStart < 1 || vipEnd > 45 || vipStart > vipEnd) {
+      telegramStatus('Los rangos normal y VIP deben estar entre 1 y 45; el minuto inicial no puede superar al final.', true); return;
     }
     const btn = q('#tgSave'); btn.disabled = true;
     telegramStatus('Guardando…');
@@ -1867,10 +1891,13 @@ function startTelegramSettings(user) {
         over05: { enabled: q('#tgOver05').checked, minOdds: min05 },
         over10: { enabled: q('#tgOver10').checked, minOdds: min10 },
         minuteStart: start, minuteEnd: end,
+        vipOver05: { enabled: q('#tgVipOver05').checked, minOdds: vipMin05 },
+        vipOver10: { enabled: q('#tgVipOver10').checked, minOdds: vipMin10 },
+        vipMinuteStart: vipStart, vipMinuteEnd: vipEnd,
         vipChatId: q('#tgVipChatId').value.trim(),
         updatedBy: user.email || '', updatedAt: serverTimestamp()
       }, { merge: true });
-      telegramStatus('Configuración guardada. Las alertas VIP irán al grupo configurado cuando agregues favoritos VIP.');
+      telegramStatus('Configuración guardada. Favoritos normales y VIP tienen parámetros independientes.');
     } catch (e) {
       telegramStatus('No se pudo guardar: ' + friendly(e) + ' Revisá las reglas de Firestore.', true);
     } finally { btn.disabled = false; }
