@@ -516,23 +516,19 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       <h2 id="ghStrategyTitle">Estrategia Gol HT +0,5</h2>
       <span class="gh-mode">MODO PRUEBA · SIN ALERTAS</span>
     </div>
-    <p class="small">Parámetros independientes del Escáner y de las alertas actuales. Los cambios se guardan en este navegador.</p>
+    <p class="small">Filtro Pregame independiente del Escáner. Reproduce los criterios estadísticos de la clase con partidos e historiales de API-Football. La cuota real y el EV de BetPractice no están disponibles en esa API, así que se muestran las cuotas de casas como referencia sin convertirlas en un EV propio.</p>
     <form id="ghSettingsForm">
       <div class="gh-grid">
         <div class="gh-group">
-          <h3>Cuotas y valor</h3>
-          <div class="gh-field"><label for="ghFairMin">Cuota justa mínima</label><input id="ghFairMin" type="number" min="1.01" step="0.01" value="1.10"></div>
-          <div class="gh-field"><label for="ghFairMax">Cuota justa máxima</label><input id="ghFairMax" type="number" min="1.01" step="0.01" value="1.25"></div>
-          <div class="gh-field"><label for="ghMinEv">Valor esperado mínimo (%)</label><input id="ghMinEv" type="number" step="0.1" value="0"></div>
+          <h3>Mercado y consulta</h3>
           <div class="gh-field"><label for="ghOddsLimit">Máximo de cuotas Pregame a consultar</label><input id="ghOddsLimit" type="number" min="0" max="20" step="1" value="5"><small>Limita llamadas API por análisis</small></div>
           <div class="gh-field"><label for="ghMaxFixtures">Máximo de partidos a evaluar</label><input id="ghMaxFixtures" type="number" min="1" max="50" step="1" value="10"><small>Se toman primero por hora de inicio</small></div>
-          <label class="check"><input id="ghAllowNeutral" type="checkbox"><span>Permitir valor neutral como excepción</span></label>
-          <div class="small">Pregame compara cuota justa con cuota de la casa. La cuota justa no está activa hasta validar el modelo.</div>
+          <div class="small">API-Football aporta cuotas de casas cuando están disponibles; no entrega la “cuota real” calculada por BetPractice. Por eso la app no inventa un EV ni usa esa cuota para filtrar.</div>
         </div>
         <div class="gh-group">
           <h3>Historial y equipos</h3>
           <div class="gh-field"><label for="ghMinSample">Muestra histórica mínima</label><input id="ghMinSample" type="number" min="1" step="1" value="30"></div>
-          <div class="gh-field"><label for="ghMinRate">Over 0,5 HT histórico mínimo (%)</label><input id="ghMinRate" type="number" min="0" max="100" step="1" value="80"></div>
+          <div class="gh-field"><label for="ghMinRate">Over 0,5 HT combinado mínimo por equipo (%)</label><input id="ghMinRate" type="number" min="0" max="100" step="1" value="80"></div>
           <div class="gh-field"><label for="ghAvgFirst">Promedio de referencia para un equipo</label><input id="ghAvgFirst" type="number" min="0" step="0.1" value="3.0"></div>
           <div class="gh-field"><label for="ghAvgSecond">Promedio mínimo para el otro</label><input id="ghAvgSecond" type="number" min="0" step="0.1" value="2.8"></div>
           <div class="gh-field"><label for="ghOverStreak">Racha Over orientativa (partidos)</label><input id="ghOverStreak" type="number" min="0" step="1" value="8"></div>
@@ -574,7 +570,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
     <p class="small">Estimación de consumo: una búsqueda de partidos, hasta un historial por equipo no cacheado y hasta el máximo de consultas de cuotas que configuraste. El caché reduce las llamadas repetidas.</p>
   </section>
   <section class="panel" aria-labelledby="ghTrialTitle">
-    <h2 id="ghTrialTitle">Candidatos ordenados por valor</h2>
+    <h2 id="ghTrialTitle">Candidatos según el filtro Pregame</h2>
     <div id="ghCandidateList" class="gh-candidates"><div class="empty">Buscá partidos y elegí las competiciones para evaluar.</div></div>
   </section>
 </div>
@@ -811,11 +807,11 @@ function scheduleQuota(){
 /* ---- caché ---- */
 function cached(k){const c=LS.get(k,null);return c&&Date.now()-c.ts<TTL?c.g:null}
 function teamGames(id){
-  const ck='o05:v3:t:'+id, c=cached(ck);
+  const ck='o05:v4:t:'+id, c=cached(ck);
   if(c) return Promise.resolve(c);
   if(teamMemo.has(id)) return teamMemo.get(id);
   const p=(async()=>{
-    const j=await api('/fixtures',{team:id,last:40,timezone:TZ});
+    const j=await api('/fixtures',{team:id,last:99,timezone:TZ});
     const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
   })();
   teamMemo.set(id,p);
@@ -1397,12 +1393,12 @@ if(state.key) checkStatus();
 })();
 
 const ghKey='tano:golht:settings:v1';
-const ghDefaults={fairMin:1.10,fairMax:1.25,minEv:0,oddsLimit:5,maxFixtures:10,allowNeutral:false,minSample:30,minRate:80,avgFirst:3.0,avgSecond:2.8,overStreak:8,underMax:2,seasonCurrent:true,seasonPrevious:true,liveMin:1.50,minuteStart:10,minuteEnd:18,only00:true};
-const ghFields={fairMin:'ghFairMin',fairMax:'ghFairMax',minEv:'ghMinEv',oddsLimit:'ghOddsLimit',maxFixtures:'ghMaxFixtures',minSample:'ghMinSample',minRate:'ghMinRate',avgFirst:'ghAvgFirst',avgSecond:'ghAvgSecond',overStreak:'ghOverStreak',underMax:'ghUnderMax',liveMin:'ghLiveMin',minuteStart:'ghMinuteStart',minuteEnd:'ghMinuteEnd'};
+const ghDefaults={oddsLimit:5,maxFixtures:10,minSample:30,minRate:80,avgFirst:3.0,avgSecond:2.8,overStreak:8,underMax:2,seasonCurrent:true,seasonPrevious:true,liveMin:1.50,minuteStart:10,minuteEnd:18,only00:true};
+const ghFields={oddsLimit:'ghOddsLimit',maxFixtures:'ghMaxFixtures',minSample:'ghMinSample',minRate:'ghMinRate',avgFirst:'ghAvgFirst',avgSecond:'ghAvgSecond',overStreak:'ghOverStreak',underMax:'ghUnderMax',liveMin:'ghLiveMin',minuteStart:'ghMinuteStart',minuteEnd:'ghMinuteEnd'};
 function ghApply(config){
   const saved={...ghDefaults,...(config&&typeof config==='object'?config:{})};
   for(const [key,id] of Object.entries(ghFields)){const el=document.getElementById(id);if(el)el.value=saved[key]}
-  for(const key of ['allowNeutral','seasonCurrent','seasonPrevious','only00']){const el=document.getElementById('gh'+key[0].toUpperCase()+key.slice(1));if(el)el.checked=!!saved[key]}
+  for(const key of ['seasonCurrent','seasonPrevious','only00']){const el=document.getElementById('gh'+key[0].toUpperCase()+key.slice(1));if(el)el.checked=!!saved[key]}
 }
 function ghStatus(text,error=false){const el=document.getElementById('ghStatus');el.textContent=text;el.classList.toggle('err',error)}
 ghApply(LS.get(ghKey,ghDefaults));
@@ -1410,15 +1406,15 @@ document.getElementById('ghSettingsForm').addEventListener('submit',event=>{
   event.preventDefault();
   const next={};
   for(const [key,id] of Object.entries(ghFields))next[key]=Number(document.getElementById(id).value);
-  for(const key of ['allowNeutral','seasonCurrent','seasonPrevious','only00']){const el=document.getElementById('gh'+key[0].toUpperCase()+key.slice(1));next[key]=el.checked}
-  const validOdds=Number.isFinite(next.fairMin)&&next.fairMin>=1.01&&Number.isFinite(next.fairMax)&&next.fairMax>=next.fairMin&&Number.isFinite(next.liveMin)&&next.liveMin>=1.01;
+  for(const key of ['seasonCurrent','seasonPrevious','only00']){const el=document.getElementById('gh'+key[0].toUpperCase()+key.slice(1));next[key]=el.checked}
+  const validOdds=Number.isFinite(next.liveMin)&&next.liveMin>=1.01;
   const validSample=Number.isInteger(next.minSample)&&next.minSample>=1&&Number.isInteger(next.minRate)&&next.minRate>=0&&next.minRate<=100;
   const validAverages=Number.isFinite(next.avgFirst)&&next.avgFirst>=0&&Number.isFinite(next.avgSecond)&&next.avgSecond>=0;
   const validRuns=Number.isInteger(next.overStreak)&&next.overStreak>=0&&Number.isInteger(next.underMax)&&next.underMax>=0;
   const validOddsLimit=Number.isInteger(next.oddsLimit)&&next.oddsLimit>=0&&next.oddsLimit<=20;
   const validMaxFixtures=Number.isInteger(next.maxFixtures)&&next.maxFixtures>=1&&next.maxFixtures<=50;
   const validMinutes=Number.isInteger(next.minuteStart)&&Number.isInteger(next.minuteEnd)&&next.minuteStart>=1&&next.minuteEnd<=44&&next.minuteStart<=next.minuteEnd;
-  if(!validOdds||!validSample||!validAverages||!validRuns||!validOddsLimit||!validMaxFixtures||!validMinutes||!Number.isFinite(next.minEv)){ghStatus('Revisá los valores: cuotas ≥1,01, porcentajes 0–100 y minutos entre 1 y 44 en orden.',true);return}
+  if(!validOdds||!validSample||!validAverages||!validRuns||!validOddsLimit||!validMaxFixtures||!validMinutes){ghStatus('Revisá los valores: cuotas ≥1,01, porcentajes 0–100 y minutos entre 1 y 44 en orden.',true);return}
   if(!next.seasonCurrent&&!next.seasonPrevious){ghStatus('Seleccioná al menos una temporada.',true);return}
   if(!LS.set(ghKey,next)){ghStatus('No se pudieron guardar los parámetros en este navegador.',true);return}
   ghStatus('Parámetros guardados en este navegador. No modifican el Escáner ni las alertas.');
@@ -1435,12 +1431,23 @@ function ghSeasonStats(games,season){
   const goals=selected.filter(g=>Array.isArray(g.fs)&&g.fs.every(Number.isInteger)).map(g=>g.fs[0]+g.fs[1]);
   return {n:ht.length,hits:ht.filter(g=>g.fh>=1).length,rate:ht.length?ht.filter(g=>g.fh>=1).length/ht.length:null,avg:goals.length?goals.reduce((a,b)=>a+b,0)/goals.length:null};
 }
+function ghUnderPattern(games){
+  const ordered=(games||[]).filter(g=>Number.isInteger(g.fh)).slice().sort((a,b)=>a.d-b.d);
+  let run=0,breakAfter2=0,extendAfter2=0,breakAfter3=0,extendAfter3=0;
+  for(const g of ordered){
+    if(g.fh>=1){
+      if(run===2)breakAfter2++;else if(run>2)extendAfter2++;
+      if(run===3)breakAfter3++;else if(run>3)extendAfter3++;
+      run=0;
+    }else run++;
+  }
+  return {breakAfter2,extendAfter2,breakAfter3,extendAfter3};
+}
 function ghTeamStats(games,fx,config){
   const current=Number(fx.season),previous=current-1,cutoff=Math.floor(new Date(fx.iso).getTime()/1000);
   const past=(games||[]).filter(g=>g.i!==fx.id&&g.d<cutoff&&(Number(g.s)===current||Number(g.s)===previous)).sort((a,b)=>b.d-a.d);
   const now=ghSeasonStats(past,current),before=ghSeasonStats(past,previous);
   const seasons=[];if(config.seasonCurrent)seasons.push(current);if(config.seasonPrevious)seasons.push(previous);
-  const sample=ghSeasonStats(past.filter(g=>seasons.includes(Number(g.s))),-1);
   const selected=past.filter(g=>seasons.includes(Number(g.s)));
   const ht=selected.filter(g=>Number.isInteger(g.fh));
   const total=selected.filter(g=>Array.isArray(g.fs)&&g.fs.every(Number.isInteger)).map(g=>g.fs[0]+g.fs[1]);
@@ -1449,7 +1456,7 @@ function ghTeamStats(games,fx,config){
   const streak=target=>{
     let n=0;for(const g of selected){if(!Number.isInteger(g.fh))break;if((g.fh>=1)===target)n++;else break}return n;
   };
-  return {current:now,previous:before,n:ht.length,hits:ht.filter(g=>g.fh>=1).length,rate:overRate,avg,over:streak(true),under:streak(false)};
+  return {current:now,previous:before,n:ht.length,hits:ht.filter(g=>g.fh>=1).length,rate:overRate,avg,over:streak(true),under:streak(false),underPattern:ghUnderPattern(selected)};
 }
 function ghBestPrematchOver05(response){
   const candidates=[];
@@ -1466,7 +1473,7 @@ function ghBestPrematchOver05(response){
           const line=Number.isFinite(handicap)?handicap:parsed;
           const price=Number(value.odd||value.price);
           if(line!==0.5||!Number.isFinite(price)||price<=1)continue;
-          candidates.push({price,bookmaker:book.name||'Casa no informada',market:bet.name||'',bookmakerId:book.id??null});
+          candidates.push({price,bookmaker:book.name||'Casa no informada',market:bet.name||'',bookmakerId:book.id??null,updatedAt:book.update||item.update||null});
         }
       }
     }
@@ -1476,15 +1483,16 @@ function ghBestPrematchOver05(response){
 }
 function ghRenderCandidates(rows){
   const box=document.getElementById('ghCandidateList');
-  if(!rows.length){box.innerHTML='<div class="empty">No hay partidos que superen los filtros históricos configurados.</div>';return}
+  if(!rows.length){box.innerHTML='<div class="empty">No hay partidos que cumplan el filtro Pregame con los datos disponibles.</div>';return}
   box.innerHTML=rows.map(c=>{
     const pct=x=>x==null?'s/d':Math.round(x*100)+'%';
+    const frac=x=>x?x.hits+'/'+x.n+' ('+pct(x.rate)+')':'s/d';
     const avg=x=>x==null?'s/d':x.toFixed(2);
-    const fair=c.fair==null?'s/d':c.fair.toFixed(2);
-    const house=c.quote?c.quote.price.toFixed(2):'Sin cuota';
-    const ev=c.ev==null?'s/d':(c.ev>0?'+':'')+c.ev.toFixed(1)+'%';
-    const status=c.evOk?'Valor positivo':c.manual?'Revisión manual de racha Under':c.quote?'No supera EV/cuota justa':'Sin cuota Pregame disponible';
-    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.evOk?'ok':'')+'">'+status+'</span></div><div class="gh-candidate-metrics"><div class="gh-metric"><span>Prob. experimental</span><strong>'+pct(c.p)+'</strong></div><div class="gh-metric"><span>Cuota justa</span><strong>'+fair+'</strong></div><div class="gh-metric"><span>Cuota de casa</span><strong>'+house+'</strong></div><div class="gh-metric"><span>Valor estimado</span><strong>'+ev+'</strong></div><div class="gh-metric"><span>Muestra modelo</span><strong>'+c.sampleA+' + '+c.sampleB+'</strong></div><div class="gh-metric"><span>HT actual A / B</span><strong>'+pct(c.a.current.rate)+' · '+pct(c.b.current.rate)+'</strong></div><div class="gh-metric"><span>HT previa A / B</span><strong>'+pct(c.a.previous.rate)+' · '+pct(c.b.previous.rate)+'</strong></div><div class="gh-metric"><span>Promedio goles A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Casa / mercado</span><strong>'+esc(c.quote?c.quote.bookmaker:'No disponible')+'</strong></div></div><div class="gh-candidate-note">EV = (cuota de casa ÷ cuota justa − 1) × 100. Estimación histórica experimental, no calibrada. Las rachas Under se muestran para revisión y no se usan como predicción de que “ya toca”.</div></article>';
+    const status=c.manual?'Revisión manual de racha Under':'Cumple filtro estadístico';
+    const pattern=t=>t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
+    const underNote=[pattern(c.a),pattern(c.b)].filter(Boolean).join(' ');
+    const quote=c.quote?'Cuota '+c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+(c.quote.updatedAt?' · actualizada '+esc(c.quote.updatedAt):''):'Cuota Pregame no disponible';
+    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span></div><div class="gh-candidate-metrics"><div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Cuota de casa Over 0,5 HT</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(underNote?esc(underNote)+' ':'')+'API-Football no informa la cuota real de BetPractice; esta cuota de casa no se usa para inventar un EV. Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
   }).join('');
 }
 
@@ -1550,19 +1558,20 @@ async function ghEvaluateCandidates(){
       if(!Number.isFinite(Number(f.season))||!histories.has(f.hid)||!histories.has(f.aid))continue;
       const a=ghTeamStats(histories.get(f.hid),f,settings),b=ghTeamStats(histories.get(f.aid),f,settings);
       const enough=a.n>=settings.minSample&&b.n>=settings.minSample;
-      const p=a.rate!==null&&b.rate!==null?(a.rate+b.rate)/2:null;
-      const fair=p>0?1/p:null;
+      const combinedRateOk=a.rate!==null&&b.rate!==null&&a.rate*100>=settings.minRate&&b.rate*100>=settings.minRate;
       const avgOk=a.avg!==null&&b.avg!==null&&Math.max(a.avg,b.avg)>=settings.avgFirst&&Math.min(a.avg,b.avg)>=settings.avgSecond;
-      const rateOk=p!==null&&p*100>=settings.minRate;
-      const fairOk=fair!==null&&fair>=settings.fairMin&&fair<=settings.fairMax;
       const overOk=Math.max(a.over,b.over)>=settings.overStreak||(a.over+b.over)>=settings.overStreak;
-      const underReview=!overOk&&settings.underMax>0&&Math.max(a.under,b.under)>0&&Math.max(a.under,b.under)<=settings.underMax;
-      if(enough&&rateOk&&fairOk&&avgOk&&(overOk||underReview))eligible.push({fx:f,a,b,p,fair,sampleA:a.n,sampleB:b.n,manual:underReview,overOk});
+      const underReview=!overOk&&settings.underMax>0&&Math.max(a.under,b.under)>=2&&Math.max(a.under,b.under)<=settings.underMax;
+      const selectedSeasons=[settings.seasonCurrent?a.current:null,settings.seasonPrevious?a.previous:null].filter(Boolean);
+      const otherSeasons=[settings.seasonCurrent?b.current:null,settings.seasonPrevious?b.previous:null].filter(Boolean);
+      const seasonRatesOk=selectedSeasons.every(x=>x.n===0||x.rate*100>=settings.minRate)&&otherSeasons.every(x=>x.n===0||x.rate*100>=settings.minRate);
+      const rateOk=combinedRateOk&&(seasonRatesOk||(avgOk&&(overOk||underReview)));
+      if(enough&&rateOk&&avgOk&&(overOk||underReview))eligible.push({fx:f,a,b,manual:underReview,overOk,seasonRatesOk});
     }
-    if(!eligible.length){ghRenderCandidates([]);ghCandidateStatus('Se evaluaron '+selectedFixtures.length+' partidos; ninguno superó muestra, porcentaje, cuota justa, promedios y rachas. '+historyCalls+' consultas nuevas de historial.',false);return}
-    eligible.sort((a,b)=>b.p-a.p);
-    const queryable=eligible.filter(c=>!c.manual),maxCalls=Math.max(0,Math.min(20,Number(settings.oddsLimit)||0)),chosen=queryable.slice(0,maxCalls);
-    ghCandidateStatus(eligible.length+' candidatos históricos; consultando cuotas Pregame…');
+    if(!eligible.length){ghRenderCandidates([]);ghCandidateStatus('Se evaluaron '+selectedFixtures.length+' partidos; ninguno superó muestra, tasas históricas, promedios y rachas. '+historyCalls+' consultas nuevas de historial.',false);return}
+    eligible.sort((a,b)=>Math.min(b.a.rate,b.b.rate)-Math.min(a.a.rate,a.b.rate)||(b.a.over+b.b.over)-(a.a.over+a.b.over));
+    const maxCalls=Math.max(0,Math.min(20,Number(settings.oddsLimit)||0)),chosen=eligible.slice(0,maxCalls);
+    ghCandidateStatus(eligible.length+' partidos cumplen el filtro estadístico; buscando cuotas de casa cuando haya cobertura…');
     const oddsCallsStart=state.calls;
     for(let i=0;i<chosen.length;i++){
       const c=chosen[i],cacheKey='tano:golht:prematch-odds:'+c.fx.id,cachedOdds=LS.get(cacheKey,null);
@@ -1573,15 +1582,11 @@ async function ghEvaluateCandidates(){
         if(i+1<chosen.length)await sleep(250);
       }
       c.quote=quote;
-      c.ev=quote&&c.fair?((quote.price/c.fair)-1)*100:null;
-      c.evOk=c.ev!==null&&(settings.allowNeutral?c.ev>=settings.minEv:c.ev>0&&c.ev>=settings.minEv);
-      if(c.manual)c.evOk=false;
     }
     const newOddsCalls=state.calls-oddsCallsStart;
-    eligible.sort((a,b)=>Number(b.evOk)-Number(a.evOk)||(b.ev??-Infinity)-(a.ev??-Infinity)||b.p-a.p);
     ghRenderCandidates(eligible);
-    const skipped=queryable.length-chosen.length,manualCount=eligible.filter(c=>c.manual).length;
-    ghCandidateStatus(eligible.length+' candidatos históricos; '+manualCount+' para revisión manual; ordenados por EV. '+historyCalls+' llamadas nuevas de historial, '+newOddsCalls+' llamadas nuevas de cuota.'+(skipped?' '+skipped+' cuotas omitidas por el límite.':''),false);
+    const skipped=eligible.length-chosen.length,manualCount=eligible.filter(c=>c.manual).length;
+    ghCandidateStatus(eligible.length+' candidatos del filtro Pregame; '+manualCount+' para revisión manual de racha Under. Ordenados por tasa histórica combinada por equipo. '+historyCalls+' consultas nuevas de historial, '+newOddsCalls+' consultas nuevas de cuota.'+(skipped?' '+skipped+' cuotas omitidas por el límite.':''),false);
     if(errors.size)ghCandidateStatus(document.getElementById('ghCandidateStatus').textContent+' Algunos historiales fallaron: '+[...errors].join(' · '),true);
   }finally{ghBusy=false;document.getElementById('ghAnalyze').disabled=ghSelectedLeagues.size===0||!ghFixtures.length}
 }
