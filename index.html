@@ -1195,14 +1195,16 @@ function renderSavedFavoriteCard(f,group){
   const fx=f.fixture||{id:f.id,hn:f.home,an:f.away,iso:f.kickoff,lc:'',ln:f.league||'',st:'NS'};
   const dateIso=fx.iso||f.kickoff;
   const dateTime=dateIso?`${fmtDate(Math.floor(new Date(dateIso).getTime()/1000))} · ${fmtTime(dateIso)}`:(f.dateText||'Fecha no disponible');
-  const a=f.analysis;
+  const currentResult=(state.results||[]).find(x=>String(x.fx.id)===String(f.id));
+  const a=f.analysis||(currentResult?{avg:currentResult.avg,n:currentResult.n,tr:currentResult.tr}:null);
+  const cardFx=currentResult?.fx?{...fx,...currentResult.fx}:fx;
   const action=group==='vip'
     ? `<button type="button" data-move-favorite="${esc(f.id)}">Pasar a Favoritos</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`
     : `<button type="button" class="primary" data-move-favorite="${esc(f.id)}">Enviar a Favoritos VIP</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`;
   const actions=`<div class="saved-favorite-actions">${action}</div>`;
   const origin='<p class="favorite-origin">Guardado desde: '+esc(favoriteOriginLabel(f))+'</p>';
   if(a&&Array.isArray(a.tr)){
-    const r={fx,tr:a.tr,avg:a.avg,n:a.n};
+    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n};
     let html=cardHtml(r,-1);
     html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
     html=html.replace(/<button class="fav-btn"[^>]*>.*?<\/button>/,actions);
