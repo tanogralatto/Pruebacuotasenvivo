@@ -274,6 +274,62 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .quota-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:14px}
 .quota-bar .qdot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
 .quota-bar.err{border-color:var(--c1)}
+
+/* TANOapp: formato unificado de tarjetas y navegación */
+#appShell.wrap{width:100%;max-width:1280px;padding:12px clamp(12px,2.6vw,32px) 42px;gap:16px}
+#appShell>header{order:2;margin:0;padding:8px 3px 2px}
+#appShell>header::before{content:"TANOAPP";display:block;margin-bottom:8px;font-family:var(--font-data);font-size:11px;font-weight:600;letter-spacing:.18em;color:var(--accent)}
+#appShell>header h1{font-size:clamp(36px,5vw,54px);letter-spacing:.025em}
+#appShell>.userbar{order:1;justify-content:flex-end;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 12px;min-height:46px}
+#appShell>.app-tabs{order:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;position:sticky;top:0;z-index:100;background:var(--bg);padding:9px;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 22px rgba(0,0,0,.14)}
+#appShell .app-tab{min-width:0;min-height:48px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:14px;line-height:1.2;font-weight:650;color:var(--muted);white-space:normal;overflow-wrap:anywhere;transition:background-color .15s,border-color .15s,color .15s}
+#appShell .app-tab:hover{border-color:var(--accent);color:var(--ink)}
+#appShell .app-tab.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#appShell>#quotaBar{order:3}
+#appShell>.app-view{order:4;gap:14px}
+#appShell section.panel{border-radius:14px;padding:clamp(14px,2.2vw,24px);gap:16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+#appShell .card,#appShell .live-card,#appShell .live-favorites,#appShell .alert-history-card,#appShell .access-card{border-radius:12px}
+#appShell .cell,#appShell .live-market,#appShell .alert-stat{border-radius:10px}
+#appShell input[type=text],#appShell input[type=password],#appShell input[type=date],#appShell input[type=search],#appShell input[type=number],#appShell select{border-radius:8px}
+#appShell button{border-radius:8px;transition:filter .15s,transform .15s}
+#appShell button:not(:disabled):hover{filter:brightness(1.06)}
+#appShell .notes{border-radius:10px}
+#appShell .empty{border-radius:12px}
+#appShell .app-view,#appShell .panel,#appShell .row,#appShell .card{min-width:0}
+#appShell .detail ul{overflow:visible}
+#appShell .detail li{grid-template-columns:62px minmax(0,1fr) 48px;min-width:0}
+#appShell .detail li>*{min-width:0;overflow-wrap:anywhere}
+#ghStrategyView .gh-section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#ghStrategyView .gh-mode{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:var(--warn-bg);font-size:11px;font-weight:700;letter-spacing:.04em}
+#ghStrategyView .gh-mode::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c2)}
+#ghStrategyView .gh-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+#ghStrategyView .gh-group{display:flex;flex-direction:column;gap:12px;padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--bg);min-width:0}
+#ghStrategyView .gh-group h3{margin:0;font-family:var(--font-display);font-size:18px;text-transform:uppercase;letter-spacing:.04em}
+#ghStrategyView .gh-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+#ghStrategyView .gh-field label{font-size:11px}
+#ghStrategyView .gh-field input{width:100%}
+#ghStrategyView .gh-checks{display:flex;flex-direction:column;gap:7px}
+#ghStrategyView .gh-checks .check{min-height:32px}
+#ghStrategyView .gh-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#ghStrategyView .gh-message{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--muted)}
+#ghStrategyView .gh-message strong{display:block;margin-bottom:5px;color:var(--ink)}
+@media(max-width:760px){
+  #appShell.wrap{padding:10px 12px 32px;gap:13px}
+  #appShell>.app-tabs{grid-template-columns:repeat(2,minmax(0,1fr));position:relative;top:auto}
+  #appShell .app-tab{font-size:13px;min-height:46px;padding:8px}
+  #appShell>.userbar{justify-content:flex-start}
+  #appShell section.panel{padding:15px;gap:14px}
+  #ghStrategyView .gh-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+}
+@media(max-width:480px){
+  #appShell>.app-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:7px;border-radius:12px}
+  #appShell .app-tab{font-size:12px}
+  #appShell>header h1{font-size:36px}
+  #appShell>.userbar{font-size:12px}
+  #ghStrategyView .gh-grid{grid-template-columns:1fr}
+  #ghStrategyView .gh-group{padding:13px}
+}
+
 </style>
 </head>
 <body>
@@ -291,7 +347,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 
 <header>
   <h1 id="appTitle">Over 0.5 1T</h1>
-  <p class="sub">Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.</p>
+  <p class="sub" id="appSubtitle">Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.</p>
 </header>
 
 <div class="userbar">
@@ -303,6 +359,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <nav class="app-tabs" role="tablist" aria-label="Secciones de TANOapp">
   <button id="tabScanner" class="app-tab active" type="button" role="tab" aria-selected="true" aria-controls="scannerView">Escáner</button>
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
+  <button id="tabStrategy" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="ghStrategyView">Gol HT +0,5</button>
   <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram</button>
   <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
   <button id="tabAlertHistory" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="alertHistoryView">Historial Telegram</button>
@@ -430,6 +487,60 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 
 </section>
 </div>
+
+
+<div id="ghStrategyView" class="app-view hidden" role="tabpanel" aria-labelledby="tabStrategy">
+  <section class="panel" aria-labelledby="ghStrategyTitle">
+    <div class="gh-section-title">
+      <h2 id="ghStrategyTitle">Estrategia Gol HT +0,5</h2>
+      <span class="gh-mode">MODO PRUEBA · SIN ALERTAS</span>
+    </div>
+    <p class="small">Parámetros independientes del Escáner y de las alertas actuales. Los cambios se guardan en este navegador.</p>
+    <form id="ghSettingsForm">
+      <div class="gh-grid">
+        <div class="gh-group">
+          <h3>Cuotas y valor</h3>
+          <div class="gh-field"><label for="ghFairMin">Cuota justa mínima</label><input id="ghFairMin" type="number" min="1.01" step="0.01" value="1.10"></div>
+          <div class="gh-field"><label for="ghFairMax">Cuota justa máxima</label><input id="ghFairMax" type="number" min="1.01" step="0.01" value="1.25"></div>
+          <div class="gh-field"><label for="ghMinEv">Valor esperado mínimo (%)</label><input id="ghMinEv" type="number" step="0.1" value="0"></div>
+          <label class="check"><input id="ghAllowNeutral" type="checkbox"><span>Permitir valor neutral como excepción</span></label>
+          <div class="small">Pregame compara cuota justa con cuota de la casa. La cuota justa no está activa hasta validar el modelo.</div>
+        </div>
+        <div class="gh-group">
+          <h3>Historial y equipos</h3>
+          <div class="gh-field"><label for="ghMinSample">Muestra histórica mínima</label><input id="ghMinSample" type="number" min="1" step="1" value="30"></div>
+          <div class="gh-field"><label for="ghMinRate">Over 0,5 HT histórico mínimo (%)</label><input id="ghMinRate" type="number" min="0" max="100" step="1" value="80"></div>
+          <div class="gh-field"><label for="ghAvgFirst">Promedio de referencia para un equipo</label><input id="ghAvgFirst" type="number" min="0" step="0.1" value="3.0"></div>
+          <div class="gh-field"><label for="ghAvgSecond">Promedio mínimo para el otro</label><input id="ghAvgSecond" type="number" min="0" step="0.1" value="2.8"></div>
+          <div class="gh-field"><label for="ghOverStreak">Racha Over orientativa (partidos)</label><input id="ghOverStreak" type="number" min="0" step="1" value="8"></div>
+          <div class="gh-field"><label for="ghUnderMax">Máximo de racha Under a revisar</label><input id="ghUnderMax" type="number" min="0" step="1" value="2"></div>
+          <div class="gh-checks">
+            <label class="check"><input id="ghSeasonCurrent" type="checkbox" checked><span>Temporada actual</span></label>
+            <label class="check"><input id="ghSeasonPrevious" type="checkbox" checked><span>Temporada anterior</span></label>
+          </div>
+        </div>
+        <div class="gh-group">
+          <h3>Entrada en vivo</h3>
+          <div class="gh-field"><label for="ghLiveMin">Cuota mínima para entrar</label><input id="ghLiveMin" type="number" min="1.01" step="0.01" value="1.50"></div>
+          <div class="gh-field"><label for="ghMinuteStart">Minuto inicial</label><input id="ghMinuteStart" type="number" min="1" max="44" step="1" value="10"></div>
+          <div class="gh-field"><label for="ghMinuteEnd">Minuto final</label><input id="ghMinuteEnd" type="number" min="1" max="44" step="1" value="18"></div>
+          <label class="check"><input id="ghOnly00" type="checkbox" checked><span>Exigir marcador 0–0</span></label>
+          <div class="small">El precio se evalúa en el momento de la posible entrada; el 1,50 es distinto de la cuota de Pregame.</div>
+        </div>
+      </div>
+      <div class="gh-actions" style="margin-top:14px">
+        <button class="primary" type="submit">Guardar parámetros</button>
+        <button id="ghReset" type="button">Restablecer valores iniciales</button>
+        <span id="ghStatus" class="status" role="status" aria-live="polite">Valores iniciales. Todavía no se guardaron.</span>
+      </div>
+    </form>
+  </section>
+  <section class="panel" aria-labelledby="ghTrialTitle">
+    <h2 id="ghTrialTitle">Seguimiento en modo prueba</h2>
+    <div class="gh-message"><strong>El registro de candidatos se habilitará cuando esté integrado el modelo.</strong>Esta pestaña guarda tus parámetros por separado. Por ahora no calcula cuotas justas ni valor esperado, no consulta API-Football y no envía alertas; así evitamos mostrar probabilidades o datos ficticios y no afectamos el monitor actual.</div>
+  </section>
+</div>
+
 
 <div id="telegramView" class="app-view hidden" role="tabpanel" aria-labelledby="tabTelegram">
   <section id="telegramSettings" class="panel" style="margin-top:16px;border:1px solid var(--line)" aria-labelledby="telegramSettingsTitle">
@@ -1230,7 +1341,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Over 0.5 1T'],live:['tabLive','liveView','En Vivo'],telegram:['tabTelegram','telegramView','Configuración Telegram'],access:['tabAccess','accessView','Accesos'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram']};
+  const tabs={scanner:['tabScanner','scannerView','Escáner','Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],strategy:['tabStrategy','ghStrategyView','Gol HT +0,5','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram','Configuración del monitor de alertas Telegram.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
   function showTab(which){
     for(const [k,[tabId,viewId,title]] of Object.entries(tabs)){
       const on=k===which;
@@ -1238,13 +1349,43 @@ if(state.key) checkStatus();
       const t=document.getElementById(tabId);
       t.classList.toggle('active',on);
       t.setAttribute('aria-selected',String(on));
-      if(on) document.getElementById('appTitle').textContent=title;
+      if(on){document.getElementById('appTitle').textContent=title;const sub=document.getElementById('appSubtitle');if(sub)sub.textContent=subtitle;}
     }
     window.scrollTo({top:0,behavior:'smooth'});
   }
   window.tanoShowTab=showTab;
   for(const [k,[tabId]] of Object.entries(tabs)) document.getElementById(tabId).addEventListener('click',()=>showTab(k));
 })();
+
+const ghKey='tano:golht:settings:v1';
+const ghDefaults={fairMin:1.10,fairMax:1.25,minEv:0,allowNeutral:false,minSample:30,minRate:80,avgFirst:3.0,avgSecond:2.8,overStreak:8,underMax:2,seasonCurrent:true,seasonPrevious:true,liveMin:1.50,minuteStart:10,minuteEnd:18,only00:true};
+const ghFields={fairMin:'ghFairMin',fairMax:'ghFairMax',minEv:'ghMinEv',minSample:'ghMinSample',minRate:'ghMinRate',avgFirst:'ghAvgFirst',avgSecond:'ghAvgSecond',overStreak:'ghOverStreak',underMax:'ghUnderMax',liveMin:'ghLiveMin',minuteStart:'ghMinuteStart',minuteEnd:'ghMinuteEnd'};
+function ghApply(config){
+  const saved={...ghDefaults,...(config&&typeof config==='object'?config:{})};
+  for(const [key,id] of Object.entries(ghFields)){const el=document.getElementById(id);if(el)el.value=saved[key]}
+  for(const key of ['allowNeutral','seasonCurrent','seasonPrevious','only00']){const el=document.getElementById('gh'+key[0].toUpperCase()+key.slice(1));if(el)el.checked=!!saved[key]}
+}
+function ghStatus(text,error=false){const el=document.getElementById('ghStatus');el.textContent=text;el.classList.toggle('err',error)}
+ghApply(LS.get(ghKey,ghDefaults));
+document.getElementById('ghSettingsForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  const next={};
+  for(const [key,id] of Object.entries(ghFields))next[key]=Number(document.getElementById(id).value);
+  for(const key of ['allowNeutral','seasonCurrent','seasonPrevious','only00']){const el=document.getElementById('gh'+key[0].toUpperCase()+key.slice(1));next[key]=el.checked}
+  const validOdds=Number.isFinite(next.fairMin)&&next.fairMin>=1.01&&Number.isFinite(next.fairMax)&&next.fairMax>=next.fairMin&&Number.isFinite(next.liveMin)&&next.liveMin>=1.01;
+  const validSample=Number.isInteger(next.minSample)&&next.minSample>=1&&Number.isInteger(next.minRate)&&next.minRate>=0&&next.minRate<=100;
+  const validAverages=Number.isFinite(next.avgFirst)&&next.avgFirst>=0&&Number.isFinite(next.avgSecond)&&next.avgSecond>=0;
+  const validRuns=Number.isInteger(next.overStreak)&&next.overStreak>=0&&Number.isInteger(next.underMax)&&next.underMax>=0;
+  const validMinutes=Number.isInteger(next.minuteStart)&&Number.isInteger(next.minuteEnd)&&next.minuteStart>=1&&next.minuteEnd<=44&&next.minuteStart<=next.minuteEnd;
+  if(!validOdds||!validSample||!validAverages||!validRuns||!validMinutes||!Number.isFinite(next.minEv)){ghStatus('Revisá los valores: cuotas ≥1,01, porcentajes 0–100 y minutos entre 1 y 44 en orden.',true);return}
+  if(!next.seasonCurrent&&!next.seasonPrevious){ghStatus('Seleccioná al menos una temporada.',true);return}
+  if(!LS.set(ghKey,next)){ghStatus('No se pudieron guardar los parámetros en este navegador.',true);return}
+  ghStatus('Parámetros guardados en este navegador. No modifican el Escáner ni las alertas.');
+});
+document.getElementById('ghReset').addEventListener('click',()=>{
+  LS.set(ghKey,ghDefaults);ghApply(ghDefaults);ghStatus('Valores iniciales restaurados.');
+});
+
 </script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
