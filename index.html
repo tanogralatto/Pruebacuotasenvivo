@@ -1343,7 +1343,7 @@ if(state.key) checkStatus();
 (function(){
   const tabs={scanner:['tabScanner','scannerView','Escáner','Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],strategy:['tabStrategy','ghStrategyView','Gol HT +0,5','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram','Configuración del monitor de alertas Telegram.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
   function showTab(which){
-    for(const [k,[tabId,viewId,title]] of Object.entries(tabs)){
+    for(const [k,[tabId,viewId,title,subtitle]] of Object.entries(tabs)){
       const on=k===which;
       document.getElementById(viewId).classList.toggle('hidden',!on);
       const t=document.getElementById(tabId);
