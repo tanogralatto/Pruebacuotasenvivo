@@ -1487,55 +1487,109 @@ function ghRenderCandidates(rows){
     return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.evOk?'ok':'')+'">'+status+'</span></div><div class="gh-candidate-metrics"><div class="gh-metric"><span>Prob. experimental</span><strong>'+pct(c.p)+'</strong></div><div class="gh-metric"><span>Cuota justa</span><strong>'+fair+'</strong></div><div class="gh-metric"><span>Cuota de casa</span><strong>'+house+'</strong></div><div class="gh-metric"><span>Valor estimado</span><strong>'+ev+'</strong></div><div class="gh-metric"><span>Muestra modelo</span><strong>'+c.sampleA+' + '+c.sampleB+'</strong></div><div class="gh-metric"><span>HT actual A / B</span><strong>'+pct(c.a.current.rate)+' · '+pct(c.b.current.rate)+'</strong></div><div class="gh-metric"><span>HT previa A / B</span><strong>'+pct(c.a.previous.rate)+' · '+pct(c.b.previous.rate)+'</strong></div><div class="gh-metric"><span>Promedio goles A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Casa / mercado</span><strong>'+esc(c.quote?c.quote.bookmaker:'No disponible')+'</strong></div></div><div class="gh-candidate-note">EV = (cuota de casa ÷ cuota justa − 1) × 100. Estimación histórica experimental, no calibrada. Las rachas Under se muestran para revisión y no se usan como predicción de que “ya toca”.</div></article>';
   }).join('');
 }
+
+let ghBusy=false,ghFixtures=[],ghSelectedLeagues=new Set(),ghLoadedDate='';
+function ghLocalDate(){
+  const parts=new Intl.DateTimeFormat('en',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const values=Object.fromEntries(parts.map(p=>[p.type,p.value]));
+  return values.year+'-'+values.month+'-'+values.day;
+}
+function ghFixtureStatus(text,error=false){const el=document.getElementById('ghFixtureStatus');el.textContent=text;el.classList.toggle('err',error)}
+function ghRenderLeagues(){
+  const counts=new Map();
+  for(const f of ghFixtures){const k=String(f.lid);const v=counts.get(k)||{name:f.ln,country:f.lc,count:0};v.count++;counts.set(k,v)}
+  const box=document.getElementById('ghLeagueList');
+  box.innerHTML=[...counts.entries()].sort((a,b)=>a[1].country.localeCompare(b[1].country)||a[1].name.localeCompare(b[1].name)).map(([id,l])=>'<label class="gh-league"><input type="checkbox" data-gh-league="'+esc(id)+'" '+(ghSelectedLeagues.has(id)?'checked':'')+'><span>'+esc(l.country)+' · '+esc(l.name)+'</span><small>'+l.count+'</small></label>').join('')||'<div class="empty">No hay partidos futuros en esa fecha.</div>';
+  document.getElementById('ghAnalyze').disabled=ghSelectedLeagues.size===0||!ghFixtures.length;
+}
+async function ghLoadFixtures(){
+  if(ghBusy)return;
+  if(!state.key){ghFixtureStatus('Guardá y probá primero tu clave de API-Football.',true);return}
+  const date=document.getElementById('ghDate').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){ghFixtureStatus('Elegí una fecha válida.',true);return}
+  const btn=document.getElementById('ghLoadFixtures');btn.disabled=true;state.cancel=false;
+  ghFixtureStatus('Buscando partidos de la fecha…');
+  try{
+    const j=await api('/fixtures',{date,timezone:TZ}),now=Date.now();
+    ghFixtures=(j.response||[]).filter(f=>f.fixture?.id&&['NS','TBD'].includes(f.fixture?.status?.short)&&new Date(f.fixture.date).getTime()>now)
+      .map(f=>({id:f.fixture.id,iso:f.fixture.date,st:f.fixture.status.short,lid:f.league.id,season:f.league.season,ln:f.league.name,lc:f.league.country||'Mundo',hid:f.teams.home.id,hn:f.teams.home.name,aid:f.teams.away.id,an:f.teams.away.name}));
+    ghLoadedDate=date;ghSelectedLeagues=new Set(ghFixtures.map(f=>String(f.lid)));ghRenderLeagues();
+    ghFixtureStatus(ghFixtures.length+' partidos futuros en '+ghSelectedLeagues.size+' competiciones. Elegí ligas y evaluá.');
+  }catch(e){ghFixtures=[];ghSelectedLeagues.clear();ghLoadedDate='';ghRenderLeagues();ghFixtureStatus('No se pudieron cargar los partidos: '+e.message,true)}
+  finally{btn.disabled=false}
+}
+document.getElementById('ghDate').value=ghLocalDate();
+document.getElementById('ghLoadFixtures').addEventListener('click',ghLoadFixtures);
+document.getElementById('ghAllLeagues').addEventListener('click',()=>{ghSelectedLeagues=new Set(ghFixtures.map(f=>String(f.lid)));ghRenderLeagues()});
+document.getElementById('ghNoLeagues').addEventListener('click',()=>{ghSelectedLeagues.clear();ghRenderLeagues()});
+document.getElementById('ghLeagueList').addEventListener('change',event=>{
+  const input=event.target.closest('[data-gh-league]');if(!input)return;
+  const id=String(input.dataset.ghLeague);if(input.checked)ghSelectedLeagues.add(id);else ghSelectedLeagues.delete(id);ghRenderLeagues();
+});
 async function ghEvaluateCandidates(){
   if(ghBusy)return;
   if(!state.key){ghCandidateStatus('Guardá y probá primero tu clave de API-Football.',true);return}
-  if(state.market!=='ht05'){ghCandidateStatus('En el Escáner seleccioná el mercado +0,5 1T.',true);return}
-  if(!state.results.length||!state.strategyHistory?.size){ghCandidateStatus('Primero corré el Escáner para cargar los partidos +0,5 1T de la fecha.',true);return}
+  if(!ghFixtures.length){ghCandidateStatus('Primero buscá partidos para la fecha.',true);return}
+  if(document.getElementById('ghDate').value!==ghLoadedDate){ghCandidateStatus('Cambiaste la fecha; buscá los partidos otra vez.',true);return}
+  if(!ghSelectedLeagues.size){ghCandidateStatus('Seleccioná al menos una competición.',true);return}
   state.cancel=false;
-  const settings=LS.get(ghKey,ghDefaults),teams=state.strategyHistory;
-  const eligible=[];
-  const rows=state.results.filter(r=>isFutureFixture(r.fx)&&(r.fx.st==='NS'||r.fx.st==='TBD'));
-  for(const r of rows){
-    const f=r.fx,current=Number(f.season);
-    if(!Number.isFinite(current)||!teams.has(f.hid)||!teams.has(f.aid))continue;
-    const a=ghTeamStats(teams.get(f.hid),f,settings),b=ghTeamStats(teams.get(f.aid),f,settings);
-    const enough=a.n>=settings.minSample&&b.n>=settings.minSample;
-    const p=a.rate!==null&&b.rate!==null?(a.rate+b.rate)/2:null;
-    const fair=p>0?1/p:null;
-    const avgOk=a.avg!==null&&b.avg!==null&&Math.max(a.avg,b.avg)>=settings.avgFirst&&Math.min(a.avg,b.avg)>=settings.avgSecond;
-    const rateOk=p!==null&&p*100>=settings.minRate;
-    const fairOk=fair!==null&&fair>=settings.fairMin&&fair<=settings.fairMax;
-    const overOk=Math.max(a.over,b.over)>=settings.overStreak||(a.over+b.over)>=settings.overStreak;
-    const underReview=!overOk&&settings.underMax>0&&Math.max(a.under,b.under)>0&&Math.max(a.under,b.under)<=settings.underMax;
-    if(enough&&rateOk&&fairOk&&avgOk&&(overOk||underReview))eligible.push({fx:f,a,b,p,fair,sampleA:a.n,sampleB:b.n,underReview,manual:underReview,overOk});
-  }
-  const maxCalls=Math.max(0,Math.min(20,Number(settings.oddsLimit)||0));
-  if(!eligible.length){ghRenderCandidates([]);ghCandidateStatus('0 candidatos pasan muestra, porcentaje, cuota justa, promedios y racha. No se consultaron cuotas.',false);return}
-  eligible.sort((a,b)=>b.p-a.p);
-  const queryable=eligible.filter(c=>!c.manual),chosen=queryable.slice(0,maxCalls);
+  const settings=LS.get(ghKey,ghDefaults);
+  const maxFixtures=Math.max(1,Math.min(50,Number(settings.maxFixtures)||10));
+  const selectedFixtures=ghFixtures.filter(f=>ghSelectedLeagues.has(String(f.lid))).sort((a,b)=>a.iso.localeCompare(b.iso)).slice(0,maxFixtures);
+  const teamIds=[...new Set(selectedFixtures.flatMap(f=>[f.hid,f.aid]))];
+  const histories=new Map(),errors=new Set(),callsAtStart=state.calls;
   ghBusy=true;document.getElementById('ghAnalyze').disabled=true;
-  let calls=0;
+  ghCandidateStatus('Cargando historiales de '+teamIds.length+' equipos…');
   try{
-    for(const c of chosen){
-      const cacheKey='tano:golht:prematch-odds:'+c.fx.id,cachedOdds=LS.get(cacheKey,null);
+    let cursor=0;
+    const worker=async()=>{while(cursor<teamIds.length&&!state.cancel){const id=teamIds[cursor++];try{histories.set(id,await teamGames(id))}catch(e){errors.add(e.message)}}};
+    await Promise.all(Array.from({length:Math.min(3,teamIds.length)},worker));
+    const historyCalls=state.calls-callsAtStart;
+    const eligible=[];
+    for(const f of selectedFixtures){
+      if(!Number.isFinite(Number(f.season))||!histories.has(f.hid)||!histories.has(f.aid))continue;
+      const a=ghTeamStats(histories.get(f.hid),f,settings),b=ghTeamStats(histories.get(f.aid),f,settings);
+      const enough=a.n>=settings.minSample&&b.n>=settings.minSample;
+      const p=a.rate!==null&&b.rate!==null?(a.rate+b.rate)/2:null;
+      const fair=p>0?1/p:null;
+      const avgOk=a.avg!==null&&b.avg!==null&&Math.max(a.avg,b.avg)>=settings.avgFirst&&Math.min(a.avg,b.avg)>=settings.avgSecond;
+      const rateOk=p!==null&&p*100>=settings.minRate;
+      const fairOk=fair!==null&&fair>=settings.fairMin&&fair<=settings.fairMax;
+      const overOk=Math.max(a.over,b.over)>=settings.overStreak||(a.over+b.over)>=settings.overStreak;
+      const underReview=!overOk&&settings.underMax>0&&Math.max(a.under,b.under)>0&&Math.max(a.under,b.under)<=settings.underMax;
+      if(enough&&rateOk&&fairOk&&avgOk&&(overOk||underReview))eligible.push({fx:f,a,b,p,fair,sampleA:a.n,sampleB:b.n,manual:underReview,overOk});
+    }
+    if(!eligible.length){ghRenderCandidates([]);ghCandidateStatus('Se evaluaron '+selectedFixtures.length+' partidos; ninguno superó muestra, porcentaje, cuota justa, promedios y rachas. '+historyCalls+' consultas nuevas de historial.',false);return}
+    eligible.sort((a,b)=>b.p-a.p);
+    const queryable=eligible.filter(c=>!c.manual),maxCalls=Math.max(0,Math.min(20,Number(settings.oddsLimit)||0)),chosen=queryable.slice(0,maxCalls);
+    ghCandidateStatus(eligible.length+' candidatos históricos; consultando cuotas Pregame…');
+    const oddsCallsStart=state.calls;
+    for(let i=0;i<chosen.length;i++){
+      const c=chosen[i],cacheKey='tano:golht:prematch-odds:'+c.fx.id,cachedOdds=LS.get(cacheKey,null);
       let quote=cachedOdds&&Date.now()-cachedOdds.ts<3*60*60*1000?cachedOdds.quote:undefined;
       if(quote===undefined){
-        try{const j=await api('/odds',{fixture:c.fx.id});quote=ghBestPrematchOver05(j.response||[]);LS.set(cacheKey,{ts:Date.now(),quote:quote||null});calls++}
+        try{const j=await api('/odds',{fixture:c.fx.id});quote=ghBestPrematchOver05(j.response||[]);LS.set(cacheKey,{ts:Date.now(),quote:quote||null})}
         catch(e){quote=null;c.oddsError=e.message}
+        if(i+1<chosen.length)await sleep(250);
       }
       c.quote=quote;
       c.ev=quote&&c.fair?((quote.price/c.fair)-1)*100:null;
       c.evOk=c.ev!==null&&(settings.allowNeutral?c.ev>=settings.minEv:c.ev>0&&c.ev>=settings.minEv);
       if(c.manual)c.evOk=false;
-      if(calls<chosen.length)await sleep(250);
     }
+    const newOddsCalls=state.calls-oddsCallsStart;
+    eligible.sort((a,b)=>Number(b.evOk)-Number(a.evOk)||(b.ev??-Infinity)-(a.ev??-Infinity)||b.p-a.p);
     ghRenderCandidates(eligible);
     const skipped=queryable.length-chosen.length,manualCount=eligible.filter(c=>c.manual).length;
-    ghCandidateStatus(eligible.length+' candidatos históricos; '+manualCount+' para revisión manual; '+chosen.length+' consultados (hasta '+settings.oddsLimit+' llamadas de cuota; '+calls+' llamadas nuevas).'+(skipped?' '+skipped+' sin consultar por el límite configurado.':''),false);
-  }finally{ghBusy=false;document.getElementById('ghAnalyze').disabled=false}
+    ghCandidateStatus(eligible.length+' candidatos históricos; '+manualCount+' para revisión manual; ordenados por EV. '+historyCalls+' llamadas nuevas de historial, '+newOddsCalls+' llamadas nuevas de cuota.'+(skipped?' '+skipped+' cuotas omitidas por el límite.':''),false);
+    if(errors.size)ghCandidateStatus(document.getElementById('ghCandidateStatus').textContent+' Algunos historiales fallaron: '+[...errors].join(' · '),true);
+  }finally{ghBusy=false;document.getElementById('ghAnalyze').disabled=ghSelectedLeagues.size===0||!ghFixtures.length}
 }
-document.getElementById('ghAnalyze').addEventListener('click',()=>{document.getElementById('ghSettingsForm').requestSubmit();if(document.getElementById('ghStatus').classList.contains('err'))return;ghEvaluateCandidates()});
+document.getElementById('ghAnalyze').addEventListener('click',()=>{
+  document.getElementById('ghSettingsForm').requestSubmit();
+  if(document.getElementById('ghStatus').classList.contains('err'))return;
+  ghEvaluateCandidates();
+});
 
 </script>
 <script type="module">
