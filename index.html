@@ -1940,13 +1940,15 @@ function enterApp(user, isOwner) {
     window.tanoSetFavorites(list);
     if (!importChecked) { importChecked = true; if (isOwner) importLegacy(user, favCol, list); }
   }, e => setMsg(friendly(e), true));
+  // El historial de alertas es visible para cualquier usuario autenticado y aprobado.
+  q('#tabAlertHistory').classList.remove('hidden');
+  startAlertHistory();
+
   if (isOwner) {
     q('#tabAccess').classList.remove('hidden');
     q('#tabTelegram').classList.remove('hidden');
-    q('#tabAlertHistory').classList.remove('hidden');
     startOwnerPanel();
     startTelegramSettings(user);
-    startAlertHistory();
   }
 }
 
