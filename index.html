@@ -700,6 +700,30 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <script>
 /*PURE*/
 const DONE_ST=['FT','AET','PEN'];
+function validateHtRecord(g){
+  // Los registros anteriores al esquema de trazabilidad no permiten reconstruir el origen.
+  if(!g||!Object.prototype.hasOwnProperty.call(g,'htSource')||!g.htRaw)
+    return {status:'legacy_unverified',detail:'Registro de caché anterior: no conserva el HT original de la API.'};
+  const rawH=g.htRaw.home, rawA=g.htRaw.away;
+  if(g.htSource==='api'){
+    if(!Number.isInteger(rawH)||!Number.isInteger(rawA)||rawH<0||rawA<0)
+      return {status:'invalid_processed',detail:'Origen marcado como API, pero el HT original no contiene dos enteros válidos.'};
+    if(!Array.isArray(g.ht)||g.ht[0]!==rawH||g.ht[1]!==rawA||g.fh!==rawH+rawA)
+      return {status:'invalid_processed',detail:'El HT compacto no coincide con los valores originales guardados; posible alteración en procesamiento o caché.'};
+    return {status:'valid_api',detail:'HT recibido de API y consistente con el registro procesado.'};
+  }
+  if(g.htSource==='inferred_ft_0_0'){
+    if(!Array.isArray(g.fs)||g.fs[0]!==0||g.fs[1]!==0||g.fh!==0||g.ht!==null)
+      return {status:'invalid_processed',detail:'La inferencia de HT 0-0 no coincide con el marcador final o el formato esperado.'};
+    return {status:'inferred_zero_final',detail:'HT total 0 inferido a partir del 0-0 final; no fue recibido explícitamente como HT.'};
+  }
+  if(g.htSource==='missing'){
+    if(g.fh!==null||g.ht!==null)
+      return {status:'invalid_processed',detail:'El HT está marcado como ausente, pero hay un valor procesado.'};
+    return {status:'missing_api',detail:'La respuesta original no contenía dos valores HT enteros válidos.'};
+  }
+  return {status:'legacy_unverified',detail:'Origen HT desconocido; no se puede validar con certeza.'};
+}
 function compact(resp){
   const out=[];
   for(const f of resp||[]){
@@ -708,14 +732,16 @@ function compact(resp){
     const s=f.score||{}, ht=s.halftime||{}, ft=s.fulltime||{};
     let fh=null, hts=null, htSource='missing';
     const htHome=ht.home, htAway=ht.away;
-    if(Number.isInteger(htHome)&&Number.isInteger(htAway)){
+    if(Number.isInteger(htHome)&&Number.isInteger(htAway)&&htHome>=0&&htAway>=0){
       fh=htHome+htAway; hts=[htHome,htAway]; htSource='api';
     }else if(ft.home===0&&ft.away===0){
       // El 0-0 al descanso se deduce del 0-0 final; no es un HT recibido de la API.
       fh=0; htSource='inferred_ft_0_0';
     }
     const fs=Number.isInteger(ft.home)&&Number.isInteger(ft.away)?[ft.home,ft.away]:null;
-    out.push({i:f.fixture.id,d:f.fixture.timestamp,h:f.teams.home.id,a:f.teams.away.id,hn:f.teams.home.name,an:f.teams.away.name,ht:hts,fh,fs,htSource,htRaw:{home:htHome??null,away:htAway??null},s:f.league?.season??null,l:f.league?.id??null});
+    const g={i:f.fixture.id,d:f.fixture.timestamp,h:f.teams.home.id,a:f.teams.away.id,hn:f.teams.home.name,an:f.teams.away.name,ht:hts,fh,fs,htSource,htRaw:{home:htHome??null,away:htAway??null},s:f.league?.season??null,l:f.league?.id??null};
+    g.htValidation=validateHtRecord(g);
+    out.push(g);
   }
   out.sort((x,y)=>y.d-x.d);
   return out;
@@ -894,7 +920,12 @@ function cached(k){
   if(!entry||!Number.isFinite(entry.ts)||!Array.isArray(entry.g)) return null;
   const age=Date.now()-entry.ts;
   if(age<0||age>=TTL) return null;
-  return entry.g;
+  // Revalidar al leer: detecta divergencias entre HT original guardado y campos derivados.
+  return entry.g.map(g=>{
+    if(!g||typeof g!=='object') return g;
+    const check=validateHtRecord(g);
+    return {...g,htValidation:check};
+  });
 }
 function fixtureResponse(j,path){
   if(!j||!Array.isArray(j.response)){
