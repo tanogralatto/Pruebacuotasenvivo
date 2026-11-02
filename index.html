@@ -1092,9 +1092,11 @@ function renderResults(){
 }
 function detailHtml(r){
   return r.tr.map(t=>{
-    const rng=t.valid?` · datos del ${fmtDate(t.min)} al ${fmtDate(t.max)}`:'';
+    const rng=t.valid?` · datos válidos del ${fmtDate(t.min)} al ${fmtDate(t.max)}`:'';
     const inferidos=state.market==='ht05'?t.games.filter(g=>g.fh===0&&!g.ht).length:0;
     const inferidosLabel=inferidos?` · ${inferidos} inferido(s) por FT 0-0`:'';
+    const missingHT=state.market==='ht05'?t.games.filter(g=>g.fh===null).length:0;
+    const missingLabel=missingHT?` · ${missingHT} sin HT válido`:'';
     const rows=t.games.map(g=>{
       const validScore=state.market==='ht05'?g.fh!==null:!!g.fs;
       const hit=validScore&&hitFor(g,state.market);
@@ -1104,8 +1106,8 @@ function detailHtml(r){
       const mk=!validScore?'s/d':hit?(state.market==='btts'?'ambos marcan':state.market==='over25'?'+2,5':'gol'):(state.market==='btts'?'no marcan ambos':state.market==='over25'?'−2,5':'sin gol');
       return `<li class="${cls}" title="${esc(htStatus)}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}${htStatus?`<small class="small" style="display:block">${esc(htStatus)}</small>`:''}</span><span class="m">${mk}</span></li>`;
     }).join('')||'<li class="na"><span></span><span>sin partidos</span><span></span></li>';
-    return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos seleccionados${inferidosLabel}${rng}</h3><ul>${rows}</ul></div>`;
-  }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. ':''}Los s/d no se incluyen en el denominador. “Seleccionados” indica partidos incluidos en la muestra, no que todos tengan un marcador verificado.</p>`;
+    return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos revisados${inferidosLabel}${missingLabel}${rng}</h3><ul>${rows}</ul></div>`;
+  }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. Los partidos sin HT válido no se incluyen en el denominador. ':''}La muestra revisa los últimos partidos disponibles hasta el objetivo indicado; los registros sin marcador válido no se reemplazan por partidos más antiguos. Por eso, partidos revisados y partidos válidos pueden ser distintos.</p>`;
 
 }
 function copyList(){
