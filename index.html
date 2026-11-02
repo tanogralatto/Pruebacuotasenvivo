@@ -186,6 +186,14 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .result-expanded .cell .pct{font-size:28px}
 .result-expanded .cell .cnt{font-size:13px}
 .result-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.api-prediction{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.api-prediction h4{margin:0;font-size:15px}
+.api-prediction .pred-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.api-prediction .pred-item{border:1px solid var(--line);border-radius:6px;padding:8px;min-width:0}
+.api-prediction .pred-label{display:block;color:var(--muted);font-size:12px;margin-bottom:3px}
+.api-prediction .pred-value{font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.api-prediction .pred-note{font-size:12px;color:var(--muted);line-height:1.4}
+
 .fav-legacy{padding:14px 16px}
 .fav-legacy .fav-summary{display:flex;align-items:center;gap:12px;justify-content:space-between}
 .fav-legacy .fav-info{min-width:0;flex:1}
@@ -821,6 +829,7 @@ function loadCriteria(){
 }
 const state={key:LS.get('o05:key',''),market:'ht05',fixtures:[],selected:new Set(LS.get('o05:leagues',[])),criteria:loadCriteria(),cancel:false,running:false,results:[],strategyHistory:new Map(),errors:[],calls:0};
 const teamMemo=new Map(), h2hMemo=new Map();
+const predictionMemo=new Map();
 
 function setStatus(el,txt,err){el.textContent=txt;el.classList.toggle('err',!!err)}
 
@@ -933,6 +942,42 @@ function fixtureResponse(j,path){
   }
   return j.response;
 }
+function predictionCacheKey(id){return 'o05:v1:prediction:'+id}
+function cachedPrediction(id){
+  const v=LS.get(predictionCacheKey(id),null);
+  if(!v||!Number.isFinite(v.ts)||Date.now()-v.ts>6*60*60*1000||!v.data) return null;
+  return v.data;
+}
+function predictionFor(id){
+  const c=cachedPrediction(id);
+  if(c) return Promise.resolve(c);
+  if(predictionMemo.has(id)) return predictionMemo.get(id);
+  const p=(async()=>{
+    const j=await api('/predictions',{fixture:id});
+    const item=Array.isArray(j.response)?j.response[0]:null;
+    if(!item||!item.predictions) return null;
+    const data={predictions:item.predictions,comparison:item.comparison||null};
+    LS.set(predictionCacheKey(id),{ts:Date.now(),data});
+    return data;
+  })();
+  predictionMemo.set(id,p);
+  p.then(()=>{if(predictionMemo.get(id)===p)predictionMemo.delete(id)},()=>{if(predictionMemo.get(id)===p)predictionMemo.delete(id)});
+  return p;
+}
+function predictionHtml(data){
+  if(!data) return '<section class="api-prediction"><h4>Predicción API-Football</h4><div class="pred-note">API-Football no devolvió una predicción disponible para este partido.</div></section>';
+  const p=data.predictions||{}, c=data.comparison||{}, pd=c.poisson_distribution||{}, pct=x=>x==null||x===''?'—':String(x), goal=x=>x==null||x===''?'—':String(x);
+  const winner=p.winner&&p.winner.name?p.winner.name:'Sin ganador indicado';
+  const values=[
+    ['Ganador estimado',winner],
+    ['Under/Over estimado (partido)',p.under_over||'—'],
+    ['Goles local (partido)',goal(p.goals&&p.goals.home)],
+    ['Goles visitante (partido)',goal(p.goals&&p.goals.away)],
+    ['Poisson · local',pct(pd.home)],
+    ['Poisson · visitante',pct(pd.away)]
+  ];
+  return '<section class="api-prediction"><h4>Predicción API-Football · modelo externo</h4><div class="pred-grid">'+values.map(([label,value])=>'<div class="pred-item"><span class="pred-label">'+esc(label)+'</span><span class="pred-value">'+esc(value)+'</span></div>').join('')+'</div><div class="pred-note">Predicción general del partido, no una probabilidad específica de +0,5 goles en el primer tiempo. Los valores Poisson son la comparación que entrega API-Football; no son cuotas ni EV.</div>'+(p.advice?'<div class="pred-note"><b>Consejo API:</b> '+esc(p.advice)+'</div>':'')+'</section>';
+}
 function teamGames(id){
   const ck='o05:v5:t:'+id, c=cached(ck);
   if(c!==null) return Promise.resolve(c);
@@ -1034,6 +1079,9 @@ async function analizar(){
   const tasks=[];
   for(const id of teams.keys()) tasks.push(async()=>{tg.set(id,await teamGames(id))});
   for(const [k,[a,b]] of pairs) tasks.push(async()=>{hg.set(k,await h2hGames(a,b))});
+  const predictions=new Map();
+  for(const f of fxs) tasks.push(async()=>{try{predictions.set(f.id,await predictionFor(f.id))}catch(e){predictions.set(f.id,null);if(e.message!=='Cancelado'&&!state.errors.includes('Predicciones: '+e.message))state.errors.push('Predicciones: '+e.message)}});
+
   const total=tasks.length;let done=0,idx=0;
   prog(0,total);
   const worker=async()=>{
@@ -1051,7 +1099,7 @@ async function analizar(){
   for(const f of fxs){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
     const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
-    out.push({fx:f,tr,...resumen(tr)});
+    out.push({fx:f,tr,prediction:predictions.get(f.id)||null,...resumen(tr)});
   }
   state.strategyHistory=new Map(tg);
   state.results=out;
@@ -1085,6 +1133,7 @@ function cardHtml(r,i){
         <p class="league">${esc(f.lc)} · ${esc(f.ln)} · ${esc(marketDefs[state.market].short)}</p>
         <div class="result-actions"><span class="small">Promedio descriptivo · ${r.n} de 7 indicadores</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
         <div class="cells">${r.tr.map(cellHtml).join('')}</div>
+        ${predictionHtml(r.prediction)}
         <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
       </div>
     </details>
