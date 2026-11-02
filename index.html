@@ -258,6 +258,13 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .badge.pendiente{background:var(--warn-bg);color:var(--ink)}
 .badge.aprobado{background:var(--c4);color:var(--accent-ink)}
 .badge.bloqueado{background:var(--c1);color:#fff}
+.alert-history-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.alert-history-tab{border:1px solid var(--line);border-radius:6px;padding:9px 14px;background:var(--surface);color:var(--ink);font-weight:600}
+.alert-history-tab.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.alert-bet-edit{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:8px;padding-top:10px;border-top:1px solid var(--line)}
+.alert-bet-edit label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.alert-bet-edit input{width:100%;min-width:0}
+.alert-bet-edit button{align-self:end}
 .alert-history-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
 .alert-stat{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:4px}
 .alert-stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
@@ -656,7 +663,17 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="alertHistoryView" class="app-view hidden" role="tabpanel" aria-labelledby="tabAlertHistory">
   <section class="panel" aria-labelledby="alertHistoryTitle">
     <h2 id="alertHistoryTitle">Historial de alertas Telegram</h2>
-    <p class="small">Historial de alertas enviadas. Se cargan las 100 más recientes; podés traer anteriores sin generar consultas a API-Football.</p>
+    <p class="small">Se conservan todas las alertas originales. El resultado deportivo se actualiza automáticamente cuando puede verificarse; podés corregir la cuota real de entrada para medir la rentabilidad.</p>
+    <div class="panel" style="margin:12px 0;padding:12px">
+      <h3 style="margin-top:0">Configuración de unidades</h3>
+      <div class="row"><label for="alertUnitValue">Valor de 1 unidad (ARS)</label><input id="alertUnitValue" type="number" min="1" step="1" inputmode="numeric" style="max-width:220px" value="5000"></div>
+      <p class="small">Cada alerta equivale a 1 unidad. El valor se guarda en este dispositivo; los cálculos usan la cuota real si la editaste y, si no, la cuota original de la alerta.</p>
+      <button id="saveAlertUnitValue" type="button">Guardar valor de unidad</button><span id="alertUnitStatus" class="small" aria-live="polite"></span>
+    </div>
+    <div class="alert-history-tabs" role="tablist" aria-label="Estrategia de alertas">
+      <button type="button" class="alert-history-tab active" data-history-group="favorites" role="tab" aria-selected="true">⭐ Favoritos</button>
+      <button type="button" class="alert-history-tab" data-history-group="vip" role="tab" aria-selected="false">💎 Favoritos VIP</button>
+    </div>
     <div id="alertHistorySummary" class="alert-history-summary"></div>
     <div id="alertHistoryList" class="cards"><div class="empty">Cargando historial…</div></div>
     <div style="display:flex;justify-content:center;margin-top:14px"><button id="loadOlderAlerts" type="button">Cargar anteriores</button></div>
@@ -1980,7 +1997,12 @@ function startAlertHistory() {
   if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
   const list = q('#alertHistoryList'), summary = q('#alertHistorySummary');
   const moreButton = q('#loadOlderAlerts');
+  const unitInput = q('#alertUnitValue'), unitSave = q('#saveAlertUnitValue'), unitStatus = q('#alertUnitStatus');
   const alertsRef = collection(db, 'tanoapp_telegram_alerts');
+  const unitStorageKey = 'tanoapp_alert_unit_value_ars';
+  let unitValue = Math.max(1, Number(localStorage.getItem(unitStorageKey)) || 5000);
+  unitInput.value = String(unitValue);
+  let activeGroup = 'favorites';
   let latestDocs = [];
   let olderPages = [];
   let cursor = null;
@@ -1988,52 +2010,124 @@ function startAlertHistory() {
   let loadingMore = false;
   let hasMore = true;
 
+  unitSave.onclick = () => {
+    const value = Number(unitInput.value);
+    if (!Number.isFinite(value) || value <= 0) {
+      unitStatus.textContent = 'Ingresá un valor mayor que cero.';
+      return;
+    }
+    unitValue = value;
+    localStorage.setItem(unitStorageKey, String(value));
+    unitStatus.textContent = 'Valor guardado en este dispositivo.';
+    renderHistory();
+  };
+  document.querySelectorAll('[data-history-group]').forEach(button => {
+    button.onclick = () => {
+      activeGroup = button.dataset.historyGroup;
+      document.querySelectorAll('[data-history-group]').forEach(b => {
+        const active = b.dataset.historyGroup === activeGroup;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', String(active));
+      });
+      renderHistory();
+    };
+  });
+
+  function betNumbers(a) {
+    const odd = Number(a.entry_odd ?? a.odd);
+    const stakeUnits = 1;
+    const result = a.result_status || 'pending';
+    let profitUnits = null;
+    if (result === 'won' && Number.isFinite(odd) && odd > 1) profitUnits = (odd - 1) * stakeUnits;
+    else if (result === 'lost') profitUnits = -stakeUnits;
+    else if (result === 'push') profitUnits = 0;
+    return { odd, stakeUnits, result, profitUnits };
+  }
+
   function renderHistory() {
     const allDocs = [...latestDocs, ...olderPages.flat()];
     const seen = new Set();
     const alerts = allDocs
       .filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; })
       .map(d => ({ id: d.id, ...d.data() }));
-    const settled = alerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
+    const groupAlerts = alerts.filter(a => activeGroup === 'vip' ? a.favorite_group === 'vip' : a.favorite_group !== 'vip');
+    const settled = groupAlerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
     const counts = {
-      won: alerts.filter(a => a.result_status === 'won').length,
-      lost: alerts.filter(a => a.result_status === 'lost').length,
-      push: alerts.filter(a => a.result_status === 'push').length,
-      pending: alerts.filter(a => !a.result_status || a.result_status === 'pending').length
+      won: groupAlerts.filter(a => a.result_status === 'won').length,
+      lost: groupAlerts.filter(a => a.result_status === 'lost').length,
+      push: groupAlerts.filter(a => a.result_status === 'push').length,
+      pending: groupAlerts.filter(a => !a.result_status || a.result_status === 'pending').length
     };
-    const balance = settled.reduce((sum, a) => sum + (Number(a.profit_units) || 0), 0);
+    const balanceUnits = settled.reduce((sum, a) => {
+      const n = betNumbers(a).profitUnits;
+      return sum + (Number.isFinite(n) ? n : 0);
+    }, 0);
+    const stakeCount = settled.filter(a => ['won','lost','push'].includes(a.result_status)).length;
+    const stakedUnits = settled.filter(a => ['won','lost'].includes(a.result_status)).length;
+    const roi = stakedUnits ? balanceUnits / stakedUnits * 100 : 0;
+    const balanceArs = balanceUnits * unitValue;
     summary.innerHTML = [
-      ['Alertas cargadas', alerts.length],
-      ['Aciertos', counts.won],
-      ['Fallos', counts.lost],
-      ['Reembolsos', counts.push],
+      ['Alertas cargadas', groupAlerts.length],
+      ['Ganadas', counts.won],
+      ['Perdidas', counts.lost],
+      ['Anuladas', counts.push],
       ['Pendientes', counts.pending],
-      ['Balance hipotético · 1 unidad', (balance > 0 ? '+' : '') + balance.toFixed(2) + ' u.']
+      ['Balance', (balanceUnits > 0 ? '+' : '') + balanceUnits.toFixed(2) + ' u.'],
+      ['Balance estimado ARS', (balanceArs > 0 ? '+' : '') + balanceArs.toLocaleString('es-AR',{maximumFractionDigits:2})],
+      ['ROI', (stakedUnits ? (roi > 0 ? '+' : '') + roi.toFixed(1) + '%' : '—')],
+      ['Acierto', (counts.won + counts.lost) ? (counts.won/(counts.won+counts.lost)*100).toFixed(1)+'%' : '—']
     ].map(([label, value]) => '<div class="alert-stat"><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>').join('');
 
-    if (!alerts.length) {
-      list.innerHTML = '<div class="empty">Todavía no hay alertas registradas.</div>';
-      moreButton.classList.add('hidden');
+    if (!groupAlerts.length) {
+      list.innerHTML = '<div class="empty">No hay alertas de esta estrategia en los registros cargados.</div>';
+      moreButton.classList.toggle('hidden', !hasMore);
       return;
     }
     const outcome = {
-      won: ['Acertó', 'won'], lost: ['Falló', 'lost'], push: ['Reembolso', 'push'],
+      won: ['Ganada', 'won'], lost: ['Perdida', 'lost'], push: ['Anulada', 'push'],
       pending: ['Pendiente', 'pending'], unavailable: ['Sin resultado', 'unavailable']
     };
-    list.innerHTML = alerts.map(a => {
+    list.innerHTML = groupAlerts.map(a => {
       const status = outcome[a.result_status] || (!a.result_status ? ['Pendiente', 'pending'] : ['Sin resultado', 'unavailable']);
       const marketLabel = a.market_type === 'over05' ? 'Más de 0,5 goles · 1T' : a.market_type === 'over10' ? 'Más de 1,0 goles · 1T' : (a.market || a.market_type || 'Mercado');
       const match = (a.home || 'Local') + ' ' + (a.score_at_alert || '—') + ' ' + (a.away || 'Visitante');
       const settle = a.halftime_score ? ' · Descanso: ' + a.halftime_score : '';
-      const n = Number(a.profit_units);
-      const profit = Number.isFinite(n) ? ' · Balance: ' + (n > 0 ? '+' : '') + n.toFixed(2) + ' u.' : '';
-      return '<article class="alert-history-card">'
+      const nums = betNumbers(a);
+      const balance = Number.isFinite(nums.profitUnits) ? ' · Balance: ' + (nums.profitUnits > 0 ? '+' : '') + nums.profitUnits.toFixed(2) + ' u. (' + ((nums.profitUnits * unitValue) > 0 ? '+' : '') + (nums.profitUnits * unitValue).toLocaleString('es-AR',{maximumFractionDigits:2}) + ' ARS)' : '';
+      const originalOdd = Number(a.odd);
+      const originalOddLabel = Number.isFinite(originalOdd) ? originalOdd.toFixed(2) : '—';
+      const entryOddLabel = Number.isFinite(nums.odd) ? nums.odd.toFixed(2) : '';
+      return '<article class="alert-history-card" data-alert-id="' + esc(a.id) + '">'
         + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong><div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
         + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
-        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 Favoritos VIP · ' : 'Favoritos · ') + esc(marketLabel) + ' · Cuota ' + esc(Number(a.odd).toFixed(2)) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + profit + '</div>'
+        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 Favoritos VIP · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + balance + '</div>'
+        + '<div class="alert-bet-edit"><label>Cuota real de entrada<input type="number" min="1.01" step="0.01" inputmode="decimal" data-entry-odd="' + esc(a.id) + '" value="' + esc(entryOddLabel) + '" placeholder="' + esc(originalOddLabel) + '"></label>'
+        + '<label>Stake<input type="text" value="1 unidad (' + esc(unitValue.toLocaleString('es-AR')) + ' ARS)" readonly></label>'
+        + '<button type="button" data-save-bet="' + esc(a.id) + '">Guardar cuota real</button></div>'
         + (a.result_note ? '<div class="small">' + esc(a.result_note) + '</div>' : '')
         + '</article>';
     }).join('');
+    list.querySelectorAll('[data-save-bet]').forEach(button => {
+      button.onclick = async () => {
+        const id = button.dataset.saveBet;
+        const input = list.querySelector('[data-entry-odd="' + CSS.escape(id) + '"]');
+        const entryOdd = Number(input.value);
+        if (!Number.isFinite(entryOdd) || entryOdd <= 1) {
+          unitStatus.textContent = 'La cuota real debe ser mayor que 1,00.';
+          return;
+        }
+        button.disabled = true;
+        try {
+          await updateDoc(doc(db, 'tanoapp_telegram_alerts', id), { entry_odd: entryOdd, stake_units: 1, stake_unit_value_ars: unitValue, bet_model_version: 2 });
+          unitStatus.textContent = 'Cuota real guardada.';
+        } catch (e) {
+          unitStatus.textContent = 'No se pudo guardar. Hay que habilitar en Firebase la edición segura de los campos de apuesta.';
+          console.error('No se pudo guardar cuota de apuesta', e);
+        } finally {
+          button.disabled = false;
+        }
+      };
+    });
     moreButton.classList.toggle('hidden', !hasMore);
     moreButton.disabled = loadingMore;
     moreButton.textContent = loadingMore ? 'Cargando…' : (hasMore ? 'Cargar anteriores' : 'No hay más alertas');
@@ -2069,9 +2163,6 @@ function startAlertHistory() {
   moreButton.classList.add('hidden');
   unsubAlerts = onSnapshot(query(alertsRef, orderBy('created_at', 'desc'), limit(100)), snap => {
     latestDocs = snap.docs;
-    // Once older pages are loaded, keep their cursor stable. startAt on the
-    // first older page includes the boundary document, avoiding gaps if new
-    // alerts arrive and the live first page shifts while browsing history.
     if (!olderPages.length) {
       cursor = latestDocs.length ? latestDocs[latestDocs.length - 1] : null;
       firstOlderPage = true;
@@ -2080,7 +2171,7 @@ function startAlertHistory() {
     renderHistory();
   }, e => {
     summary.innerHTML = '';
-    list.innerHTML = '<div class="empty">No se pudo leer el historial: ' + esc(friendly(e)) + ' Revisá que Firestore permita al dueño leer tanoapp_telegram_alerts.</div>';
+    list.innerHTML = '<div class="empty">No se pudo leer el historial: ' + esc(friendly(e)) + ' Revisá que Firestore permita leer tanoapp_telegram_alerts.</div>';
     moreButton.classList.add('hidden');
   });
 }
