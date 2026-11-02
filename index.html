@@ -706,11 +706,16 @@ function compact(resp){
     const st=f.fixture&&f.fixture.status&&f.fixture.status.short;
     if(!DONE_ST.includes(st)) continue;
     const s=f.score||{}, ht=s.halftime||{}, ft=s.fulltime||{};
-    let fh=null, hts=null;
-    if(Number.isInteger(ht.home)&&Number.isInteger(ht.away)){ fh=ht.home+ht.away; hts=[ht.home,ht.away]; }
-    else if(ft.home===0&&ft.away===0){ fh=0; }
+    let fh=null, hts=null, htSource='missing';
+    const htHome=ht.home, htAway=ht.away;
+    if(Number.isInteger(htHome)&&Number.isInteger(htAway)){
+      fh=htHome+htAway; hts=[htHome,htAway]; htSource='api';
+    }else if(ft.home===0&&ft.away===0){
+      // El 0-0 al descanso se deduce del 0-0 final; no es un HT recibido de la API.
+      fh=0; htSource='inferred_ft_0_0';
+    }
     const fs=Number.isInteger(ft.home)&&Number.isInteger(ft.away)?[ft.home,ft.away]:null;
-    out.push({i:f.fixture.id,d:f.fixture.timestamp,h:f.teams.home.id,a:f.teams.away.id,hn:f.teams.home.name,an:f.teams.away.name,ht:hts,fh,fs,s:f.league?.season??null,l:f.league?.id??null});
+    out.push({i:f.fixture.id,d:f.fixture.timestamp,h:f.teams.home.id,a:f.teams.away.id,hn:f.teams.home.name,an:f.teams.away.name,ht:hts,fh,fs,htSource,htRaw:{home:htHome??null,away:htAway??null},s:f.league?.season??null,l:f.league?.id??null});
   }
   out.sort((x,y)=>y.d-x.d);
   return out;
@@ -1079,8 +1084,9 @@ function detailHtml(r){
       const hit=validScore&&hitFor(g,state.market);
       const cls=!validScore?'na':hit?'y':'n';
       const score=state.market==='ht05'?(g.ht?`${g.ht[0]}-${g.ht[1]}`:(g.fh===0?'0-0*':'s/d')):(g.fs?`${g.fs[0]}-${g.fs[1]}`:'s/d');
+      const htStatus=state.market!=='ht05'?'':g.htSource==='api'?'HT recibido de API':g.htSource==='inferred_ft_0_0'?'HT inferido por FT 0-0':g.htSource==='missing'?'HT ausente en respuesta API':(g.ht?'HT disponible en caché anterior':g.fh===0?'HT inferido en caché anterior':'HT sin trazabilidad en caché anterior');
       const mk=!validScore?'s/d':hit?(state.market==='btts'?'ambos marcan':state.market==='over25'?'+2,5':'gol'):(state.market==='btts'?'no marcan ambos':state.market==='over25'?'−2,5':'sin gol');
-      return `<li class="${cls}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}</span><span class="m">${mk}</span></li>`;
+      return `<li class="${cls}" title="${esc(htStatus)}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}${htStatus?`<small class="small" style="display:block">${esc(htStatus)}</small>`:''}</span><span class="m">${mk}</span></li>`;
     }).join('')||'<li class="na"><span></span><span>sin partidos</span><span></span></li>';
     return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos seleccionados${inferidosLabel}${rng}</h3><ul>${rows}</ul></div>`;
   }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. ':''}Los s/d no se incluyen en el denominador. “Seleccionados” indica partidos incluidos en la muestra, no que todos tengan un marcador verificado.</p>`;
