@@ -889,14 +889,28 @@ function scheduleQuota(){
 }
 
 /* ---- caché ---- */
-function cached(k){const c=LS.get(k,null);return c&&Date.now()-c.ts<TTL?c.g:null}
+function cached(k){
+  const entry=LS.get(k,null);
+  if(!entry||!Number.isFinite(entry.ts)||!Array.isArray(entry.g)) return null;
+  const age=Date.now()-entry.ts;
+  if(age<0||age>=TTL) return null;
+  return entry.g;
+}
+function fixtureResponse(j,path){
+  if(!j||!Array.isArray(j.response)){
+    throw new Error('API-Football devolvió una respuesta de partidos inválida para '+path+'. No se guardó en caché.');
+  }
+  return j.response;
+}
 function teamGames(id){
   const ck='o05:v4:t:'+id, c=cached(ck);
-  if(c) return Promise.resolve(c);
+  if(c!==null) return Promise.resolve(c);
   if(teamMemo.has(id)) return teamMemo.get(id);
   const p=(async()=>{
     const j=await api('/fixtures',{team:id,last:99,timezone:TZ});
-    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+    const g=compact(fixtureResponse(j,'/fixtures'));
+    LS.set(ck,{ts:Date.now(),g,cacheSchema:2,source:'api-football',count:g.length});
+    return g;
   })();
   teamMemo.set(id,p);
   // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
@@ -905,11 +919,13 @@ function teamGames(id){
 }
 function h2hGames(a,b){
   const key=[a,b].sort((x,y)=>x-y).join('-'), ck='o05:v2:h:'+key, c=cached(ck);
-  if(c) return Promise.resolve(c);
+  if(c!==null) return Promise.resolve(c);
   if(h2hMemo.has(key)) return h2hMemo.get(key);
   const p=(async()=>{
     const j=await api('/fixtures/headtohead',{h2h:a+'-'+b,last:8,timezone:TZ});
-    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+    const g=compact(fixtureResponse(j,'/fixtures/headtohead'));
+    LS.set(ck,{ts:Date.now(),g,cacheSchema:2,source:'api-football',count:g.length});
+    return g;
   })();
   h2hMemo.set(key,p);
   // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
