@@ -700,17 +700,48 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <script>
 /*PURE*/
 const DONE_ST=['FT','AET','PEN'];
+function validateHtRecord(g){
+  // Los registros anteriores al esquema de trazabilidad no permiten reconstruir el origen.
+  if(!g||!Object.prototype.hasOwnProperty.call(g,'htSource')||!g.htRaw)
+    return {status:'legacy_unverified',detail:'Registro de caché anterior: no conserva el HT original de la API.'};
+  const rawH=g.htRaw.home, rawA=g.htRaw.away;
+  if(g.htSource==='api'){
+    if(!Number.isInteger(rawH)||!Number.isInteger(rawA)||rawH<0||rawA<0)
+      return {status:'invalid_processed',detail:'Origen marcado como API, pero el HT original no contiene dos enteros válidos.'};
+    if(!Array.isArray(g.ht)||g.ht[0]!==rawH||g.ht[1]!==rawA||g.fh!==rawH+rawA)
+      return {status:'invalid_processed',detail:'El HT compacto no coincide con los valores originales guardados; posible alteración en procesamiento o caché.'};
+    return {status:'valid_api',detail:'HT recibido de API y consistente con el registro procesado.'};
+  }
+  if(g.htSource==='inferred_ft_0_0'){
+    if(!Array.isArray(g.fs)||g.fs[0]!==0||g.fs[1]!==0||g.fh!==0||g.ht!==null)
+      return {status:'invalid_processed',detail:'La inferencia de HT 0-0 no coincide con el marcador final o el formato esperado.'};
+    return {status:'inferred_zero_final',detail:'HT total 0 inferido a partir del 0-0 final; no fue recibido explícitamente como HT.'};
+  }
+  if(g.htSource==='missing'){
+    if(g.fh!==null||g.ht!==null)
+      return {status:'invalid_processed',detail:'El HT está marcado como ausente, pero hay un valor procesado.'};
+    return {status:'missing_api',detail:'La respuesta original no contenía dos valores HT enteros válidos.'};
+  }
+  return {status:'legacy_unverified',detail:'Origen HT desconocido; no se puede validar con certeza.'};
+}
 function compact(resp){
   const out=[];
   for(const f of resp||[]){
     const st=f.fixture&&f.fixture.status&&f.fixture.status.short;
     if(!DONE_ST.includes(st)) continue;
     const s=f.score||{}, ht=s.halftime||{}, ft=s.fulltime||{};
-    let fh=null, hts=null;
-    if(Number.isInteger(ht.home)&&Number.isInteger(ht.away)){ fh=ht.home+ht.away; hts=[ht.home,ht.away]; }
-    else if(ft.home===0&&ft.away===0){ fh=0; }
+    let fh=null, hts=null, htSource='missing';
+    const htHome=ht.home, htAway=ht.away;
+    if(Number.isInteger(htHome)&&Number.isInteger(htAway)&&htHome>=0&&htAway>=0){
+      fh=htHome+htAway; hts=[htHome,htAway]; htSource='api';
+    }else if(ft.home===0&&ft.away===0){
+      // El 0-0 al descanso se deduce del 0-0 final; no es un HT recibido de la API.
+      fh=0; htSource='inferred_ft_0_0';
+    }
     const fs=Number.isInteger(ft.home)&&Number.isInteger(ft.away)?[ft.home,ft.away]:null;
-    out.push({i:f.fixture.id,d:f.fixture.timestamp,h:f.teams.home.id,a:f.teams.away.id,hn:f.teams.home.name,an:f.teams.away.name,ht:hts,fh,fs,s:f.league?.season??null,l:f.league?.id??null});
+    const g={i:f.fixture.id,d:f.fixture.timestamp,h:f.teams.home.id,a:f.teams.away.id,hn:f.teams.home.name,an:f.teams.away.name,ht:hts,fh,fs,htSource,htRaw:{home:htHome??null,away:htAway??null},s:f.league?.season??null,l:f.league?.id??null};
+    g.htValidation=validateHtRecord(g);
+    out.push(g);
   }
   out.sort((x,y)=>y.d-x.d);
   return out;
@@ -884,14 +915,33 @@ function scheduleQuota(){
 }
 
 /* ---- caché ---- */
-function cached(k){const c=LS.get(k,null);return c&&Date.now()-c.ts<TTL?c.g:null}
+function cached(k){
+  const entry=LS.get(k,null);
+  if(!entry||!Number.isFinite(entry.ts)||!Array.isArray(entry.g)) return null;
+  const age=Date.now()-entry.ts;
+  if(age<0||age>=TTL) return null;
+  // Revalidar al leer: detecta divergencias entre HT original guardado y campos derivados.
+  return entry.g.map(g=>{
+    if(!g||typeof g!=='object') return g;
+    const check=validateHtRecord(g);
+    return {...g,htValidation:check};
+  });
+}
+function fixtureResponse(j,path){
+  if(!j||!Array.isArray(j.response)){
+    throw new Error('API-Football devolvió una respuesta de partidos inválida para '+path+'. No se guardó en caché.');
+  }
+  return j.response;
+}
 function teamGames(id){
   const ck='o05:v4:t:'+id, c=cached(ck);
-  if(c) return Promise.resolve(c);
+  if(c!==null) return Promise.resolve(c);
   if(teamMemo.has(id)) return teamMemo.get(id);
   const p=(async()=>{
     const j=await api('/fixtures',{team:id,last:99,timezone:TZ});
-    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+    const g=compact(fixtureResponse(j,'/fixtures'));
+    LS.set(ck,{ts:Date.now(),g,cacheSchema:2,source:'api-football',count:g.length});
+    return g;
   })();
   teamMemo.set(id,p);
   // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
@@ -900,11 +950,13 @@ function teamGames(id){
 }
 function h2hGames(a,b){
   const key=[a,b].sort((x,y)=>x-y).join('-'), ck='o05:v2:h:'+key, c=cached(ck);
-  if(c) return Promise.resolve(c);
+  if(c!==null) return Promise.resolve(c);
   if(h2hMemo.has(key)) return h2hMemo.get(key);
   const p=(async()=>{
     const j=await api('/fixtures/headtohead',{h2h:a+'-'+b,last:8,timezone:TZ});
-    const g=compact(j.response); LS.set(ck,{ts:Date.now(),g}); return g;
+    const g=compact(fixtureResponse(j,'/fixtures/headtohead'));
+    LS.set(ck,{ts:Date.now(),g,cacheSchema:2,source:'api-football',count:g.length});
+    return g;
   })();
   h2hMemo.set(key,p);
   // El mapa deduplica solo solicitudes en curso; el TTL lo controla el caché persistente.
@@ -1071,19 +1123,25 @@ function renderResults(){
 }
 function detailHtml(r){
   return r.tr.map(t=>{
-    const rng=t.valid?` · datos del ${fmtDate(t.min)} al ${fmtDate(t.max)}`:'';
+    const rng=t.valid?` · datos válidos del ${fmtDate(t.min)} al ${fmtDate(t.max)}`:'';
     const inferidos=state.market==='ht05'?t.games.filter(g=>g.fh===0&&!g.ht).length:0;
     const inferidosLabel=inferidos?` · ${inferidos} inferido(s) por FT 0-0`:'';
+    const missingHT=state.market==='ht05'?t.games.filter(g=>g.fh===null).length:0;
+    const missingLabel=missingHT?` · ${missingHT} sin HT válido`:'';
+    const validationCounts=state.market==='ht05'?t.games.reduce((a,g)=>{const status=(g.htValidation||validateHtRecord(g)).status;a[status]=(a[status]||0)+1;return a;},{}):{};
+    const validationLabel=state.market==='ht05'?Object.entries(validationCounts).map(([k,v])=>({valid_api:'HT verificado',inferred_zero_final:'inferido por FT 0-0',missing_api:'ausente en API',invalid_processed:'inconsistencia HT',legacy_unverified:'caché antigua/no verificable'}[k]||k)+': '+v).join(' · '):'';
     const rows=t.games.map(g=>{
       const validScore=state.market==='ht05'?g.fh!==null:!!g.fs;
       const hit=validScore&&hitFor(g,state.market);
       const cls=!validScore?'na':hit?'y':'n';
       const score=state.market==='ht05'?(g.ht?`${g.ht[0]}-${g.ht[1]}`:(g.fh===0?'0-0*':'s/d')):(g.fs?`${g.fs[0]}-${g.fs[1]}`:'s/d');
+      const validation=g.htValidation||validateHtRecord(g);
+      const htStatus=state.market!=='ht05'?'':validation.detail||'Origen HT desconocido';
       const mk=!validScore?'s/d':hit?(state.market==='btts'?'ambos marcan':state.market==='over25'?'+2,5':'gol'):(state.market==='btts'?'no marcan ambos':state.market==='over25'?'−2,5':'sin gol');
-      return `<li class="${cls}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}</span><span class="m">${mk}</span></li>`;
+      return `<li class="${cls}" title="${esc(htStatus)}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}${htStatus?`<small class="small" style="display:block">${esc(htStatus)}</small>`:''}</span><span class="m">${mk}</span></li>`;
     }).join('')||'<li class="na"><span></span><span>sin partidos</span><span></span></li>';
-    return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos seleccionados${inferidosLabel}${rng}</h3><ul>${rows}</ul></div>`;
-  }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. ':''}Los s/d no se incluyen en el denominador. “Seleccionados” indica partidos incluidos en la muestra, no que todos tengan un marcador verificado.</p>`;
+    return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos revisados${inferidosLabel}${missingLabel}${rng}</h3>${validationLabel?'<p class="small">'+esc(validationLabel)+'</p>':''}<ul>${rows}</ul></div>`;
+  }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. Los partidos sin HT válido no se incluyen en el denominador. ':''}La muestra revisa los últimos partidos disponibles hasta el objetivo indicado; los registros sin marcador válido no se reemplazan por partidos más antiguos. Por eso, partidos revisados y partidos válidos pueden ser distintos.</p>`;
 
 }
 function copyList(){
