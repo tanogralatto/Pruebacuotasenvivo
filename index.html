@@ -370,6 +370,17 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .favorite-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .favorite-dialog-remove{color:var(--danger,#b83b3b)}
 .favorite-dialog-close{align-self:flex-end}
+
+/* Modelo Poisson propio: panel independiente de los siete criterios */
+.poisson-panel{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.poisson-title{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:600;margin-bottom:8px}
+.poisson-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.poisson-metric{padding:8px;background:var(--bg);border-radius:6px;min-width:0}
+.poisson-metric .label{display:block;color:var(--muted);font-size:11px;line-height:1.3}
+.poisson-metric .value{display:block;font-family:var(--font-data);font-size:18px;font-weight:600;margin-top:4px;overflow-wrap:anywhere}
+.poisson-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.45}
+.poisson-status{font-size:12px;color:var(--muted);margin-top:6px}
+@media(max-width:480px){.poisson-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.poisson-metric{padding:6px}.poisson-metric .value{font-size:15px}}
 </style>
 </head>
 <body>
@@ -697,6 +708,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 
 </div>
 
+<script src="./modelo-poisson.js"></script>
 <script>
 /*PURE*/
 const DONE_ST=['FT','AET','PEN'];
@@ -1051,7 +1063,8 @@ async function analizar(){
   for(const f of fxs){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
     const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
-    out.push({fx:f,tr,...resumen(tr)});
+    const poisson=state.market==='ht05'?poissonInputForFixture(f,tg):null;
+    out.push({fx:f,tr,poisson,...resumen(tr)});
   }
   state.strategyHistory=new Map(tg);
   state.results=out;
@@ -1063,7 +1076,52 @@ async function analizar(){
   if(state.key) checkStatus();
 }
 
-/* ---- resultados ---- */
+
+/* ---- modelo propio Poisson (usa exclusivamente los historiales ya cargados) ---- */
+function htScorePair(g){
+  if(Array.isArray(g.ht)&&g.ht.length===2&&g.ht.every(Number.isInteger)) return g.ht;
+  if(g.fh===0&&g.htSource==='inferred_ft_0_0') return [0,0];
+  return null;
+}
+function poissonInputForFixture(f,tg){
+  if(state.market!=='ht05'||!window.TanoPoissonModel) return null;
+  const unique=new Map();
+  for(const games of tg.values()) for(const g of games||[]){
+    if(g.l===f.lid&&g.s===f.season&&!unique.has(g.i)){
+      const score=htScorePair(g); if(score) unique.set(g.i,{g,score});
+    }
+  }
+  // Exigir una base de liga razonable; no sustituirla por promedios arbitrarios.
+  if(unique.size<20) return {ok:false,reason:'Muestra de liga insuficiente: se necesitan al menos 20 partidos con marcador HT válido dentro de los historiales ya consultados.'};
+  const league=[...unique.values()];
+  const leagueHomeGoalsHT=league.reduce((a,x)=>a+x.score[0],0)/league.length;
+  const leagueAwayGoalsHT=league.reduce((a,x)=>a+x.score[1],0)/league.length;
+  if(leagueHomeGoalsHT<=0||leagueAwayGoalsHT<=0) return {ok:false,reason:'No se pudo estimar un promedio de goles HT local/visitante fiable para esta liga.'};
+  const toTeamHistory=(games,teamId)=> (games||[]).filter(g=>g.d<Math.floor(new Date(f.iso).getTime()/1000)).map(g=>{
+    const score=htScorePair(g); if(!score) return null;
+    const isHome=g.h===teamId, isAway=g.a===teamId; if(!isHome&&!isAway) return null;
+    return {scoredHT:isHome?score[0]:score[1],concededHT:isHome?score[1]:score[0]};
+  }).filter(Boolean);
+  return window.TanoPoissonModel.calculate({
+    homeHistory:toTeamHistory(tg.get(f.hid),f.hid),
+    awayHistory:toTeamHistory(tg.get(f.aid),f.aid),
+    leagueHomeGoalsHT,leagueAwayGoalsHT
+  });
+}
+function poissonHtml(model){
+  if(state.market!=='ht05') return '';
+  if(!model||!model.ok) return '<section class="poisson-panel"><div class="poisson-title">Modelo propio · Poisson 1T</div><div class="poisson-status">'+esc(model&&model.reason||'No hay datos suficientes para calcular el modelo.')+'</div><div class="poisson-note">No modifica los siete criterios. No se hicieron consultas adicionales para este cálculo.</div></section>';
+  const p=model.probabilityPercent.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+  const fair=model.fairOdds.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const lam=model.lambdas.totalHT.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span><span class="small">No calibrado</span></div><div class="poisson-grid">'+
+    '<div class="poisson-metric"><span class="label">Prob. estimada +0,5 1T</span><span class="value">'+p+'</span></div>'+
+    '<div class="poisson-metric"><span class="label">Cuota justa</span><span class="value">'+fair+'</span></div>'+
+    '<div class="poisson-metric"><span class="label">Goles esperados 1T (λ)</span><span class="value">'+lam+'</span></div></div>'+
+    '<div class="poisson-status">Muestra: '+model.sample.homeMatches+' partidos del local · '+model.sample.awayMatches+' del visitante. EV no disponible: el Escáner no tiene una cuota de mercado verificada para este partido.</div>'+
+    '<div class="poisson-note">Cálculo exploratorio con los marcadores HT ya guardados en los historiales y promedio local/visitante de la liga deducido de esos mismos datos. No es una probabilidad calibrada ni una recomendación de apuesta.</div></section>';
+}
+\n/* ---- resultados ---- *//* ---- resultados ---- */
 function cellHtml(t){
   if(!t.valid){
     const why=t.games.length?(state.market==='ht05'?'sin marcador HT':'sin marcador final'):'sin partidos';
@@ -1085,6 +1143,7 @@ function cardHtml(r,i){
         <p class="league">${esc(f.lc)} · ${esc(f.ln)} · ${esc(marketDefs[state.market].short)}</p>
         <div class="result-actions"><span class="small">Promedio descriptivo · ${r.n} de 7 indicadores</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
         <div class="cells">${r.tr.map(cellHtml).join('')}</div>
+        ${poissonHtml(r.poisson)}
         <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
       </div>
     </details>
