@@ -934,7 +934,7 @@ function fixtureResponse(j,path){
   return j.response;
 }
 function teamGames(id){
-  const ck='o05:v4:t:'+id, c=cached(ck);
+  const ck='o05:v5:t:'+id, c=cached(ck);
   if(c!==null) return Promise.resolve(c);
   if(teamMemo.has(id)) return teamMemo.get(id);
   const p=(async()=>{
@@ -949,7 +949,7 @@ function teamGames(id){
   return p;
 }
 function h2hGames(a,b){
-  const key=[a,b].sort((x,y)=>x-y).join('-'), ck='o05:v2:h:'+key, c=cached(ck);
+  const key=[a,b].sort((x,y)=>x-y).join('-'), ck='o05:v3:h:'+key, c=cached(ck);
   if(c!==null) return Promise.resolve(c);
   if(h2hMemo.has(key)) return h2hMemo.get(key);
   const p=(async()=>{
