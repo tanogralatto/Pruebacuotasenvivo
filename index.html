@@ -670,6 +670,13 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       <p class="small">Cada alerta equivale a 1 unidad. El valor se guarda en este dispositivo; los cálculos usan la cuota real si la editaste y, si no, la cuota original de la alerta.</p>
       <button id="saveAlertUnitValue" type="button">Guardar valor de unidad</button><span id="alertUnitStatus" class="small" aria-live="polite"></span>
     </div>
+    <div class="row" style="align-items:flex-end;margin:12px 0">
+      <div class="field" style="max-width:260px;flex:1">
+        <label for="alertHistoryMonth">Mes de las alertas</label>
+        <input id="alertHistoryMonth" type="month" aria-describedby="alertHistoryMonthHelp">
+      </div>
+      <span id="alertHistoryMonthHelp" class="small">Cada apuesta se asigna al mes en que se generó la alerta. Favoritos y VIP se calculan por separado.</span>
+    </div>
     <div class="alert-history-tabs" role="tablist" aria-label="Estrategia de alertas">
       <button type="button" class="alert-history-tab active" data-history-group="favorites" role="tab" aria-selected="true">⭐ Favoritos</button>
       <button type="button" class="alert-history-tab" data-history-group="vip" role="tab" aria-selected="false">💎 Favoritos VIP</button>
@@ -2003,6 +2010,24 @@ function startAlertHistory() {
   let unitValue = Math.max(1, Number(localStorage.getItem(unitStorageKey)) || 5000);
   unitInput.value = String(unitValue);
   let activeGroup = 'favorites';
+  const monthInput = q('#alertHistoryMonth');
+  const monthKey = value => {
+    try {
+      const date = value && typeof value.toDate === 'function' ? value.toDate() : value instanceof Date ? value : null;
+      if (!date || !Number.isFinite(date.getTime())) return '';
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit' }).formatToParts(date);
+      const year = parts.find(p => p.type === 'year')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      return year && month ? year + '-' + month : '';
+    } catch (e) { return ''; }
+  };
+  const currentMonth = monthKey(new Date());
+  if (monthInput && !monthInput.value) monthInput.value = currentMonth;
+  let selectedMonth = monthInput?.value || currentMonth;
+  if (monthInput) monthInput.onchange = () => {
+    selectedMonth = monthInput.value || currentMonth;
+    renderHistory();
+  };
   let latestDocs = [];
   let olderPages = [];
   let cursor = null;
@@ -2051,12 +2076,14 @@ function startAlertHistory() {
       .filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; })
       .map(d => ({ id: d.id, ...d.data() }));
     const groupAlerts = alerts.filter(a => activeGroup === 'vip' ? a.favorite_group === 'vip' : a.favorite_group !== 'vip');
-    const settled = groupAlerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
+    // El período depende de la fecha original de la alerta, no del momento en que se liquida.
+    const monthAlerts = groupAlerts.filter(a => monthKey(a.created_at) === selectedMonth);
+    const settled = monthAlerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
     const counts = {
-      won: groupAlerts.filter(a => a.result_status === 'won').length,
-      lost: groupAlerts.filter(a => a.result_status === 'lost').length,
-      push: groupAlerts.filter(a => a.result_status === 'push').length,
-      pending: groupAlerts.filter(a => !a.result_status || a.result_status === 'pending').length
+      won: monthAlerts.filter(a => a.result_status === 'won').length,
+      lost: monthAlerts.filter(a => a.result_status === 'lost').length,
+      push: monthAlerts.filter(a => a.result_status === 'push').length,
+      pending: monthAlerts.filter(a => !a.result_status || a.result_status === 'pending').length
     };
     const balanceUnits = settled.reduce((sum, a) => {
       const n = betNumbers(a).profitUnits;
@@ -2067,7 +2094,7 @@ function startAlertHistory() {
     const roi = stakedUnits ? balanceUnits / stakedUnits * 100 : 0;
     const balanceArs = balanceUnits * unitValue;
     summary.innerHTML = [
-      ['Alertas cargadas', groupAlerts.length],
+      ['Alertas del mes', monthAlerts.length],
       ['Ganadas', counts.won],
       ['Perdidas', counts.lost],
       ['Anuladas', counts.push],
@@ -2078,8 +2105,9 @@ function startAlertHistory() {
       ['Acierto', (counts.won + counts.lost) ? (counts.won/(counts.won+counts.lost)*100).toFixed(1)+'%' : '—']
     ].map(([label, value]) => '<div class="alert-stat"><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>').join('');
 
-    if (!groupAlerts.length) {
-      list.innerHTML = '<div class="empty">No hay alertas de esta estrategia en los registros cargados.</div>';
+    if (!monthAlerts.length) {
+      const hasOlder = hasMore;
+      list.innerHTML = '<div class="empty">No hay alertas de esta estrategia para ' + esc(selectedMonth) + ' entre los registros cargados.' + (hasOlder ? ' Si buscás un mes anterior, tocá “Cargar anteriores” para traer más historial.' : '') + '</div>';
       moreButton.classList.toggle('hidden', !hasMore);
       return;
     }
@@ -2087,7 +2115,7 @@ function startAlertHistory() {
       won: ['Ganada', 'won'], lost: ['Perdida', 'lost'], push: ['Anulada', 'push'],
       pending: ['Pendiente', 'pending'], unavailable: ['Sin resultado', 'unavailable']
     };
-    list.innerHTML = groupAlerts.map(a => {
+    list.innerHTML = monthAlerts.map(a => {
       const status = outcome[a.result_status] || (!a.result_status ? ['Pendiente', 'pending'] : ['Sin resultado', 'unavailable']);
       const marketLabel = a.market_type === 'over05' ? 'Más de 0,5 goles · 1T' : a.market_type === 'over10' ? 'Más de 1,0 goles · 1T' : (a.market || a.market_type || 'Mercado');
       const match = (a.home || 'Local') + ' ' + (a.score_at_alert || '—') + ' ' + (a.away || 'Visitante');
