@@ -1128,16 +1128,19 @@ function detailHtml(r){
     const inferidosLabel=inferidos?` · ${inferidos} inferido(s) por FT 0-0`:'';
     const missingHT=state.market==='ht05'?t.games.filter(g=>g.fh===null).length:0;
     const missingLabel=missingHT?` · ${missingHT} sin HT válido`:'';
+    const validationCounts=state.market==='ht05'?t.games.reduce((a,g)=>{const status=(g.htValidation||validateHtRecord(g)).status;a[status]=(a[status]||0)+1;return a;},{}):{};
+    const validationLabel=state.market==='ht05'?Object.entries(validationCounts).map(([k,v])=>({valid_api:'HT verificado',inferred_zero_final:'inferido por FT 0-0',missing_api:'ausente en API',invalid_processed:'inconsistencia HT',legacy_unverified:'caché antigua/no verificable'}[k]||k)+': '+v).join(' · '):'';
     const rows=t.games.map(g=>{
       const validScore=state.market==='ht05'?g.fh!==null:!!g.fs;
       const hit=validScore&&hitFor(g,state.market);
       const cls=!validScore?'na':hit?'y':'n';
       const score=state.market==='ht05'?(g.ht?`${g.ht[0]}-${g.ht[1]}`:(g.fh===0?'0-0*':'s/d')):(g.fs?`${g.fs[0]}-${g.fs[1]}`:'s/d');
-      const htStatus=state.market!=='ht05'?'':g.htSource==='api'?'HT recibido de API':g.htSource==='inferred_ft_0_0'?'HT inferido por FT 0-0':g.htSource==='missing'?'HT ausente en respuesta API':(g.ht?'HT disponible en caché anterior':g.fh===0?'HT inferido en caché anterior':'HT sin trazabilidad en caché anterior');
+      const validation=g.htValidation||validateHtRecord(g);
+      const htStatus=state.market!=='ht05'?'':validation.detail||'Origen HT desconocido';
       const mk=!validScore?'s/d':hit?(state.market==='btts'?'ambos marcan':state.market==='over25'?'+2,5':'gol'):(state.market==='btts'?'no marcan ambos':state.market==='over25'?'−2,5':'sin gol');
       return `<li class="${cls}" title="${esc(htStatus)}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}${htStatus?`<small class="small" style="display:block">${esc(htStatus)}</small>`:''}</span><span class="m">${mk}</span></li>`;
     }).join('')||'<li class="na"><span></span><span>sin partidos</span><span></span></li>';
-    return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos revisados${inferidosLabel}${missingLabel}${rng}</h3><ul>${rows}</ul></div>`;
+    return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos revisados${inferidosLabel}${missingLabel}${rng}</h3>${validationLabel?'<p class="small">'+esc(validationLabel)+'</p>':''}<ul>${rows}</ul></div>`;
   }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. Los partidos sin HT válido no se incluyen en el denominador. ':''}La muestra revisa los últimos partidos disponibles hasta el objetivo indicado; los registros sin marcador válido no se reemplazan por partidos más antiguos. Por eso, partidos revisados y partidos válidos pueden ser distintos.</p>`;
 
 }
