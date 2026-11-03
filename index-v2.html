@@ -581,6 +581,7 @@ body.no-hints .poisson-metric .hint{display:none}
         <button id="btnLogCopy" type="button">Copiar registro</button>
       </div>
       <div id="valStatus" class="status" role="status"></div>
+      <div id="syncStatus" class="status" role="status">☁️ Conectando con tu cuenta…</div>
       <div id="valOut"></div>
       <div id="logOut"></div>
     </div>
@@ -898,7 +899,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const LS={
   get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));if(window.tanoSyncHook)try{window.tanoSyncHook(k,v)}catch(e){}return true}catch(e){return false}}
 };
 const fmtDate=ts=>new Date(ts*1000).toLocaleDateString('es-AR',{timeZone:TZ,day:'2-digit',month:'2-digit',year:'2-digit'});
 const fmtTime=iso=>new Date(iso).toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false});
@@ -2295,6 +2296,7 @@ function stopAll() {
 function leaveApp() {
   if (unsubFavs) { unsubFavs(); unsubFavs = null; }
   if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+  stopV2Sync();
   inApp = false; inAppUid = null; importChecked = false;
   window.tanoCloud = null;
   if (window.tanoSetFavorites) window.tanoSetFavorites([]);
@@ -2380,6 +2382,98 @@ function startTelegramSettings(user) {
   };
 }
 
+/* ===== Sincronización v2: registro de predicciones y ajuste del modelo, iguales en todos tus aparatos ===== */
+const SYNC_LOG = 'o05:plog:v1', SYNC_MODEL = 'o05:model:v1', SYNC_LAM = 'o05:lam:v1';
+let unsubSyncLog = null, unsubSyncMain = null, syncPushTimer = null, syncReady = false;
+const cloudLog = new Map(); // id -> JSON del registro tal como está en la nube
+const lsRaw = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
+function syncMsg(m, err) { const el = q('#syncStatus'); if (!el) return; el.textContent = m; el.classList.toggle('err', !!err); }
+const settledOf = e => e && (e.y === 0 || e.y === 1 || e.void) ? 1 : 0;
+function betterEntry(a, b) { // devuelve la versión más completa de la misma predicción
+  if (!a) return b; if (!b) return a;
+  if (settledOf(a) !== settledOf(b)) return settledOf(a) ? a : b;
+  return ((b.settledAt || 0) > (a.settledAt || 0) || (b.loggedAt || 0) > (a.loggedAt || 0)) ? b : a;
+}
+function refreshV2Views() {
+  try { if (window.tanoRenderLog) window.tanoRenderLog(); } catch (e) {}
+  const m = lsRaw.get(SYNC_MODEL, null), badge = q('#valBadge');
+  if (m && badge) badge.textContent = m.validated ? '· validado' : '· NO validado';
+}
+function pushLogChanges() {
+  if (!syncReady || !inAppUid) return;
+  const local = lsRaw.get(SYNC_LOG, {}) || {}, col = collection(db, 'tanoapp_v2_datos', inAppUid, 'registro');
+  const changed = Object.values(local).filter(e => e && e.id != null && JSON.stringify(e) !== cloudLog.get(String(e.id)) && betterEntry(cloudLog.has(String(e.id)) ? JSON.parse(cloudLog.get(String(e.id))) : null, e) === e);
+  if (!changed.length) return;
+  (async () => {
+    try {
+      for (let i = 0; i < changed.length; i += 400) {
+        const batch = writeBatch(db);
+        changed.slice(i, i + 400).forEach(e => { const c = clean(e); batch.set(doc(col, String(e.id)), c); cloudLog.set(String(e.id), JSON.stringify(c)); });
+        await batch.commit();
+      }
+      syncMsg('☁️ Registro guardado en tu cuenta (' + cloudLog.size + ' predicciones). Lo ves igual en la Mac y en el iPhone.');
+    } catch (e) { changed.forEach(x => cloudLog.delete(String(x.id))); syncMsg('☁️ No se pudo guardar en tu cuenta: ' + friendly(e), true); }
+  })();
+}
+function pushMain(fields) {
+  if (!syncReady || !inAppUid) return;
+  setDoc(doc(db, 'tanoapp_v2_datos', inAppUid), clean({ ...fields, actualizado: Date.now() }), { merge: true })
+    .catch(e => syncMsg('☁️ No se pudo guardar en tu cuenta: ' + friendly(e), true));
+}
+function stopV2Sync() {
+  if (unsubSyncLog) { unsubSyncLog(); unsubSyncLog = null; }
+  if (unsubSyncMain) { unsubSyncMain(); unsubSyncMain = null; }
+  window.tanoSyncHook = null; syncReady = false; cloudLog.clear();
+}
+function startV2Sync(user) {
+  stopV2Sync();
+  const uid = user.uid, mainRef = doc(db, 'tanoapp_v2_datos', uid), col = collection(db, 'tanoapp_v2_datos', uid, 'registro');
+  let gotLog = false, gotMain = false;
+  const maybeReady = () => {
+    if (syncReady || !gotLog || !gotMain) return;
+    syncReady = true;
+    pushLogChanges(); // sube lo que este aparato tenía y la nube no
+    syncMsg('☁️ Sincronizado con tu cuenta: ' + cloudLog.size + ' predicciones. Mac y iPhone ven lo mismo.');
+  };
+  window.tanoSyncHook = (k, v) => {
+    if (!syncReady) return;
+    if (k === SYNC_LOG) { clearTimeout(syncPushTimer); syncPushTimer = setTimeout(pushLogChanges, 1500); }
+    else if (k === SYNC_MODEL) pushMain({ model: v });
+    else if (k === SYNC_LAM) pushMain({ lam: JSON.stringify(v || {}) });
+  };
+  unsubSyncLog = onSnapshot(col, snap => {
+    const local = lsRaw.get(SYNC_LOG, {}) || {};
+    let changedLocal = false;
+    snap.docChanges().forEach(ch => {
+      if (ch.type === 'removed') return;
+      const e = ch.doc.data(), id = String(ch.doc.id);
+      cloudLog.set(id, JSON.stringify(e));
+      const best = betterEntry(local[id], e);
+      if (best !== local[id]) { local[id] = best; changedLocal = true; }
+    });
+    if (changedLocal) { lsRaw.set(SYNC_LOG, window.TanoVal ? window.TanoVal.pruneLog(local) : local); refreshV2Views(); }
+    if (!gotLog) { gotLog = true; maybeReady(); }
+    else if (syncReady) pushLogChanges();
+  }, e => syncMsg('☁️ No se pudo leer tu registro en la nube: ' + friendly(e), true));
+  unsubSyncMain = onSnapshot(mainRef, snap => {
+    const d = snap.exists() ? snap.data() : {};
+    const lm = lsRaw.get(SYNC_MODEL, null), cm = d.model || null;
+    if (cm && (!lm || (cm.validatedAt || 0) > (lm.validatedAt || 0))) { lsRaw.set(SYNC_MODEL, cm); refreshV2Views(); }
+    const needModelUp = lm && (!cm || (lm.validatedAt || 0) > (cm.validatedAt || 0));
+    let lamUp = false;
+    try {
+      const ll = lsRaw.get(SYNC_LAM, {}) || {}, cl = d.lam ? JSON.parse(d.lam) : {}, now = Date.now() / 1000;
+      const merged = { ...cl, ...ll };
+      for (const k of Object.keys(merged)) if (!(merged[k].ts > now - 3 * 86400)) delete merged[k];
+      if (JSON.stringify(merged) !== JSON.stringify(ll)) lsRaw.set(SYNC_LAM, merged);
+      lamUp = Object.keys(merged).some(k => !cl[k]);
+      if (!gotMain) { gotMain = true; maybeReady(); }
+      if (syncReady && (needModelUp || lamUp)) pushMain({ ...(needModelUp ? { model: lm } : {}), ...(lamUp ? { lam: JSON.stringify(merged) } : {}) });
+    } catch (e) { if (!gotMain) { gotMain = true; maybeReady(); } }
+  }, e => syncMsg('☁️ No se pudo leer tu ajuste en la nube: ' + friendly(e), true));
+}
+
 function enterApp(user, isOwner) {
   if (inApp && inAppUid === user.uid) return;
   inApp = true; inAppUid = user.uid; importChecked = false;
@@ -2403,6 +2497,7 @@ function enterApp(user, isOwner) {
   // El historial de alertas es visible para cualquier usuario autenticado y aprobado.
   q('#tabAlertHistory').classList.remove('hidden');
   startAlertHistory();
+  startV2Sync(user);
 
   if (isOwner) {
     q('#tabAccess').classList.remove('hidden');

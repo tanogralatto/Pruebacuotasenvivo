@@ -495,5 +495,6 @@
   q('#btnLogCopy').addEventListener('click', copyLog);
   const cfg0 = LS.get('o05:model:v1', null);
   if (cfg0 && q('#valBadge')) q('#valBadge').textContent = cfg0.validated ? '· validado' : '· NO validado';
+  root.tanoRenderLog = renderLogOut;
   renderLogOut();
 })(typeof globalThis !== 'undefined' ? globalThis : this);
