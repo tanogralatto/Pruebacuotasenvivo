@@ -401,6 +401,11 @@ body.no-hints .poisson-metric .hint{display:none}
 .val-table th:first-child,.val-table td:first-child{text-align:left}
 .val-box{padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:13px;line-height:1.5}
 .val-box b{font-weight:600}
+.val-why summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--accent);min-height:32px;display:flex;align-items:center}
+.val-why .val-box p{margin:0 0 8px}
+.val-why .val-box ul,.val-why .val-box ol{margin:0 0 8px;padding-left:20px}
+.val-why .val-box li{margin-bottom:4px}
+.val-why .val-box p:last-child{margin-bottom:0}
 .val-live{margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:13px;line-height:1.5}
 </style>
 </head>
@@ -525,6 +530,27 @@ body.no-hints .poisson-metric .hint{display:none}
     <summary id="t-val">5. Validación del modelo Poisson <span class="criteria-count" id="valBadge">· sin validar</span></summary>
     <div class="val-body">
       <p class="small">El Poisson solo sirve si, fuera de muestra, acierta mejor que la tasa base y sus porcentajes se cumplen (cuando dice 70%, pasa ~70%). Acá lo probás con las ligas marcadas en la sección 2, usando solo partidos anteriores a cada predicción. Si mejora, se guarda la calibración y los parámetros elegidos; si no, la app lo avisa y no marca EV como validado.</p>
+      <details class="val-why">
+        <summary>¿Para qué sirve esta sección? (explicación simple)</summary>
+        <div class="val-box">
+          <p><b>Poisson, xG y EV ya están en la app, pero dependen uno del otro:</b></p>
+          <ul>
+            <li><b>EV</b> compara la probabilidad del modelo con la cuota. Si el modelo dice 80% y en la realidad pasa 75%, el EV marca «apuesta buena» cuando no lo es, y perdés plata creyendo que ganás.</li>
+            <li><b>Poisson</b> es el que da esa probabilidad. Antes de confiar en el EV, hay que saber si el Poisson acierta.</li>
+            <li><b>xG</b> está <b>apagado</b> hasta que esta validación demuestre que mejora las predicciones. Recién ahí la app lo enciende sola.</li>
+          </ul>
+          <p><b>Qué hace «Validar»:</b></p>
+          <ol>
+            <li><b>Prueba el modelo con partidos ya jugados:</b> «si hubiera usado Poisson antes de este partido, ¿qué habría dicho?», y lo compara con lo que pasó. Es como probar una balanza con pesas conocidas antes de usarla.</li>
+            <li><b>Ajusta el modelo solo:</b> elige la mejor configuración, corrige si tiende a exagerar o a quedarse corto, y <b>lo guarda para que la app lo use</b> desde ese momento.</li>
+            <li><b>Decide si el xG ayuda:</b> si ayuda, lo enciende; si no, lo deja apagado.</li>
+            <li><b>Si pasa, el EV queda marcado como confiable.</b> Si no pasa, la app avisa que todavía no conviene fiarse del EV.</li>
+          </ol>
+          <p><b>En resumen:</b> sin este paso la app funciona, pero con Poisson sin xG, sin ajustar y con un EV sin comprobar. Con este paso queda usando <b>Poisson + xG (si sirve) + EV calibrado</b>.</p>
+          <p><b>Se hace una vez</b> (o de vez en cuando para actualizar), no todos los días: 1) marcá en la sección 2 ligas con mucho historial, 2) tocá «Bajar xG» una vez (cuesta ~1 consulta por partido y lo bajado queda guardado), 3) tocá «Validar» (unas 2 consultas por liga). Después usás la app normalmente.</p>
+          <p>El ROI real no sale de acá: sale del registro propio («Liquidar registro»), con las cuotas guardadas antes de cada partido.</p>
+        </div>
+      </details>
       <div class="row">
         <div class="field" style="width:170px"><label for="evMinEdge">Ventaja mínima para EV+ (%)</label><input id="evMinEdge" type="number" min="0" max="50" step="0.5" value="5"></div>
         <div class="field" style="width:190px"><label for="xgBudget">Consultas para bajar xG</label><input id="xgBudget" type="number" min="10" max="2000" step="10" value="200"></div>
