@@ -437,12 +437,12 @@ body.no-hints .poisson-metric .hint{display:none}
   <summary>📌 Tu rutina (tocá para ocultar o mostrar)</summary>
   <p><b>Todos los días, dos pasos:</b></p>
   <ol>
-    <li><b>Tocá «Liquidar registro»</b> (Escáner, sección 5). Anota cómo salieron los partidos de ayer.</li>
+    <li><b>Tocá «Liquidar registro»</b> (pestaña Validación). Anota cómo salieron los partidos de ayer.</li>
     <li><b>Analizá los partidos del día</b> en el Escáner, como siempre. La app guarda sola cada predicción con su cuota.</li>
   </ol>
   <p><b>EV:</b> el número más confiable es <b>«EV vs mercado (sin margen)»</b>. Todavía no sabemos si gana plata: hasta entonces, si apostás, que sea poco.</p>
   <p><b>En 2 o 3 semanas</b> (unas 300 predicciones liquidadas): tocá <b>«Copiar registro»</b> y pasáselo a Claude. Ahí se sabe si el sistema gana plata de verdad.</p>
-  <p class="small">Ya hecho: la validación salió bien (el Poisson calcula bien). Opcional, sin apuro: para probar el xG, poné 500 en «Consultas para bajar xG», tocá «Bajar xG» y después «Validar».</p>
+  <p class="small"><b>Pendiente una vez:</b> la validación ahora es más estricta (cada partido se juzga solo con lo anterior y se mira si la mejora puede ser suerte). Marcá tus ligas en el Escáner y tocá «Validar» en la pestaña Validación para actualizar la tabla. Opcional: para probar el xG, poné 500 en «Consultas para bajar xG», tocá «Bajar xG» y después «Validar».</p>
 </details>
 
 <div class="userbar">
@@ -456,6 +456,7 @@ body.no-hints .poisson-metric .hint{display:none}
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
   <button id="tabFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="favoritesView">Favoritos</button>
   <button id="tabVipFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="vipFavoritesView">Favoritos VIP</button>
+  <button id="tabValidation" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="validationView">Validación</button>
   <button id="tabStrategy" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="ghStrategyView">Estrategia AEG</button>
   <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram VIP</button>
   <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
@@ -542,11 +543,14 @@ body.no-hints .poisson-metric .hint{display:none}
   <div id="notes" class="notes"></div>
   <div id="results" class="cards"><div class="empty">Todavía no hay resultados. Buscá los partidos del día, marcá las ligas y tocá Analizar.</div></div>
 </section>
+</div>
 
+<div id="validationView" class="app-view hidden" role="tabpanel" aria-labelledby="tabValidation">
 <section class="panel" aria-labelledby="t-val">
-  <details id="validationPanel" class="criteria">
-    <summary id="t-val">5. Validación del modelo Poisson <span class="criteria-count" id="valBadge">· sin validar</span></summary>
+  <details id="validationPanel" class="criteria" open>
+    <summary id="t-val">Validación del modelo Poisson <span class="criteria-count" id="valBadge">· sin validar</span></summary>
     <div class="val-body">
+      <p class="small"><b>Las ligas se marcan en el Escáner</b> (sección 2, después de «Buscar partidos»). Después volvé a esta pestaña para validar.</p>
       <p class="small">El Poisson solo sirve si, fuera de muestra, acierta mejor que la tasa base y sus porcentajes se cumplen (cuando dice 70%, pasa ~70%). Acá lo probás con las ligas marcadas en la sección 2, usando solo partidos anteriores a cada predicción. Si mejora, se guarda la calibración y los parámetros elegidos; si no, la app lo avisa y no marca EV como validado.</p>
       <details class="val-why">
         <summary>¿Para qué sirve esta sección? (explicación simple)</summary>
@@ -1380,7 +1384,7 @@ function poissonHtml(model){
   const kelText=!kel||!kel.ok?'—':kel.stake>0?fmtNum(kel.stake*100,1)+'% de la banca'+(bank?' ≈ $'+Math.round(bank*kel.stake).toLocaleString('es-AR'):''):'No apostar';
   const kelSrc=kel&&kel.source==='mercado'?'usando solo las chances de las casas (la liga no está aprobada, así que el cálculo propio todavía no cuenta)':kel&&kel.source==='mezcla'?'usando una probabilidad intermedia entre el modelo y las casas':'usando la probabilidad del modelo';
   const kelHint=!kel||!kel.ok?'Falta la cuota para calcularlo.':kel.full==null?'La liga no está aprobada y no hay precio de las casas para comparar: no se sugiere apostar.':!(kel.stake>0)?'Calculado '+kelSrc+': con esas chances la cuota no da ventaja, así que Kelly dice no apostar.':'Cuánto apostar según Kelly, '+kelSrc+
-    ', apostando solo '+(kel.fraction===0.25?'¼':'⅛')+' de lo que diría Kelly completo'+(kel.capped?'; quedó en el tope del 3%':'')+'.'+(kel.stake>0&&!bank?' Cargá tu banca en la sección 5 para verlo en pesos.':'');
+    ', apostando solo '+(kel.fraction===0.25?'¼':'⅛')+' de lo que diría Kelly completo'+(kel.capped?'; quedó en el tope del 3%':'')+'.'+(kel.stake>0&&!bank?' Cargá tu banca en la pestaña Validación para verlo en pesos.':'');
   const grid=
     metric('Probabilidad '+M.name+(model.calibrated?' (calibrada)':''),fmtPct(model.probability),'',M.probHint)+
     metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0),'','Entre qué valores podría estar la chance real. Si el rango es ancho, el cálculo es menos seguro.')+
@@ -2099,7 +2103,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Escáner','Buscá partidos, elegí la fecha y las ligas, y analizá los resultados. Guardá los que te interesen con la estrella; aparecerán en Favoritos.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],favorites:['tabFavorites','favoritesView','Favoritos','Partidos guardados desde el Escáner. Desde aquí podés enviarlos a Favoritos VIP o quitarlos.'],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos destinados a las alertas VIP de Telegram.'],strategy:['tabStrategy','ghStrategyView','Estrategia AEG','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram VIP','Configuración del monitor de alertas Telegram VIP.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
+  const tabs={scanner:['tabScanner','scannerView','Escáner','Buscá partidos, elegí la fecha y las ligas, y analizá los resultados. Guardá los que te interesen con la estrella; aparecerán en Favoritos.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],favorites:['tabFavorites','favoritesView','Favoritos','Partidos guardados desde el Escáner. Desde aquí podés enviarlos a Favoritos VIP o quitarlos.'],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos destinados a las alertas VIP de Telegram.'],validation:['tabValidation','validationView','Validación','Validá el modelo por liga, liquidá el registro y mirá si el modelo le gana a las casas.'],strategy:['tabStrategy','ghStrategyView','Estrategia AEG','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram VIP','Configuración del monitor de alertas Telegram VIP.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
   function showTab(which){
     for(const [k,[tabId,viewId,title,subtitle]] of Object.entries(tabs)){
       const on=k===which;

@@ -160,7 +160,63 @@
 
   // Resultado de cada liga por separado (con las mismas predicciones fuera de muestra del backtest).
   // status: 'aprobada' | 'no' | 'faltan' (pocos partidos para decidir).
-  const LEAGUE_RULES = { minN: 100, minSkill: 0.01, maxBandGap: 0.07, minBand: 30, seFactor: 2 };
+  // Predicciones "honestas" para juzgar el modelo: para cada partido, tanto la elección de parámetros
+  // como la calibración se aprenden SOLO con partidos anteriores (nada aprendido con el resultado que se evalúa).
+  //  runs: [{ cfg, rows }] = un backtest por configuración (el primero es la configuración por defecto).
+  //  Parámetros: se usa la configuración con menor Brier acumulado en los partidos previos (desde minPrior).
+  //  Calibración (si calibrate): se ajusta con los partidos previos ya elegidos (desde minCal, se reajusta cada refit).
+  function honestRows(runs, T, opts) {
+    const o = Object.assign({ minPrior: 150, minCal: 300, refit: 50, calibrate: false }, opts || {});
+    const list = (runs || []).filter(r => r && Array.isArray(r.rows) && r.rows.length);
+    if (!list.length) return { rows: [], picks: {} };
+    const byId = list.map(r => new Map(r.rows.map(x => [String(x.id) + ':' + x.leagueId, x])));
+    const keys = [], seenKey = new Set();
+    for (const r of list) for (const x of r.rows) { const k = String(x.id) + ':' + x.leagueId; if (!seenKey.has(k)) { seenKey.add(k); keys.push({ k, ts: x.ts }); } }
+    keys.sort((a, b) => a.ts - b.ts);
+    const sum = list.map(() => 0), cnt = list.map(() => 0), picks = {};
+    const chosen = [];
+    let i = 0;
+    while (i < keys.length) {
+      // Los partidos del mismo momento se deciden juntos, con lo conocido antes de ese momento.
+      let j = i;
+      while (j < keys.length && keys[j].ts === keys[i].ts) j++;
+      const group = keys.slice(i, j);
+      for (const { k } of group) {
+        let best = -1, bestB = Infinity;
+        for (let c = 0; c < list.length; c++) {
+          if (!byId[c].has(k)) continue;
+          if (best < 0) best = c; // primera disponible (por defecto)
+          if (cnt[c] >= o.minPrior && sum[c] / cnt[c] < bestB) { bestB = sum[c] / cnt[c]; best = c; }
+        }
+        if (best < 0) continue;
+        const row = byId[best].get(k);
+        chosen.push(Object.assign({}, row, { cfgIndex: best }));
+        picks[best] = (picks[best] || 0) + 1;
+      }
+      for (const { k } of group) for (let c = 0; c < list.length; c++) {
+        const x = byId[c].get(k);
+        if (x && isNum(x.p) && (x.y === 0 || x.y === 1)) { sum[c] += (x.p - x.y) ** 2; cnt[c]++; }
+      }
+      i = j;
+    }
+    if (o.calibrate) {
+      let cal = null, lastFit = -Infinity, k = 0;
+      while (k < chosen.length) {
+        let m = k;
+        while (m < chosen.length && chosen[m].ts === chosen[k].ts) m++;
+        if (k >= o.minCal && k - lastFit >= o.refit) { cal = T.fitCalibration(chosen.slice(0, k).map(r => ({ p: r.pModel != null ? r.pModel : r.p, y: r.y }))); lastFit = k; }
+        for (let t = k; t < m; t++) { chosen[t].pModel = chosen[t].p; if (cal) chosen[t].p = T.applyCalibration(cal, chosen[t].p); }
+        k = m;
+      }
+    }
+    return { rows: chosen, picks };
+  }
+
+  // Confianza en que la mejora sea real y no suerte: z = mejora / error estándar.
+  const confidenceOf = (skill, se) => !isNum(skill) || !isNum(se) || !(se > 0) ? null : skill / se >= 1.64 ? 'alta' : skill / se >= 1 ? 'media' : 'baja';
+
+  const CONF_LABEL = { alta: '🟢 Alta', media: '🟡 Media', baja: '🔴 Baja' };
+  const LEAGUE_RULES = { minN: 100, minSkill: 0.01, maxBandGap: 0.07, minBand: 30, seFactor: 2, minZ: 1.64 };
   function leagueVerdicts(rows, T, pick) {
     const byLeague = new Map();
     for (const r of rows || []) { const k = String(r.leagueId); if (!byLeague.has(k)) byLeague.set(k, []); byLeague.get(k).push(r); }
@@ -169,13 +225,15 @@
       const m = T.scoreRows(list, pick);
       const bands = (m.calibration || []).filter(b => b.count >= LEAGUE_RULES.minBand);
       const gap = bands.length ? Math.max(...bands.map(b => Math.abs(b.predicted - b.observed))) : null;
+      const confidence = confidenceOf(m.skill, m.skillSe);
       let status;
       if (m.count < LEAGUE_RULES.minN) status = 'faltan';
       else {
         const v = validationVerdict(m, LEAGUE_RULES);
-        status = v.validated ? 'aprobada' : 'no';
+        // Además de mejorar 1% o más, la mejora tiene que ser difícil de explicar por suerte (confianza alta).
+        status = v.validated && confidence === 'alta' ? 'aprobada' : 'no';
       }
-      out[lid] = { lid, status, n: m.count, skill: m.skill, brier: m.brier, meanP: m.meanP, observed: m.observed, gap };
+      out[lid] = { lid, status, n: m.count, skill: m.skill, skillSe: m.skillSe, confidence, brier: m.brier, meanP: m.meanP, observed: m.observed, gap };
     }
     return out;
   }
@@ -211,7 +269,7 @@
   }
 
   const LV_KEY = 'o05:leagueval:v1';
-  const pure = { settleFromFixture, chunk, summarizeLog, brierVsMarket, roiBreakdown, stakeReplay, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
+  const pure = { settleFromFixture, chunk, summarizeLog, brierVsMarket, roiBreakdown, stakeReplay, honestRows, confidenceOf, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
   if (typeof module !== 'undefined' && module.exports) module.exports = pure;
   root.TanoVal = pure;
 
@@ -524,13 +582,14 @@
 
       const runCfg = cfg => T.rollingBacktest(games, Object.assign({ market }, cfg));
       const results = [];
-      const grid = [];
-      for (const halfLifeDays of [120, 240, 500]) for (const priorMatches of [8, 14, 25]) grid.push({ halfLifeDays, priorMatches, xgWeight: 0 });
+      const runs = []; // cada backtest, para el juicio honesto (ver honestRows)
+      const grid = [{ halfLifeDays: T.DEFAULTS.halfLifeDays, priorMatches: T.DEFAULTS.priorMatches, xgWeight: 0 }]; // la de siempre primero
+      for (const halfLifeDays of [120, 240, 500]) for (const priorMatches of [8, 14, 25]) if (!(halfLifeDays === grid[0].halfLifeDays && priorMatches === grid[0].priorMatches)) grid.push({ halfLifeDays, priorMatches, xgWeight: 0 });
       for (let i = 0; i < grid.length; i++) {
         valStatus(`Probando parámetros ${i + 1}/${grid.length} (cada prueba usa solo partidos anteriores)…`);
         await tick();
         const bt = runCfg(grid[i]);
-        if (bt.metrics.count) results.push(Object.assign({}, grid[i], { count: bt.metrics.count, brier: bt.metrics.brier, skill: bt.metrics.skill }));
+        if (bt.metrics.count) { results.push(Object.assign({}, grid[i], { count: bt.metrics.count, brier: bt.metrics.brier, skill: bt.metrics.skill })); runs.push({ cfg: grid[i], rows: bt.rows }); }
       }
       let best = bestByBrier(results);
       if (!best) { valStatus('No hay partidos suficientes para evaluar: probá con ligas con más historial.', true); return; }
@@ -542,7 +601,7 @@
           await tick();
           const cfg = { halfLifeDays: best.halfLifeDays, priorMatches: best.priorMatches, xgWeight: w };
           const bt = runCfg(cfg);
-          if (bt.metrics.count) xr.push(Object.assign({}, cfg, { count: bt.metrics.count, brier: bt.metrics.brier, skill: bt.metrics.skill }));
+          if (bt.metrics.count) { xr.push(Object.assign({}, cfg, { count: bt.metrics.count, brier: bt.metrics.brier, skill: bt.metrics.skill })); runs.push({ cfg, rows: bt.rows }); }
         }
         const bx = bestByBrier(xr);
         if (bx && bx.brier < best.brier - 0.0005) { best = bx; xgNote = `xG mejora el Brier: se usa con peso ${Math.round(bx.xgWeight * 100)}%.`; }
@@ -554,7 +613,10 @@
       const bt = runCfg(finalCfg);
       const cal = T.validateCalibration(bt.rows);
       const useCal = cal.accepted && cal.calibration;
-      const finalMetrics = useCal ? T.scoreRows(bt.rows, r => T.applyCalibration(cal.calibration, r.p)) : bt.metrics;
+      // Juicio honesto: parámetros y calibración elegidos partido a partido solo con lo anterior.
+      // (finalCfg y cal.calibration, aprendidos con todo, son los que se usan de acá en adelante.)
+      const honest = honestRows(runs, T, { calibrate: !!useCal });
+      const finalMetrics = T.scoreRows(honest.rows);
       const verdict = validationVerdict(finalMetrics);
       const saved = {
         halfLifeDays: finalCfg.halfLifeDays, priorMatches: finalCfg.priorMatches, xgWeight: finalCfg.xgWeight,
@@ -564,8 +626,7 @@
       };
       if (!ft) LS.set('o05:model:v1', saved); // ajuste general de +0,5 1T (para ligas sin validar)
       // Se suma a la lista de ligas validadas: las ligas de esta prueba se actualizan, las demás quedan como estaban.
-      const pick = useCal ? (r => T.applyCalibration(cal.calibration, r.p)) : undefined;
-      const per = leagueVerdicts(bt.rows, T, pick);
+      const per = leagueVerdicts(honest.rows, T);
       const names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
       const lv = readLv(market), stamp = Date.now();
       const cfgSaved = { halfLifeDays: saved.halfLifeDays, priorMatches: saved.priorMatches, xgWeight: saved.xgWeight, calibration: saved.calibration };
@@ -619,6 +680,7 @@
     const rows = list.map(e => `<tr><td>${esc(e.name || 'Liga ' + e.lid)}</td><td>${ST_LABEL[e.status] || esc(e.status)}</td>` +
       `<td>${e.n == null ? '—' : e.n}</td>` +
       `<td>${isNum(e.skill) ? (e.skill >= 0 ? '+' : '') + num(e.skill * 100, 1) + '%' : '—'}</td>` +
+      `<td>${CONF_LABEL[e.confidence] || (e.status === 'faltan' ? '—' : '<span title="Validada con el método anterior">¿?</span>')}</td>` +
       `<td>${isNum(e.meanP) && isNum(e.observed) ? pct(e.meanP, 0) + ' / ' + pct(e.observed, 0) : '—'}</td>` +
       `<td>${isNum(e.gap) ? num(e.gap * 100, 1) + ' pts' : '—'}</td>` +
       `<td>${e.validatedAt ? new Date(e.validatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '—'}</td></tr>`).join('');
@@ -626,10 +688,12 @@
     box.innerHTML = `<div class="val-box"><b>Ligas validadas para ${MKT_NAME[market]}: ${ok} aprobada(s) de ${list.length}</b><br>` +
       'Cada vez que tocás «Validar», las ligas marcadas se suman o se actualizan acá, solo para el mercado elegido arriba. Las demás no se tocan. ' +
       'En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
-      '<table class="val-table"><tr><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
+      '<table class="val-table"><tr><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Confianza</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
       '<div class="small"><b>Mejora</b>: cuánto acierta mejor que adivinar con el promedio de goles (más alto = mejor). ' +
+      '<b>Confianza</b>: si la mejora es real o puede ser suerte, según cuántos partidos hay (alta = casi seguro que es real; media = puede ser; baja = puede ser pura casualidad). ' +
       '<b>Dice / pasa</b>: lo que la app predijo en promedio y lo que pasó. <b>Desvío</b>: la mayor diferencia en algún grupo de partidos (más bajo = mejor calibrada). ' +
-      `Para aprobar, una liga necesita al menos ${LEAGUE_RULES.minN} partidos evaluados, mejora de 1% o más y un desvío chico (hasta ${Math.round(LEAGUE_RULES.maxBandGap * 100)} pts, un poco más si el grupo tiene pocos partidos, porque ahí la suerte pesa más).` +
+      `Para aprobar, una liga necesita al menos ${LEAGUE_RULES.minN} partidos evaluados, mejora de 1% o más con confianza alta y un desvío chico (hasta ${Math.round(LEAGUE_RULES.maxBandGap * 100)} pts, un poco más si el grupo tiene pocos partidos, porque ahí la suerte pesa más).` +
+      (list.some(e => e.status !== 'faltan' && !e.confidence) ? ' <b>Las ligas con «¿?» se validaron con el método anterior, que era más generoso: volvé a validarlas.</b>' : '') +
       (hasJoint ? ' Las de «prueba conjunta» se aprobaron todas juntas el ' + new Date(list.find(e => e.status === 'conjunta').validatedAt).toLocaleDateString('es-AR') + ': si las volvés a validar, vas a ver el detalle de cada una.' : '') + '</div>';
   }
   root.tanoRenderLeagueVal = renderLeagueVal;
@@ -641,7 +705,7 @@
     q('#valOut').innerHTML =
       `<div class="val-box"><b>${v.verdict.validated ? 'Todas las ligas de esta prueba juntas: pasó' : 'Todas las ligas de esta prueba juntas: NO pasó'}</b><br>` +
       v.verdict.reasons.map(esc).join('<br>') + '<br><br>' +
-      `Predicciones evaluadas: <b>${m.count}</b> en ${v.comps.length} liga(s), cada una con un modelo ajustado solo con partidos anteriores.<br>` +
+      `Predicciones evaluadas: <b>${m.count}</b> en ${v.comps.length} liga(s). Cada una se juzga con un modelo, parámetros y calibración elegidos solo con partidos anteriores.<br>` +
       `Brier ${num(m.brier, 4)} vs tasa base ${num(m.baselineBrier, 4)} · mejora ${num(m.skill * 100, 1)}% · log loss ${num(m.logloss, 4)}<br>` +
       `Promedio predicho ${pct(m.meanP, 1)} vs real ${pct(m.observed, 1)}<br>` +
       `Parámetros elegidos: vida media ${v.finalCfg.halfLifeDays} d, prior ${v.finalCfg.priorMatches} partidos` +

@@ -154,3 +154,52 @@ test('simulación de banca: Kelly y plano en orden cronológico', () => {
   const s = V.summarizeLog(entries.map(e => ({ ...e, signal: 'ev_solido' })), T);
   assert.equal(s.replay.n, 2);
 });
+
+// Generador determinístico para datos de prueba.
+function rng(seed) { let x = seed; return () => (x = (x * 16807) % 2147483647) / 2147483647; }
+
+test('juicio honesto: elige parámetros solo con partidos anteriores', () => {
+  const r = rng(3), A = [], B = [];
+  for (let i = 0; i < 400; i++) {
+    const truth = 0.5 + 0.4 * r(), y = r() < truth ? 1 : 0;
+    A.push({ id: i, leagueId: 1, ts: i, p: 0.7, y });   // configuración por defecto: siempre 70%
+    B.push({ id: i, leagueId: 1, ts: i, p: truth, y }); // configuración que conoce la verdad
+  }
+  const h = V.honestRows([{ cfg: 'A', rows: A }, { cfg: 'B', rows: B }], T, { minPrior: 150 });
+  assert.equal(h.rows.length, 400);
+  // Hasta tener 150 partidos previos usa la de por defecto; después, la mejor.
+  assert.equal(h.rows[0].cfgIndex, 0);
+  assert.equal(h.rows[149].cfgIndex, 0);
+  assert.equal(h.rows[399].cfgIndex, 1);
+});
+
+test('juicio honesto: la calibración de un partido no depende de su propio resultado', () => {
+  const make = lastY => {
+    const r = rng(5), rows = [];
+    for (let i = 0; i < 500; i++) rows.push({ id: i, leagueId: 1, ts: i, p: 0.6 + 0.3 * r(), y: i === 499 ? lastY : (r() < 0.6 ? 1 : 0) });
+    return V.honestRows([{ cfg: 'A', rows }], T, { calibrate: true }).rows;
+  };
+  const a = make(0), b = make(1);
+  assert.equal(a[499].p, b[499].p);
+  assert.notEqual(a[499].p, a[499].pModel); // sí se calibró (había más de 300 previos)
+  assert.equal(a[10].p, a[10].pModel);      // al principio no hay calibración
+});
+
+test('confianza: separa mejora real de suerte, y una liga necesita confianza alta para aprobar', () => {
+  assert.equal(V.confidenceOf(0.02, 0.01), 'alta');
+  assert.equal(V.confidenceOf(0.012, 0.01), 'media');
+  assert.equal(V.confidenceOf(0.005, 0.01), 'baja');
+  assert.equal(V.confidenceOf(null, 0.01), null);
+  // Modelo que conoce la verdad en 2000 partidos: mejora clara y confianza alta.
+  const r = rng(11), good = [], noise = [];
+  for (let i = 0; i < 2000; i++) {
+    const truth = 0.4 + 0.5 * r(), y = r() < truth ? 1 : 0;
+    good.push({ leagueId: 1, ts: i, p: truth, y });
+  }
+  // Modelo que solo agrega ruido alrededor del 70% en 150 partidos.
+  for (let i = 0; i < 150; i++) { const y = r() < 0.7 ? 1 : 0; noise.push({ leagueId: 2, ts: i, p: 0.7 + (r() - 0.5) * 0.04, y }); }
+  const per = V.leagueVerdicts(good.concat(noise), T);
+  assert.equal(per['1'].confidence, 'alta');
+  assert.ok(per['1'].skillSe > 0);
+  assert.notEqual(per['2'].status, 'aprobada');
+});

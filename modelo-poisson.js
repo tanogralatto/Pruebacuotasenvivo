@@ -276,13 +276,15 @@
     const get = pick || (r => r.p);
     const list = (rows || []).filter(r => r && isNum(get(r)) && (r.y === 0 || r.y === 1)).slice().sort((x, y) => (x.ts || 0) - (y.ts || 0));
     const n = list.length;
-    if (!n) return { count: 0, brier: null, baselineBrier: null, skill: null, logloss: null, meanP: null, observed: null, calibration: [] };
-    let brier = 0, base = 0, ll = 0, sumP = 0, sumY = 0, seen = 0, ones = 0;
+    if (!n) return { count: 0, brier: null, baselineBrier: null, skill: null, skillSe: null, logloss: null, meanP: null, observed: null, calibration: [] };
+    let brier = 0, base = 0, ll = 0, sumP = 0, sumY = 0, seen = 0, ones = 0, sumD = 0, sumD2 = 0;
     for (const r of list) {
       const p = clamp(get(r), 1e-6, 1 - 1e-6);
       const b0 = seen >= 10 ? (ones + 0.7 * 10) / (seen + 10) : 0.7; // tasa base previa (sin mirar el futuro)
-      brier += (p - r.y) ** 2;
-      base += (b0 - r.y) ** 2;
+      const bm = (p - r.y) ** 2, bb = (b0 - r.y) ** 2;
+      brier += bm;
+      base += bb;
+      sumD += bb - bm; sumD2 += (bb - bm) ** 2; // ganancia del modelo sobre la base, partido por partido
       ll += -(r.y * Math.log(p) + (1 - r.y) * Math.log(1 - p));
       sumP += p; sumY += r.y;
       seen++; ones += r.y;
@@ -297,8 +299,11 @@
         observed: xs.reduce((s, r) => s + r.y, 0) / xs.length
       };
     }).filter(Boolean);
+    // Error estándar de la mejora (skill): cuánto podría variar solo por azar con esta cantidad de partidos.
+    const meanD = sumD / n, varD = n > 1 ? Math.max(0, (sumD2 - n * meanD * meanD) / (n - 1)) : 0;
+    const skillSe = base > 0 ? Math.sqrt(varD / n) / (base / n) : null;
     return {
-      count: n, brier: brier / n, baselineBrier: base / n, skill: 1 - brier / base,
+      count: n, brier: brier / n, baselineBrier: base / n, skill: 1 - brier / base, skillSe,
       logloss: ll / n, meanP: sumP / n, observed: sumY / n, calibration
     };
   }
