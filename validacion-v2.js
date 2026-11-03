@@ -540,7 +540,7 @@
       '<table class="val-table"><tr><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
       '<div class="small"><b>Mejora</b>: cuánto acierta mejor que adivinar con el promedio de goles (más alto = mejor). ' +
       '<b>Dice / pasa</b>: lo que la app predijo en promedio y lo que pasó. <b>Desvío</b>: la mayor diferencia en algún grupo de partidos (más bajo = mejor calibrada). ' +
-      `Para aprobar, una liga necesita al menos ${LEAGUE_RULES.minN} partidos evaluados, mejora de 1% o más y un desvío chico (hasta ${LEAGUE_RULES.maxBandGap * 100} pts, un poco más si el grupo tiene pocos partidos, porque ahí la suerte pesa más).` +
+      `Para aprobar, una liga necesita al menos ${LEAGUE_RULES.minN} partidos evaluados, mejora de 1% o más y un desvío chico (hasta ${Math.round(LEAGUE_RULES.maxBandGap * 100)} pts, un poco más si el grupo tiene pocos partidos, porque ahí la suerte pesa más).` +
       (hasJoint ? ' Las de «prueba conjunta» se aprobaron todas juntas el ' + new Date(list.find(e => e.status === 'conjunta').validatedAt).toLocaleDateString('es-AR') + ': si las volvés a validar, vas a ver el detalle de cada una.' : '') + '</div>';
   }
   root.tanoRenderLeagueVal = renderLeagueVal;
