@@ -1379,7 +1379,7 @@ function poissonHtml(model){
     metric('Cuota justa',fmtNum(model.fairOdds),'','La cuota que no daría ventaja a nadie. Si tu casa paga más que esta, el cálculo de la app ve ventaja.')+
     metric(M.lamLabel,fmtNum(model.lambdas.total)+(mk==='btts'?' ('+fmtNum(model.lambdas.home)+' + '+fmtNum(model.lambdas.away)+')':''),'',M.lamHint)+
     metric(odds?'Mejor cuota · '+esc(odds.bookmaker||'casa no informada'):'Cuota prepartido '+M.name,odds?Number(odds.price).toFixed(2):'No disponible','',M.oddsHint)+
-    metric('EV estimado',evText,evColor,'Ganancia promedio por cada 100 apostados si el cálculo de la app fuera exacto. Verde = a favor. Todavía no está validado.')+
+    metric('EV estimado',evText,evColor,'Ganancia promedio por cada 100 apostados si el cálculo de la app fuera exacto. Verde = a favor. '+(model.validated?'✅ Esta liga está aprobada para '+M.name+'.':'⚠️ Esta liga no está aprobada para '+M.name+': tomalo como provisorio.'))+
     metric('EV conservador',evLowText,'','Lo mismo, pero suponiendo que el cálculo fue demasiado optimista. Si da negativo, la ventaja no es segura.')+
     metric('Mercado sin margen',Number.isFinite(model.marketProb)?fmtPct(model.marketProb,1):'—','','Chances que dan las casas de apuestas juntas, sacándoles su ganancia. Es la referencia más confiable.')+
     metric('EV vs mercado (sin margen)',evMktText,evMktColor,'Igual que el EV, pero usando las chances de las casas. Verde = tu cuota paga más de lo justo. Es la señal más confiable.');
@@ -1397,7 +1397,7 @@ function poissonHtml(model){
     verdict={cls:'bad',title:'No se ve ventaja',text:'Según las casas de apuestas, esta cuota paga menos de lo justo ('+evMktText+').'};
   }
   if(hasMkt&&evMkt<0.03&&d&&Number.isFinite(d.ev)&&d.ev>=0.03){
-    verdict.text+=' Solo el cálculo propio ve ventaja, y todavía no está validado.';
+    verdict.text+=model.validated?' Solo el cálculo propio ve ventaja (la liga está aprobada para este mercado, pero las casas no coinciden).':' Solo el cálculo propio ve ventaja, y esta liga no está aprobada para este mercado.';
   }
   const verdictHtml='<div class="poisson-verdict '+verdict.cls+'"><b>'+esc(verdict.title)+'.</b> '+esc(verdict.text)+'</div>';
   const reasons=d&&d.reasons&&d.reasons.length?'<ul class="poisson-reasons">'+d.reasons.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul>':'';
@@ -1406,7 +1406,7 @@ function poissonHtml(model){
     verdictHtml+'<div class="poisson-grid">'+grid+'</div>'+reasons+
     '<div class="poisson-status">Muestra: local '+fmtNum(s.homeEff,1)+' partidos ponderados ('+s.homeN+' reales) · visitante '+fmtNum(s.awayEff,1)+' ('+s.awayN+') · liga '+s.leagueMatches+' partidos, '+s.teams+' equipos'+(s.previous?' · temporada actual '+s.current+' + anterior '+s.previous:'')+'.</div>'+
     '<div class="poisson-status">'+esc(model.dataSource||'Fuente no especificada')+'.'+refText+'</div>'+
-    '<div class="poisson-note">EV = probabilidad × cuota − 1. "Conservador" usa el límite inferior de la probabilidad según el tamaño de la muestra. "EV vs mercado" usa la probabilidad sin margen de Pinnacle o de la mediana de casas: si da positivo, la cuota que encontraste paga más que el precio justo del mercado, que es una señal más fiable que el modelo solo. '+(model.validated?'El modelo pasó la validación fuera de muestra de la sección 5.':'El modelo todavía no fue validado fuera de muestra (sección 5): tomá el resultado como provisorio.')+' No es una recomendación de apuesta.</div></section>';
+    '<div class="poisson-note">EV = probabilidad × cuota − 1. "Conservador" usa el límite inferior de la probabilidad según el tamaño de la muestra. "EV vs mercado" usa la probabilidad sin margen de Pinnacle o de la mediana de casas: si da positivo, la cuota que encontraste paga más que el precio justo del mercado, que es una señal más fiable que el modelo solo. '+(model.validated?'Esta liga pasó la validación de '+M.name+' (sección 5).':'Esta liga todavía no pasó la validación de '+M.name+' (sección 5): tomá el resultado como provisorio.')+' No es una recomendación de apuesta.</div></section>';
 }
 
 /* ---- resultados ---- */
