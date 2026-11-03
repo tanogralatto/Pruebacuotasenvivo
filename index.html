@@ -1059,17 +1059,25 @@ async function analizar(){
   };
   const n=parseInt($('#conc').value,10)||4;
   await Promise.all(Array.from({length:n},worker));
-  // Cuotas prepartido: una consulta por fecha, reutilizada para todos los partidos analizados.
+  // Cuotas prepartido: consultar por fecha y recorrer TODAS las páginas (API-Football devuelve 10 eventos por página).
+  // Se consulta una vez por fecha, no una vez por partido, para limitar consumo de API.
   let prematchOddsByFixture=new Map();
-  if(state.market==='ht05'){
+  if(state.market==='ht05'&&fxs.length){
     try{
-      const oddsResponse=await api('/odds',{date:fxs[0].iso.slice(0,10),timezone:TZ});
-      for(const item of (oddsResponse.response||[])){
-        const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
-        if(!fixtureId) continue;
-        const parsed=findFirstHalfOdds([item]);
-        if(parsed.over05) prematchOddsByFixture.set(fixtureId,parsed.over05);
-      }
+      const oddsDate=fxs[0].iso.slice(0,10);
+      let page=1,totalPages=1;
+      do{
+        const oddsResponse=await api('/odds',{date:oddsDate,timezone:TZ,page});
+        for(const item of (oddsResponse.response||[])){
+          const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
+          if(!fixtureId) continue;
+          const parsed=findFirstHalfOdds([item]);
+          if(parsed.over05) prematchOddsByFixture.set(fixtureId,parsed.over05);
+        }
+        const reportedTotal=Number(oddsResponse.paging?.total);
+        totalPages=Number.isFinite(reportedTotal)&&reportedTotal>0?reportedTotal:page;
+        page++;
+      }while(page<=totalPages&&page<=100&&!state.cancel);
     }catch(e){
       state.errors.push('Cuotas prepartido no disponibles: '+e.message);
     }
