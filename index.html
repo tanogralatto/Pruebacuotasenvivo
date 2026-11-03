@@ -1123,8 +1123,9 @@ function poissonInputForFixture(f,tg){
       unique.set(g.i,g);
     }
   }
-  if(unique.size<20) return {ok:false,reason:'Muestra insuficiente: se requieren al menos 20 partidos de liga con marcador HT explícito y validado en los datos ya cargados.'};
-  const league=[...unique.values()];
+  const MIN_LEAGUE_HT_MATCHES=30;
+  if(unique.size<MIN_LEAGUE_HT_MATCHES) return {ok:false,reason:`Muestra insuficiente de liga: hay ${unique.size} partidos anteriores con marcador HT validado; se requieren al menos ${MIN_LEAGUE_HT_MATCHES} en la misma competición y temporada.`};
+  const league=[...unique.values()].sort((a,b)=>a.d-b.d);
   const leagueHomeGoalsHT=league.reduce((sum,g)=>sum+g.ht[0],0)/league.length;
   const leagueAwayGoalsHT=league.reduce((sum,g)=>sum+g.ht[1],0)/league.length;
   if(!(leagueHomeGoalsHT>0&&leagueAwayGoalsHT>0)) return {ok:false,reason:'No hay promedios HT local/visitante válidos para estimar la referencia de liga.'};
@@ -1132,21 +1133,21 @@ function poissonInputForFixture(f,tg){
     const seen=new Set();
     const games=[];
     for(const list of tg.values()) for(const g of list||[]){
-      if(seen.has(g.i)||g.d>=cutoff) continue;
+      if(seen.has(g.i)||g.l!==f.lid||g.s!==f.season||g.d>=cutoff) continue;
       if(g.h!==teamId&&g.a!==teamId) continue;
-      seen.add(g.i);
       const validation=g.htValidation||validateHtRecord(g);
       if(validation.status!=='valid_api'||!Array.isArray(g.ht)||g.ht.length!==2) continue;
       if(!g.ht.every(n=>Number.isInteger(n)&&n>=0)) continue;
+      seen.add(g.i);
       const home=g.h===teamId;
       games.push({d:g.d,scoredHT:home?g.ht[0]:g.ht[1],concededHT:home?g.ht[1]:g.ht[0]});
     }
-    return games.sort((a,b)=>b.d-a.d).slice(0,20).map(({scoredHT,concededHT})=>({scoredHT,concededHT}));
+    return games.sort((a,b)=>b.d-a.d).slice(0,30).map(({scoredHT,concededHT})=>({scoredHT,concededHT}));
   }
   const homeHistory=historyFor(f.hid),awayHistory=historyFor(f.aid);
-  const MIN_TEAM_HT_MATCHES=5;
+  const MIN_TEAM_HT_MATCHES=8;
   if(homeHistory.length<MIN_TEAM_HT_MATCHES||awayHistory.length<MIN_TEAM_HT_MATCHES){
-    return {ok:false,reason:`Muestra insuficiente por equipo: se requieren al menos ${MIN_TEAM_HT_MATCHES} partidos previos con marcador HT validado para cada equipo (local: ${homeHistory.length}, visitante: ${awayHistory.length}).`};
+    return {ok:false,reason:`Muestra insuficiente por equipo en esta competición y temporada: se requieren al menos ${MIN_TEAM_HT_MATCHES} partidos previos con marcador HT validado para cada equipo (local: ${homeHistory.length}, visitante: ${awayHistory.length}).`};
   }
   return window.TanoPoissonModel.calculate({
     homeHistory,awayHistory,leagueHomeGoalsHT,leagueAwayGoalsHT
