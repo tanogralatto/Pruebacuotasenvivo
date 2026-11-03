@@ -28,12 +28,12 @@ test('EV uses probability times decimal odds minus one', () => {
     awayHistory: Array.from({length:10}, () => ({scoredHT:1,concededHT:1})),
     leagueHomeGoalsHT: 1,
     leagueAwayGoalsHT: 1,
-    marketOdds: 2
+    marketOdds: 1 / (1 - Math.exp(-2))
   };
   const result = model.calculate(input);
   assert.equal(result.ok, true);
-  assert.equal(result.ev, 0);
-  assert.equal(result.evPercent, 0);
+  assert.ok(Math.abs(result.ev) < 0.000002);
+  assert.ok(Math.abs(result.evPercent) < 0.001);
 });
 
 test('ignores invalid negative or non-numeric HT observations', () => {
