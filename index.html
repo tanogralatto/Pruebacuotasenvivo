@@ -381,18 +381,6 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .poisson-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.45}
 .poisson-status{font-size:12px;color:var(--muted);margin-top:6px}
 @media(max-width:480px){.poisson-grid{gap:5px}.poisson-metric{padding:6px}.poisson-metric .value{font-size:15px}}
-
-#backtestPanel h2{margin:0 0 8px;font-size:1rem}
-#backtestResults{margin-top:12px}
-.bt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin:10px 0}
-.bt-metric{background:var(--panel2,rgba(0,0,0,.16));border:1px solid var(--line);border-radius:9px;padding:10px}
-.bt-metric b{display:block;font-size:1.1rem;margin-top:4px}
-.bt-table{width:100%;border-collapse:collapse;margin-top:8px}
-.bt-table th,.bt-table td{padding:7px;text-align:left;border-bottom:1px solid var(--line);font-size:.85rem}
-
-#apiConnectionDetails>summary{padding:4px 0}
-#apiConnectionDetails[open]>summary{margin-bottom:8px}
-#backtestPanel{border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -433,16 +421,6 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 <div id="quotaBar" class="quota-bar" role="status" aria-live="polite"><span class="qdot" aria-hidden="true"></span><span class="qtxt">Consultas API-Football: guardá y probá tu clave en el Escáner para ver el consumo.</span></div>
 
 <div id="scannerView" class="app-view" role="tabpanel" aria-labelledby="tabScanner">
-  <section class="panel" id="backtestPanel" style="margin:12px 0">
-    <h2>Validación histórica · Poisson 1T</h2>
-    <p class="small">Evalúa los partidos guardados en la caché local (últimos 99 disponibles por liga/temporada). Usa solo encuentros anteriores a cada partido y HT explícito validado. No realiza consultas nuevas a API-Football.</p>
-    <div class="row"><button id="btnBacktest" type="button">Ejecutar backtesting con datos guardados</button><span id="backtestStatus" class="small">Todavía no ejecutado.</span></div>
-    <div id="backtestResults" class="small" aria-live="polite"></div>
-  </section>
-
-<details class="panel" id="apiConnectionDetails">
-  <summary style="cursor:pointer;font-weight:700">Conexión API-Football · solo para buscar partidos y actualizar datos</summary>
-  <div style="margin-top:12px">
 <section class="panel" aria-labelledby="t-key">
   <h2 id="t-key">1. Conexión</h2>
   <div class="row">
@@ -458,8 +436,6 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
   </div>
   <div id="quota" class="status" role="status">La clave se guarda solo en este navegador. No forma parte del archivo.</div>
 </section>
-  </div>
-</details>
 
 <section class="panel" aria-labelledby="t-fx">
   <h2 id="t-fx">2. Partidos y ligas</h2>
@@ -733,7 +709,6 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 </div>
 
 <script src="./modelo-poisson.js"></script>
-<script src="./backtest-poisson.js"></script>
 <script>
 /*PURE*/
 const DONE_ST=['FT','AET','PEN'];
@@ -2490,62 +2465,6 @@ q('#gateLogin').addEventListener('click', async () => {
 const logout = async () => { try { await signOut(auth); } catch (e) { setMsg(friendly(e), true); } };
 q('#gateLogout').addEventListener('click', logout);
 q('#btnLogout').addEventListener('click', logout);
-
-/* ---- Backtesting local: usa exclusivamente la caché ya guardada ---- */
-(function setupPoissonBacktest(){
-  const button=document.getElementById('btnBacktest');
-  if(!button)return;
-  const status=document.getElementById('backtestStatus');
-  const output=document.getElementById('backtestResults');
-  const pct=v=>Number.isFinite(v)?(v*100).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%':'—';
-  const num=v=>Number.isFinite(v)?v.toFixed(4):'—';
-  button.addEventListener('click',()=>{
-    if(!window.TanoBacktest){status.textContent='No se pudo cargar el motor de backtesting.';return;}
-    button.disabled=true;status.textContent='Procesando historial local…';output.innerHTML='';
-    try{
-      const fixtures=new Map();
-      const prefix='o05:v2:league:';
-      for(let i=0;i<localStorage.length;i++){
-        const key=localStorage.key(i);
-        if(!key||!key.startsWith(prefix))continue;
-        const entry=LS.get(key,null);
-        if(!entry||!Number.isFinite(entry.ts)||Date.now()-entry.ts>=TTL||!Array.isArray(entry.g))continue;
-        const valid=entry.g.map(g=>({...g,htValidation:validateHtRecord(g)}))
-          .filter(g=>g.htValidation.status==='valid_api'&&Array.isArray(g.ht)&&g.ht.length===2&&g.ht.every(n=>Number.isInteger(n)&&n>=0)&&Number.isFinite(g.d));
-        for(const g of valid){
-          const id=String(g.i);
-          if(!fixtures.has(id))fixtures.set(id,{
-            fixtureId:g.i,date:new Date(g.d*1000).toISOString(),leagueId:g.l,season:g.s,
-            homeTeamId:g.h,awayTeamId:g.a,homeHT:g.ht[0],awayHT:g.ht[1]
-          });
-        }
-      }
-      const matches=[...fixtures.values()];
-      if(!matches.length){status.textContent='No hay historial reciente con HT explícito validado en la caché local. Primero analizá partidos de ligas que quieras evaluar.';return;}
-      const result=window.TanoBacktest.runBacktest(matches);
-      const p=result.metrics.poisson,b=result.metrics.baselineLiga;
-      const metric=(label,value,detail='')=>'<div class="bt-metric"><span>'+label+'</span><b>'+value+'</b>'+(detail?'<small>'+detail+'</small>':'')+'</div>';
-      const calibration=rows=>rows.length?'<table class="bt-table"><thead><tr><th>Rango</th><th>Predicción media</th><th>Real</th><th>Partidos</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+x.range+'</td><td>'+pct(x.predictedMean)+'</td><td>'+pct(x.observedRate)+'</td><td>'+x.count+'</td></tr>').join('')+'</tbody></table>':'<p>Sin muestra para calibración.</p>';
-      output.innerHTML=
-        '<p><b>Datos:</b> '+matches.length+' partidos HT validados · '+result.scored+' predicciones evaluables · '+result.skipped.insufficientHistory+' descartados por historial insuficiente · '+result.skipped.invalidOrDuplicate+' inválidos/duplicados.</p>'+
-        '<p><b>Poisson del equipo</b></p><div class="bt-grid">'+
-        metric('Brier Score',num(p.brierScore),'Menor es mejor')+
-        metric('Log Loss',num(p.logLoss),'Menor es mejor')+
-        metric('Probabilidad media',pct(p.meanPredicted))+
-        metric('Frecuencia real',pct(p.observedRate))+
-        metric('ROI histórico',p.roi===null?'No disponible':pct(p.roi),'Solo con cuotas históricas reales')+
-        '</div><p><b>Referencia: promedio de liga</b></p><div class="bt-grid">'+
-        metric('Brier Score',num(b.brierScore),'Menor es mejor')+
-        metric('Log Loss',num(b.logLoss),'Menor es mejor')+
-        metric('Probabilidad media',pct(b.meanPredicted))+
-        metric('Frecuencia real',pct(b.observedRate))+
-        '</div><p><b>Calibración Poisson</b></p>'+calibration(p.calibration)+
-        '<p class="small">Método: '+result.method+'. ROI no calculado porque el historial de fixtures no incluye cuotas históricas prepartido. Los resultados describen únicamente la muestra local disponible; no equivalen a una validación amplia.</p>';
-      status.textContent='Backtesting terminado sin consultas adicionales a la API.';
-    }catch(e){status.textContent='Error al ejecutar backtesting: '+e.message;}
-    finally{button.disabled=false;}
-  });
-})();
 </script>
 </body>
 </html>
