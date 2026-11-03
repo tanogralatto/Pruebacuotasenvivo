@@ -76,6 +76,7 @@
       evSolid: roiOf(solid),
       promisedEv: promised,
       vsMarket: brierVsMarket(settled, T),
+      vsLeagues: leagueVsMarket(settled),
       breakdown: roiBreakdown(priced),
       replay: T.kellyStake ? stakeReplay(evPlus, T) : null
     };
@@ -89,6 +90,47 @@
     const rows = both.map(e => ({ ts: e.ts, p: e.p, mp: e.marketProb, y: e.y }));
     const model = T.scoreRows(rows).brier, market = T.scoreRows(rows, r => r.mp).brier;
     return { n: both.length, model, market, diff: model - market };
+  }
+
+  // Por liga: ¿el modelo acierta mejor que el mercado sin margen? (como la «habilidad vs. mercado» de otras
+  // herramientas). Solo predicciones liquidadas que guardaron la probabilidad del mercado.
+  //  skill = 1 − Brier modelo / Brier mercado (positivo = el modelo acierta mejor).
+  //  skillSe = error estándar de skill a partir de la diferencia de Brier partido por partido.
+  //  status: 'gana' (mejora con confianza alta), 'posible' (positivo pero puede ser suerte),
+  //          'no' (no le gana), 'faltan' (menos de minN predicciones).
+  const VS_MKT_RULES = { minN: 50 };
+  function leagueVsMarket(entries, opts) {
+    const o = Object.assign({}, VS_MKT_RULES, opts || {});
+    const groups = new Map();
+    for (const e of entries || []) {
+      if (!e || !isNum(e.p) || !isNum(e.marketProb) || !(e.y === 0 || e.y === 1)) continue;
+      const k = String(e.lid != null ? e.lid : e.ln || '?');
+      if (!groups.has(k)) groups.set(k, { lid: k, name: e.ln || ('Liga ' + k), country: e.lc || '', items: [] });
+      const g = groups.get(k);
+      if (!g.country && e.lc) g.country = e.lc;
+      g.items.push(e);
+    }
+    const out = [];
+    for (const g of groups.values()) {
+      const n = g.items.length;
+      let bm = 0, bk = 0, sd = 0, sd2 = 0;
+      for (const e of g.items) {
+        const a = (e.p - e.y) ** 2, b = (e.marketProb - e.y) ** 2;
+        bm += a; bk += b; sd += b - a; sd2 += (b - a) ** 2;
+      }
+      const skill = bk > 0 ? 1 - bm / bk : null;
+      const meanD = sd / n, varD = n > 1 ? Math.max(0, (sd2 - n * meanD * meanD) / (n - 1)) : 0;
+      const skillSe = bk > 0 && n > 1 ? Math.sqrt(varD / n) / (bk / n) : null;
+      const confidence = confidenceOf(skill, skillSe);
+      let status;
+      if (n < o.minN) status = 'faltan';
+      else if (isNum(skill) && skill > 0 && confidence === 'alta') status = 'gana';
+      else if (isNum(skill) && skill > 0) status = 'posible';
+      else status = 'no';
+      out.push({ lid: g.lid, name: g.name, country: g.country, n, brierModel: bm / n, brierMarket: bk / n, skill, skillSe, confidence, status });
+    }
+    const order = { gana: 0, posible: 1, faltan: 2, no: 3 };
+    return out.sort((a, b) => order[a.status] - order[b.status] || (b.skill ?? -9) - (a.skill ?? -9) || b.n - a.n);
   }
 
   // ROI plano (1u) por rango de EV del modelo, por rango de EV vs mercado y por liga.
@@ -278,7 +320,7 @@
   }
 
   const LV_KEY = 'o05:leagueval:v1';
-  const pure = { settleFromFixture, chunk, summarizeLog, brierVsMarket, roiBreakdown, stakeReplay, honestRows, confidenceOf, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
+  const pure = { settleFromFixture, chunk, summarizeLog, brierVsMarket, leagueVsMarket, roiBreakdown, stakeReplay, honestRows, confidenceOf, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
   if (typeof module !== 'undefined' && module.exports) module.exports = pure;
   root.TanoVal = pure;
 
@@ -313,7 +355,7 @@
       if (prev && (prev.y === 0 || prev.y === 1)) continue;
       const d = p.decision || {};
       log[id] = {
-        id, fid: String(r.fx.id), market, ts, lid: r.fx.lid, season: r.fx.season, hid: r.fx.hid, aid: r.fx.aid, hn: r.fx.hn, an: r.fx.an, ln: r.fx.ln,
+        id, fid: String(r.fx.id), market, ts, lid: r.fx.lid, season: r.fx.season, hid: r.fx.hid, aid: r.fx.aid, hn: r.fx.hn, an: r.fx.an, ln: r.fx.ln, lc: r.fx.lc || '',
         p: p.probability, pRaw: p.probabilityRaw, pLow: p.pLow, lam: p.lambdas && p.lambdas.total,
         odds: p.marketOdds ? p.marketOdds.price : null, bk: p.marketOdds ? p.marketOdds.bookmaker : null,
         marketProb: Number.isFinite(p.marketProb) ? p.marketProb : null,
@@ -398,7 +440,7 @@
       '<table class="val-table"><tr><th>Apuestas (1u, cuota guardada)</th><th>N</th><th>Aciertos</th><th>ROI</th></tr>' +
       roiLine('Todas con cuota', s.all) + roiLine('EV+ posible o sólido', s.evPlus) + roiLine('EV+ sólido', s.evSolid) + '</table>' +
       (s.promisedEv != null ? `<div class="small">El modelo prometía un EV promedio de ${(s.promisedEv >= 0 ? '+' : '') + num(s.promisedEv * 100, 1)}% en las señales EV+. Si el ROI real queda muy por debajo, el modelo está sobreestimando.</div>` : '') +
-      vsMarketHtml(s.vsMarket) + breakdownHtml(s.breakdown) + replayHtml(s.replay) +
+      vsMarketHtml(s.vsMarket) + vsLeaguesHtml(s.vsLeagues) + breakdownHtml(s.breakdown) + replayHtml(s.replay) +
       '<div class="small">Con pocas decenas de apuestas el ROI es puro ruido: hacen falta cientos para sacar conclusiones.</div>';
   }
   function vsMarketHtml(v) {
@@ -409,6 +451,26 @@
       `<span style="color:${better ? 'var(--c4)' : 'var(--c1)'}">${better ? '✅ El modelo acierta mejor que el mercado.' : '❌ El mercado acierta mejor que el modelo: las señales que solo ve el modelo no son confiables.'}</span>` +
       (v.n < 300 ? '<br><span class="small">Con menos de 300 casos la diferencia todavía puede ser casualidad.</span>' : '') + '</div>';
   }
+  const VS_ST = { gana: '✅ Le gana', posible: '🟡 Puede ser', no: '❌ No le gana', faltan: '⏳ Faltan datos' };
+  function vsLeaguesHtml(list) {
+    if (!list || !list.length) return '';
+    const fix = new Map((typeof state !== 'undefined' && state.fixtures || []).map(f => [String(f.lid), f.lc]));
+    const rows = list.map(r => {
+      const c = r.country || fix.get(String(r.lid)) || '';
+      return `<tr><td>${c ? esc(countryEs(c)) : '—'}</td><td>${esc(r.name)}</td><td>${VS_ST[r.status]}</td><td>${r.n}</td>` +
+        `<td style="color:${isNum(r.skill) && r.skill > 0 ? 'var(--c4)' : 'var(--c1)'}">${isNum(r.skill) ? (r.skill >= 0 ? '+' : '') + num(r.skill * 100, 1) + '%' : '—'}</td>` +
+        `<td>${CONF_LABEL[r.confidence] || '—'}</td></tr>`;
+    }).join('');
+    const ok = list.filter(r => r.status === 'gana').length;
+    return '<details class="val-box"' + (ok ? ' open' : '') + `><summary><b>¿En qué ligas le gana a las casas?</b> (${ok} de ${list.length})</summary>` +
+      '<table class="val-table"><tr><th>País</th><th>Liga</th><th>Estado</th><th>Predicciones</th><th>Habilidad vs mercado</th><th>Confianza</th></tr>' + rows + '</table>' +
+      `<div class="small"><b>Habilidad vs mercado</b>: cuánto mejor acierta el modelo que las casas sin margen en esa liga (positivo = mejor). Para «Le gana» hace falta habilidad positiva con confianza alta y al menos ${VS_MKT_RULES.minN} predicciones. «Puede ser» = positivo pero todavía puede ser suerte. En el Escáner podés filtrar «Solo ligas donde le gana a las casas».</div></details>`;
+  }
+  // Ligas donde el modelo le gana al mercado (status 'gana') para un mercado: lo usa el filtro del Escáner.
+  root.tanoBeatsMarketLeagues = function (market) {
+    const mk = market || 'ht05';
+    return new Set(leagueVsMarket(Object.values(readLog()).filter(e => mktOf(e) === mk)).filter(r => r.status === 'gana').map(r => String(r.lid)));
+  };
   function groupTable(title, rows) {
     if (!rows || !rows.length) return '';
     return `<table class="val-table"><tr><th>${esc(title)}</th><th>N</th><th>Aciertos</th><th>ROI</th></tr>` +

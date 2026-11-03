@@ -542,6 +542,7 @@ body.no-hints .poisson-metric .hint{display:none}
       <select id="minAvg"><option value="0">Todos</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
     <label class="check"><input id="applyCriteria" type="checkbox"><span>Aplicar criterios</span></label>
     <label class="check"><input id="onlyEv" type="checkbox"><span>Solo EV+ (Poisson)</span></label>
+    <label class="check"><input id="onlyBeatMkt" type="checkbox"><span>Solo ligas donde le gana a las casas</span></label>
     <label class="check"><input id="showHints" type="checkbox" checked><span>Mostrar explicaciones</span></label>
     <button id="btnCopy" type="button">Copiar lista</button>
   </div>
@@ -733,6 +734,8 @@ body.no-hints .poisson-metric .hint{display:none}
         <li>✅ <b>El modelo acierta mejor que las casas</b>: buena señal, sobre todo con más de 300 predicciones.</li>
         <li>❌ <b>El mercado acierta mejor que el modelo</b>: seguí solo las señales de «EV vs mercado».</li>
       </ul>
+      <p>Debajo está la tabla <b>«¿En qué ligas le gana a las casas?»</b>: lo mismo, pero liga por liga. Las que dicen <b>✅ Le gana</b> son las mejores para apostar. En el Escáner, la casilla <b>«Solo ligas donde le gana a las casas»</b> muestra solo los partidos de esas ligas.</p>
+      <p><b>Para que una liga sume datos, analizá sus partidos antes de que empiecen</b> (con el partido empezado o terminado no se guarda nada). Conviene analizar muchas ligas todos los días, aunque no apuestes en ellas: así la tabla se llena más rápido.</p>
       <p><b>Paciencia:</b> con pocas decenas de apuestas los resultados son pura suerte. Hacen falta <b>cientos</b> para saber si el sistema funciona.</p>
     </details>
 
@@ -1556,7 +1559,8 @@ function isEvPlus(r){const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;retu
 function sorted(){
   const m=parseInt($('#minAvg').value,10)||0, s=$('#sort').value;
   const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, onlyEv=!!($('#onlyEv')&&$('#onlyEv').checked), now=Date.now();
-  const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(!onlyEv||isEvPlus(r))&&(m===0||(r.avg!==null&&r.avg>=m)));
+  const beat=$('#onlyBeatMkt')&&$('#onlyBeatMkt').checked&&window.tanoBeatsMarketLeagues?window.tanoBeatsMarketLeagues(state.market):null;
+  const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(!onlyEv||isEvPlus(r))&&(!beat||beat.has(String(r.fx.lid)))&&(m===0||(r.avg!==null&&r.avg>=m)));
   const nv=x=>x===null?-1:x;
   if(s==='ev') list.sort((a,b)=>(evOf(b)===null?-9:evOf(b))-(evOf(a)===null?-9:evOf(a))||nv(b.avg)-nv(a.avg));
   else if(s==='min') list.sort((a,b)=>nv(b.min)-nv(a.min)||nv(b.avg)-nv(a.avg));
@@ -1677,6 +1681,7 @@ $('#btnFetch').addEventListener('click',buscar);
 $('#onlyNS').addEventListener('change',()=>{renderLeagues();if(state.results.length)renderResults();});
 $('#applyCriteria').addEventListener('change',()=>{if(state.results.length)renderResults();});
 $('#onlyEv').addEventListener('change',()=>{if(state.results.length)renderResults();});
+$('#onlyBeatMkt').addEventListener('change',()=>{if(state.results.length)renderResults();});
 // Banca para el stake sugerido (Kelly). Solo se guarda en este dispositivo.
 (function(){const el=$('#bankroll');if(!el)return;const v=bankrollValue();if(v)el.value=v;
   el.addEventListener('change',()=>{const n=Number(el.value);LS.set('o05:bankroll',Number.isFinite(n)&&n>0?n:0);if(state.results.length)renderResults();});})();

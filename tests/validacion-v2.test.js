@@ -203,3 +203,25 @@ test('confianza: separa mejora real de suerte, y una liga necesita confianza alt
   assert.ok(per['1'].skillSe > 0);
   assert.notEqual(per['2'].status, 'aprobada');
 });
+
+test('por liga contra el mercado: separa la liga donde el modelo sabe más que las casas', () => {
+  const r = rng(21), entries = [];
+  for (let i = 0; i < 600; i++) {
+    const truth = 0.4 + 0.5 * r(), y = r() < truth ? 1 : 0;
+    // Liga 1: el modelo conoce la verdad y el mercado se equivoca bastante.
+    entries.push({ lid: 1, ln: 'Liga buena', lc: 'Spain', p: truth, marketProb: Math.min(0.97, Math.max(0.03, truth + (r() - 0.5) * 0.4)), y });
+  }
+  for (let i = 0; i < 600; i++) {
+    const truth = 0.4 + 0.5 * r(), y = r() < truth ? 1 : 0;
+    // Liga 2: es al revés, el mercado conoce la verdad.
+    entries.push({ lid: 2, ln: 'Liga mala', p: Math.min(0.97, Math.max(0.03, truth + (r() - 0.5) * 0.4)), marketProb: truth, y });
+  }
+  for (let i = 0; i < 20; i++) entries.push({ lid: 3, ln: 'Liga chica', p: 0.7, marketProb: 0.7, y: 1 });
+  entries.push({ lid: 1, p: 0.7, y: 1 });              // sin mercado: no cuenta
+  entries.push({ lid: 1, p: 0.7, marketProb: 0.6 });   // pendiente: no cuenta
+  const list = V.leagueVsMarket(entries), by = Object.fromEntries(list.map(x => [x.lid, x]));
+  assert.equal(by['1'].status, 'gana'); assert.equal(by['1'].n, 600); assert.ok(by['1'].skill > 0); assert.equal(by['1'].country, 'Spain');
+  assert.equal(by['2'].status, 'no'); assert.ok(by['2'].skill < 0);
+  assert.equal(by['3'].status, 'faltan');
+  assert.equal(list[0].lid, '1'); // las que le ganan, primero
+});
