@@ -381,6 +381,15 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .poisson-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.45}
 .poisson-status{font-size:12px;color:var(--muted);margin-top:6px}
 @media(max-width:480px){.poisson-grid{gap:5px}.poisson-metric{padding:6px}.poisson-metric .value{font-size:15px}}
+.poisson-metric .hint{display:block;margin-top:5px;font-size:11px;line-height:1.35;color:var(--muted);font-weight:400}
+body.no-hints .poisson-metric .hint{display:none}
+.poisson-verdict{margin:0 0 8px;padding:9px 11px;border-radius:6px;border:1px solid var(--line);font-size:13px;line-height:1.45}
+.poisson-verdict.good{border-color:var(--c4);color:var(--c4)}
+.poisson-verdict.mid{border-color:var(--c2);color:var(--c2)}
+.poisson-verdict.bad{border-color:var(--c1);color:var(--c1)}
+.poisson-verdict.none{color:var(--muted)}
+@media(max-width:700px){.poisson-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.poisson-grid{grid-template-columns:minmax(0,1fr)}}
 .ev-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
 .ev-badge.solid{background:var(--c4);color:var(--accent-ink);border-color:var(--c4)}
 .ev-badge.possible{color:var(--c2);border-color:var(--c2)}
@@ -504,6 +513,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
       <select id="minAvg"><option value="0">Todos</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
     <label class="check"><input id="applyCriteria" type="checkbox"><span>Aplicar criterios</span></label>
     <label class="check"><input id="onlyEv" type="checkbox"><span>Solo EV+ (Poisson)</span></label>
+    <label class="check"><input id="showHints" type="checkbox" checked><span>Mostrar explicaciones</span></label>
     <button id="btnCopy" type="button">Copiar lista</button>
   </div>
   <div id="notes" class="notes"></div>
@@ -1278,7 +1288,7 @@ function evBadge(dec){
 }
 function poissonHtml(model){
   if(state.market!=='ht05') return '';
-  const metric=(label,value,style)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value"'+(style?' style="'+style+'"':'')+'>'+value+'</span></div>';
+  const metric=(label,value,style,hint)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value"'+(style?' style="'+style+'"':'')+'>'+value+'</span>'+(hint?'<span class="hint">'+hint+'</span>':'')+'</div>';
   if(!model||!model.ok){
     const odds=model&&model.marketOdds;
     return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span><span class="ev-badge none">No evaluable</span></div>'+
@@ -1290,20 +1300,41 @@ function poissonHtml(model){
   const evColor=d&&d.ev!=null?'color:'+(d.ev>=0?'var(--c4)':'var(--c1)'):'';
   const evText=d&&d.ev!=null?(d.ev>0?'+':'')+fmtNum(d.ev*100,1)+'%':'Sin calcular';
   const evLowText=d&&d.evLow!=null?(d.evLow>0?'+':'')+fmtNum(d.evLow*100,1)+'%':'—';
+  const hasMkt=Number.isFinite(model.marketProb)&&odds&&Number(odds.price)>1;
+  const evMkt=hasMkt?model.marketProb*Number(odds.price)-1:null;
+  const evMktText=hasMkt?(evMkt>=0?'+':'')+fmtNum(evMkt*100,1)+'%':'—';
+  const evMktColor=hasMkt?'color:'+(evMkt>=0?'var(--c4)':'var(--c1)'):'';
   const grid=
-    metric('Probabilidad +0,5 1T'+(model.calibrated?' (calibrada)':''),fmtPct(model.probability))+
-    metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0))+
-    metric('Cuota justa',fmtNum(model.fairOdds))+
-    metric('Goles esperados 1T (λ)',fmtNum(model.lambdas.total))+
-    metric(odds?'Mejor cuota · '+esc(odds.bookmaker||'casa no informada'):'Cuota prepartido +0,5 1T',odds?Number(odds.price).toFixed(2):'No disponible')+
-    metric('EV estimado',evText,evColor)+
-    metric('EV conservador',evLowText)+
-    metric('Mercado sin margen',Number.isFinite(model.marketProb)?fmtPct(model.marketProb,1):'—')+
-    metric('EV vs mercado (sin margen)',Number.isFinite(model.marketProb)&&odds&&Number(odds.price)>1?((model.marketProb*Number(odds.price)-1)>=0?'+':'')+fmtNum((model.marketProb*Number(odds.price)-1)*100,1)+'%':'—',Number.isFinite(model.marketProb)&&odds&&Number(odds.price)>1?'color:'+((model.marketProb*Number(odds.price)-1)>=0?'var(--c4)':'var(--c1)'):'');
+    metric('Probabilidad +0,5 1T'+(model.calibrated?' (calibrada)':''),fmtPct(model.probability),'','Chances de que haya al menos un gol antes del descanso, según el cálculo de la app.')+
+    metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0),'','Entre qué valores podría estar la chance real. Si el rango es ancho, el cálculo es menos seguro.')+
+    metric('Cuota justa',fmtNum(model.fairOdds),'','La cuota que no daría ventaja a nadie. Si tu casa paga más que esta, el cálculo de la app ve ventaja.')+
+    metric('Goles esperados 1T (λ)',fmtNum(model.lambdas.total),'','Cuántos goles se esperan en el primer tiempo, sumando los dos equipos.')+
+    metric(odds?'Mejor cuota · '+esc(odds.bookmaker||'casa no informada'):'Cuota prepartido +0,5 1T',odds?Number(odds.price).toFixed(2):'No disponible','','La cuota más alta que encontró entre las casas para que haya gol en el primer tiempo.')+
+    metric('EV estimado',evText,evColor,'Ganancia promedio por cada 100 apostados si el cálculo de la app fuera exacto. Verde = a favor. Todavía no está validado.')+
+    metric('EV conservador',evLowText,'','Lo mismo, pero suponiendo que el cálculo fue demasiado optimista. Si da negativo, la ventaja no es segura.')+
+    metric('Mercado sin margen',Number.isFinite(model.marketProb)?fmtPct(model.marketProb,1):'—','','Chances que dan las casas de apuestas juntas, sacándoles su ganancia. Es la referencia más confiable.')+
+    metric('EV vs mercado (sin margen)',evMktText,evMktColor,'Igual que el EV, pero usando las chances de las casas. Verde = tu cuota paga más de lo justo. Es la señal más confiable.');
+  // Resumen en palabras simples (semáforo). Se guía por "EV vs mercado", no por el cálculo propio.
+  let verdict;
+  if(!odds||!(Number(odds.price)>1)){
+    verdict={cls:'none',title:'Sin cuota para comparar',text:'La API no devolvió una cuota para este mercado, así que no se puede saber si conviene.'};
+  }else if(!hasMkt){
+    verdict={cls:'mid',title:'Sin referencia de las casas',text:'Hay cuota, pero no hay datos para saber el precio justo del mercado. Usá el resultado con mucho cuidado.'};
+  }else if(evMkt>=0.03){
+    verdict={cls:'good',title:'Mirar con atención',text:'Según las casas de apuestas, esta cuota paga más de lo justo ('+evMktText+'). Confirmá la cuota antes de decidir.'};
+  }else if(evMkt>=-0.01){
+    verdict={cls:'mid',title:'Sin ventaja clara',text:'Según las casas de apuestas, esta cuota paga casi lo justo ('+evMktText+').'};
+  }else{
+    verdict={cls:'bad',title:'No se ve ventaja',text:'Según las casas de apuestas, esta cuota paga menos de lo justo ('+evMktText+').'};
+  }
+  if(hasMkt&&evMkt<0.03&&d&&Number.isFinite(d.ev)&&d.ev>=0.03){
+    verdict.text+=' Solo el cálculo propio ve ventaja, y todavía no está validado.';
+  }
+  const verdictHtml='<div class="poisson-verdict '+verdict.cls+'"><b>'+esc(verdict.title)+'.</b> '+esc(verdict.text)+'</div>';
   const reasons=d&&d.reasons&&d.reasons.length?'<ul class="poisson-reasons">'+d.reasons.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul>':'';
   const refText=model.marketRef?' Referencia del mercado: '+esc(model.marketRef)+'.':'';
   return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span>'+evBadge(d)+'</div>'+
-    '<div class="poisson-grid">'+grid+'</div>'+reasons+
+    verdictHtml+'<div class="poisson-grid">'+grid+'</div>'+reasons+
     '<div class="poisson-status">Muestra: local '+fmtNum(s.homeEff,1)+' partidos ponderados ('+s.homeN+' reales) · visitante '+fmtNum(s.awayEff,1)+' ('+s.awayN+') · liga '+s.leagueMatches+' partidos, '+s.teams+' equipos'+(s.previous?' · temporada actual '+s.current+' + anterior '+s.previous:'')+'.</div>'+
     '<div class="poisson-status">'+esc(model.dataSource||'Fuente no especificada')+'.'+refText+'</div>'+
     '<div class="poisson-note">EV = probabilidad × cuota − 1. "Conservador" usa el límite inferior de la probabilidad según el tamaño de la muestra. "EV vs mercado" usa la probabilidad sin margen de Pinnacle o de la mediana de casas: si da positivo, la cuota que encontraste paga más que el precio justo del mercado, que es una señal más fiable que el modelo solo. '+(model.validated?'El modelo pasó la validación fuera de muestra de la sección 5.':'El modelo todavía no fue validado fuera de muestra (sección 5): tomá el resultado como provisorio.')+' No es una recomendación de apuesta.</div></section>';
@@ -1462,6 +1493,7 @@ $('#btnFetch').addEventListener('click',buscar);
 $('#onlyNS').addEventListener('change',()=>{renderLeagues();if(state.results.length)renderResults();});
 $('#applyCriteria').addEventListener('change',()=>{if(state.results.length)renderResults();});
 $('#onlyEv').addEventListener('change',()=>{if(state.results.length)renderResults();});
+(function(){const c=$('#showHints');if(!c)return;const on=LS.get('o05:hints',true)!==false;c.checked=on;document.body.classList.toggle('no-hints',!on);c.addEventListener('change',()=>{document.body.classList.toggle('no-hints',!c.checked);LS.set('o05:hints',c.checked);});})();
 $('#lfilter').addEventListener('input',renderLeagues);
 $('#leagues').addEventListener('change',e=>{
   const id=parseInt(e.target.dataset.id,10);
