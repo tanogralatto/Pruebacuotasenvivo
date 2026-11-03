@@ -1059,11 +1059,35 @@ async function analizar(){
   };
   const n=parseInt($('#conc').value,10)||4;
   await Promise.all(Array.from({length:n},worker));
+  // Cuotas prepartido: una consulta por fecha, reutilizada para todos los partidos analizados.
+  let prematchOddsByFixture=new Map();
+  if(state.market==='ht05'){
+    try{
+      const oddsResponse=await api('/odds',{date:fxs[0].iso.slice(0,10),timezone:TZ});
+      for(const item of (oddsResponse.response||[])){
+        const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
+        if(!fixtureId) continue;
+        const parsed=findFirstHalfOdds([item]);
+        if(parsed.over05) prematchOddsByFixture.set(fixtureId,parsed.over05);
+      }
+    }catch(e){
+      state.errors.push('Cuotas prepartido no disponibles: '+e.message);
+    }
+  }
   const out=[];
   for(const f of fxs){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
     const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
-    const poisson=state.market==='ht05'?poissonInputForFixture(f,tg):null;
+    let poisson=state.market==='ht05'?poissonInputForFixture(f,tg):null;
+    if(poisson&&poisson.ok){
+      const marketOdds=prematchOddsByFixture.get(String(f.id))||null;
+      poisson={...poisson,marketOdds};
+      if(marketOdds&&Number.isFinite(marketOdds.price)&&marketOdds.price>1){
+        const p=poisson.probability;
+        poisson.impliedProbability=1/marketOdds.price;
+        poisson.evPercent=(p*marketOdds.price-1)*100;
+      }
+    }
     out.push({fx:f,tr,poisson,...resumen(tr)});
   }
   state.strategyHistory=new Map(tg);
@@ -1128,12 +1152,20 @@ function poissonHtml(model){
   const p=model.probabilityPercent.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
   const fair=model.fairOdds.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const lam=model.lambdas.totalHT.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const odds=model.marketOdds;
+  const oddsText=odds
+    ? '<div class="poisson-metric"><span class="label">Cuota prepartido · '+esc(odds.bookmaker||'Casa no informada')+'</span><span class="value">'+Number(odds.price).toFixed(2)+'</span></div>'
+    : '<div class="poisson-metric"><span class="label">Cuota prepartido +0,5 1T</span><span class="value">No disponible</span></div>';
+  const evText=odds&&Number.isFinite(model.evPercent)
+    ? '<div class="poisson-metric"><span class="label">EV estimado</span><span class="value" style="color:'+(model.evPercent>=0?'var(--c4)':'var(--c1)')+'">'+(model.evPercent>0?'+':'')+model.evPercent.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</span></div>'
+    : '<div class="poisson-metric"><span class="label">EV estimado</span><span class="value">Sin calcular</span></div>';
+  const implied=odds?'<div class="poisson-status">Probabilidad de equilibrio de la cuota: '+(model.impliedProbability*100).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%. Mercado: '+esc(odds.market||'Over 0,5 goles 1T')+'.</div>':'<div class="poisson-status">API-Football no devolvió una cuota verificada para Over 0,5 goles en el primer tiempo. No se usa la cuota del partido completo y no se calcula EV.</div>';
   return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span><span class="small">Experimental</span></div><div class="poisson-grid">'+
     '<div class="poisson-metric"><span class="label">Probabilidad estimada +0,5 1T</span><span class="value">'+p+'</span></div>'+
     '<div class="poisson-metric"><span class="label">Cuota justa estimada</span><span class="value">'+fair+'</span></div>'+
-    '<div class="poisson-metric"><span class="label">Goles esperados 1T (λ)</span><span class="value">'+lam+'</span></div></div>'+
-    '<div class="poisson-status">Muestra HT validada: '+model.sample.homeMatches+' partidos del local · '+model.sample.awayMatches+' del visitante. EV no calculado: no hay cuota de mercado verificada.</div>'+
-    '<div class="poisson-note">Estimación exploratoria, aún no calibrada ni validada fuera de muestra. No es una recomendación de apuesta.</div></section>';
+    '<div class="poisson-metric"><span class="label">Goles esperados 1T (λ)</span><span class="value">'+lam+'</span></div>'+oddsText+evText+'</div>'+
+    '<div class="poisson-status">Muestra HT validada: '+model.sample.homeMatches+' partidos del local · '+model.sample.awayMatches+' del visitante.</div>'+implied+
+    '<div class="poisson-note">EV = (probabilidad Poisson × cuota) − 1. Estimación exploratoria, aún no calibrada ni validada fuera de muestra; no es una recomendación de apuesta.</div></section>';
 }
 
 /* ---- resultados ---- */
