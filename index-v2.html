@@ -680,7 +680,7 @@ body.no-hints .poisson-metric .hint{display:none}
         <li>En <b>2. Partidos y ligas</b>, elegí el mercado: <b>+0,5 1T</b> (al menos un gol antes del descanso), <b>Ambos marcan</b> (los dos equipos hacen gol) o <b>+2,5 goles</b> (3 goles o más en el partido).</li>
         <li>Elegí la fecha y tocá <b>«Buscar partidos»</b>.</li>
         <li>Marcá las ligas que te interesan («Todas» y «Ninguna» marcan o desmarcan de una vez).</li>
-        <li>Tocá <b>«Analizar»</b>.</li>
+        <li>Tocá <b>«Analizar»</b>. En pantalla ves el mercado elegido, pero la app guarda en el registro <b>los tres mercados</b> de cada partido, sin gastar consultas extra.</li>
       </ol>
       <p><b>3. Leé cada partido</b> en <b>4. Resultados</b> (la parte siguiente explica cómo).</p>
       <p><b>4. Opcional:</b> tocá la <b>estrella ☆</b> para guardarlo en <b>Favoritos</b> o <b>Favoritos VIP</b> (estos últimos son los de las alertas de Telegram).</p>
@@ -713,9 +713,9 @@ body.no-hints .poisson-metric .hint{display:none}
       <summary>De vez en cuando: validar las ligas</summary>
       <p>El cálculo de la app no funciona igual de bien en todas las ligas. Validar sirve para saber en cuáles <b>el cálculo funciona</b>:</p>
       <ol>
-        <li>En el <b>Escáner</b>, elegí el mercado y marcá las ligas (cada mercado se valida por separado).</li>
-        <li>En la pestaña <b>Validación</b>, tocá <b>«Validar con las ligas marcadas»</b>. Solo se actualizan las ligas marcadas; las demás quedan como estaban.</li>
-        <li>Mirá la tabla <b>«Ligas validadas»</b>. Arriba dice para qué mercado es: para ver otro, cambiá el mercado en el Escáner.</li>
+        <li>En el <b>Escáner</b>, marcá las ligas (no importa qué mercado esté elegido).</li>
+        <li>En la pestaña <b>Validación</b>, tocá <b>«Validar con las ligas marcadas»</b>. Se validan <b>los tres mercados de una vez</b> (+0,5 1T, Ambos marcan y +2,5). Solo se actualizan las ligas marcadas; las demás quedan como estaban.</li>
+        <li>Mirá las tablas <b>«Ligas validadas»</b>: hay una por mercado, y se abren o cierran tocando su nombre.</li>
       </ol>
       <p><b>Qué significa cada columna:</b></p>
       <ul>
@@ -1390,7 +1390,10 @@ async function analizar(){
   await Promise.all(Array.from({length:n},worker));
   // Cuotas prepartido 0,5 1T: una consulta por liga seleccionada y fecha (con sus páginas),
   // no un barrido de todo el día. Se corta apenas todos los partidos de esa liga tienen cuota.
-  const prematchOddsByFixture=new Map();
+  // Se leen las cuotas de los tres mercados de la misma respuesta (no cuesta consultas extra):
+  // el mercado elegido se muestra, y los otros dos se guardan igual en el registro.
+  const oddsByMarket={ht05:new Map(),btts:new Map(),over25:new Map()}, seenFixtures=new Set();
+  const prematchOddsByFixture=oddsByMarket[state.market]||oddsByMarket.ht05;
   if(fxs.length){
     const oddsDate=$('#date').value||fxs[0].iso.slice(0,10);
     const oddsComps=new Map();
@@ -1405,13 +1408,16 @@ async function analizar(){
           for(const item of (oddsResponse.response||[])){
             const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
             if(!fixtureId) continue;
-            const parsed=state.market==='ht05'?findFirstHalfOdds([item],{pick:'best'}):findMarketOdds([item],state.market);
-            if(parsed.over05||parsed.best) prematchOddsByFixture.set(fixtureId,parsed);
+            seenFixtures.add(fixtureId);
+            for(const mk of Object.keys(oddsByMarket)){
+              const parsed=mk==='ht05'?findFirstHalfOdds([item],{pick:'best'}):findMarketOdds([item],mk);
+              if(parsed.over05||parsed.best) oddsByMarket[mk].set(fixtureId,parsed);
+            }
           }
           const reportedTotal=Number(oddsResponse.paging?.total);
           totalPages=Number.isFinite(reportedTotal)&&reportedTotal>0?reportedTotal:page;
           page++;
-          if(wanted.every(id=>prematchOddsByFixture.has(id))) break;
+          if(wanted.every(id=>seenFixtures.has(id))) break;
         }while(page<=totalPages&&page<=8&&!state.cancel);
       }catch(e){
         state.errors.push('Cuotas prepartido de la liga '+c.lid+': '+e.message);
@@ -1447,6 +1453,20 @@ async function analizar(){
     out.push({fx:f,tr,poisson,...resumen(tr)});
   }
   try{logPredictions(out,state.market);if(state.market==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
+  // Los otros dos mercados: mismo historial y mismas cuotas, solo para el registro (y el λ del 1T para En Vivo).
+  for(const mk of Object.keys(oddsByMarket)){
+    if(mk===state.market||state.cancel)continue;
+    try{
+      const extra=fxs.map(f=>{
+        const leagueKey=String(f.lid)+':'+String(f.season);
+        const poisson=poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),oddsByMarket[mk].get(String(f.id))||null,mk);
+        if(poisson)poisson.market=mk;
+        return {fx:f,poisson};
+      });
+      logPredictions(extra,mk);
+      if(mk==='ht05')saveLambdas(extra);
+    }catch(e){state.errors.push('Registro de '+mk+': '+e.message);}
+  }
   state.strategyHistory=new Map(tg);
   state.results=out;
   state.running=false;
@@ -1463,9 +1483,9 @@ const fmtPct=(x,d=1)=>Number.isFinite(x)?(x*100).toLocaleString('es-AR',{minimum
 const fmtNum=(x,d=2)=>Number.isFinite(x)?Number(x).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
 function bankrollValue(){const v=Number(LS.get('o05:bankroll',0));return Number.isFinite(v)&&v>0?v:0}
 function evMinEdge(){const el=$('#evMinEdge');const v=el?parseFloat(String(el.value).replace(',','.')):NaN;return Math.max(0,Number.isFinite(v)?v:5)/100}
-function poissonForFixture(f,hist,fitCache,cutoff,oddsInfo){
+function poissonForFixture(f,hist,fitCache,cutoff,oddsInfo,marketArg){
   const T=window.TanoPoissonModel;
-  const market=state.market;
+  const market=marketArg||state.market;
   if(!T||!MKT_TXT[market])return null;
   const marketOdds=oddsInfo?(market==='ht05'?oddsInfo.over05:oddsInfo.best)||null:null;
   if(!hist||hist.error)return {ok:false,reason:'No se pudo obtener el historial de la competición'+(hist&&hist.error?': '+hist.error:'')+'. No se calcula Poisson.',marketOdds};

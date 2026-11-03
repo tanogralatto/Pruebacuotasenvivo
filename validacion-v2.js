@@ -631,17 +631,15 @@
   }
 
   /* ---- validación ---- */
-  async function runValidation() {
+  async function runValidationFor(marketArg, tag) {
     if (!state.key) { valStatus('Primero guardá y probá tu clave de API-Football.', true); return; }
     const comps = selectedComps();
     if (!comps.length) { valStatus('Buscá partidos y marcá al menos una liga en la sección 2.', true); return; }
-    const market = MKT_NAME[state.market] ? state.market : 'ht05', ft = market !== 'ht05';
-    state.cancel = false;
-    q('#btnValidate').disabled = true;
-    try {
+    const market = MKT_NAME[marketArg] ? marketArg : 'ht05', ft = market !== 'ht05';
+    {
       const games = [], seen = new Set();
       for (let i = 0; i < comps.length; i++) {
-        valStatus(`Bajando historial de la liga ${i + 1}/${comps.length}…`);
+        valStatus(tag + `Bajando historial de la liga ${i + 1}/${comps.length}…`);
         const h = await loadLeagueHistory(comps[i].lid, comps[i].season);
         // También se evalúa la temporada pasada (cada partido se predice solo con partidos anteriores),
         // así las ligas europeas, que llevan pocas fechas, tienen muestra suficiente para decidir.
@@ -657,18 +655,18 @@
       const grid = [{ halfLifeDays: T.DEFAULTS.halfLifeDays, priorMatches: T.DEFAULTS.priorMatches, xgWeight: 0 }]; // la de siempre primero
       for (const halfLifeDays of [120, 240, 500]) for (const priorMatches of [8, 14, 25]) if (!(halfLifeDays === grid[0].halfLifeDays && priorMatches === grid[0].priorMatches)) grid.push({ halfLifeDays, priorMatches, xgWeight: 0 });
       for (let i = 0; i < grid.length; i++) {
-        valStatus(`Probando parámetros ${i + 1}/${grid.length} (cada prueba usa solo partidos anteriores)…`);
+        valStatus(tag + `Probando parámetros ${i + 1}/${grid.length} (cada prueba usa solo partidos anteriores)…`);
         await tick();
         const bt = runCfg(grid[i]);
         if (bt.metrics.count) { results.push(Object.assign({}, grid[i], { count: bt.metrics.count, brier: bt.metrics.brier, skill: bt.metrics.skill })); runs.push({ cfg: grid[i], rows: bt.rows }); }
       }
       let best = bestByBrier(results);
-      if (!best) { valStatus('No hay partidos suficientes para evaluar: probá con ligas con más historial.', true); return; }
+      if (!best) { valStatus(tag + 'No hay partidos suficientes para evaluar: probá con ligas con más historial.', true); return; }
       let xgNote = 'xG: sin datos descargados (el modelo usa solo goles).';
       if (xgCoverage >= 0.5) {
         const xr = [];
         for (const w of [0.3, 0.6]) {
-          valStatus(`Probando mezcla con xG ${Math.round(w * 100)}%…`);
+          valStatus(tag + `Probando mezcla con xG ${Math.round(w * 100)}%…`);
           await tick();
           const cfg = { halfLifeDays: best.halfLifeDays, priorMatches: best.priorMatches, xgWeight: w };
           const bt = runCfg(cfg);
@@ -708,13 +706,31 @@
       }
       LS.set(lvKeyOf(market), lv);
       renderLeagueVal();
-      renderValidation({ results, finalCfg, finalMetrics, rawMetrics: bt.metrics, cal, useCal, verdict, xgNote, skipped: bt.skipped, comps });
+      const html = renderValidation({ results, finalCfg, finalMetrics, rawMetrics: bt.metrics, cal, useCal, verdict, xgNote, skipped: bt.skipped, comps });
       const okNow = comps.filter(c => per[String(c.lid)] && per[String(c.lid)].status === 'aprobada').length;
-      valStatus(`Validación de ${MKT_NAME[market]} terminada: ${okNow} de ${comps.length} liga(s) aprobada(s). Mirá la tabla «Ligas validadas».`, okNow === 0);
+      return { market, html, ok: okNow, total: comps.length };
+    }
+  }
+  // «Validar» valida los tres mercados seguidos con las mismas ligas (el historial se baja una sola vez).
+  async function runValidation() {
+    if (!state.key) { valStatus('Primero guardá y probá tu clave de API-Football.', true); return; }
+    if (!selectedComps().length) { valStatus('Buscá partidos y marcá al menos una liga en la sección 2.', true); return; }
+    state.cancel = false;
+    q('#btnValidate').disabled = true;
+    const parts = [], summary = [];
+    try {
+      for (const mk of Object.keys(MKT_NAME)) {
+        if (state.cancel) break;
+        const r = await runValidationFor(mk, MKT_NAME[mk] + ' · ');
+        if (r) { parts.push(`<details class="val-box"><summary><b>${esc(MKT_NAME[mk])}</b> · ${r.ok} de ${r.total} liga(s) aprobada(s)</summary>${r.html}</details>`); summary.push(`${MKT_NAME[mk]}: ${r.ok} de ${r.total}`); }
+      }
+      q('#valOut').innerHTML = parts.length ? '<div class="val-box"><b>Detalle de la última validación</b> (tocá cada mercado para verlo)</div>' + parts.join('') : '';
+      if (summary.length) valStatus(`Validación terminada en los 3 mercados. Ligas aprobadas: ${summary.join(' · ')}. Mirá las tablas «Ligas validadas».`);
     } catch (e) {
       valStatus('No se pudo validar: ' + e.message, true);
     } finally { q('#btnValidate').disabled = false; }
   }
+
 
   /* ---- ligas validadas (se van sumando) ---- */
   const curMarket = () => (typeof state !== 'undefined' && MKT_NAME[state.market]) ? state.market : 'ht05';
@@ -734,24 +750,20 @@
   }
   const ST_LABEL = { aprobada: '✅ Aprobada', revalidar: '🔄 Volver a validar', no: '❌ No aprobada', faltan: '⏳ Faltan datos' };
   const ST_ORDER = { aprobada: 0, revalidar: 1, faltan: 2, no: 3 };
-  function renderLeagueVal() {
-    migrateLv();
-    const market = curMarket(), key = lvKeyOf(market);
+  function leagueValBlock(market) {
+    const key = lvKeyOf(market);
     const lv0 = readLv(market), names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
     let renamed = false;
     for (const e of Object.values(lv0)) if (/^Liga \d+$/.test(e.name || '') && names.has(String(e.lid))) { e.name = names.get(String(e.lid)); renamed = true; }
     const countries = new Map((state.fixtures || []).map(f => [String(f.lid), f.lc]));
     for (const e of Object.values(lv0)) if (!e.country && countries.get(String(e.lid))) { e.country = countries.get(String(e.lid)); renamed = true; }
     if (renamed) LS.set(key, lv0);
-    const lv = readLv(market), box = q('#leagueValOut');
+    const lv = readLv(market);
     // Aprobadas con el método anterior (sin «Confianza»): no cuentan como aprobadas hasta volver a validarlas.
     const list = Object.values(lv).map(e => Object.assign({}, e, { status: (e.status === 'aprobada' || e.status === 'conjunta') && !e.confidence ? 'revalidar' : e.status }));
     const ok = list.filter(e => e.status === 'aprobada').length;
     const toRedo = list.filter(e => e.status === 'revalidar').length;
-    const badge = q('#valBadge');
-    if (badge) badge.textContent = list.length ? `· ${MKT_NAME[market]}: ${ok} liga(s) aprobada(s)` : `· ${MKT_NAME[market]}: sin validar`;
-    if (!box) return;
-    if (!list.length) { box.innerHTML = `<div class="val-box"><b>Ligas validadas para ${MKT_NAME[market]}: ninguna todavía.</b> Marcá ligas en la sección 2 y tocá «Validar». Cada mercado se valida por separado (arriba elegís el mercado).</div>`; return; }
+    if (!list.length) return { ok: 0, n: 0, html: `<div class="val-box">Ninguna liga validada todavía para ${MKT_NAME[market]}. Marcá ligas en el Escáner (sección 2) y tocá «Validar».</div>` };
     // Mejor calibrada primero: aprobadas arriba, y dentro de cada grupo la que más mejora sobre la tasa base.
     list.sort((a, b) => (ST_ORDER[a.status] - ST_ORDER[b.status]) || ((b.skill ?? -9) - (a.skill ?? -9)));
     const rows = list.map(e => `<tr><td>${e.country ? esc(countryEs(e.country)) : '—'}</td><td>${esc(e.name || 'Liga ' + e.lid)}</td><td>${ST_LABEL[e.status] || esc(e.status)}</td>` +
@@ -762,25 +774,34 @@
       `<td>${isNum(e.gap) ? num(e.gap * 100, 1) + ' pts' : '—'}</td>` +
       `<td>${e.validatedAt ? new Date(e.validatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '—'}</td></tr>`).join('');
     const hasJoint = list.some(e => e.status === 'conjunta');
-    box.innerHTML = `<div class="val-box"><b>Ligas validadas para ${MKT_NAME[market]}: ${ok} aprobada(s) de ${list.length}</b><br>` +
-      'Cada vez que tocás «Validar», las ligas marcadas se suman o se actualizan acá, solo para el mercado elegido arriba. Las demás no se tocan. ' +
-      'En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
+    return { ok, n: list.length, html:
       '<table class="val-table"><tr><th>País</th><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Confianza</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
       '<div class="small"><b>Mejora</b>: cuánto acierta mejor que adivinar con el promedio de goles (más alto = mejor). ' +
       '<b>Confianza</b>: si la mejora es real o puede ser suerte, según cuántos partidos hay (alta = casi seguro que es real; media = puede ser; baja = puede ser pura casualidad). ' +
       '<b>Dice / pasa</b>: lo que la app predijo en promedio y lo que pasó. <b>Desvío</b>: la mayor diferencia en algún grupo de partidos (más bajo = mejor calibrada). ' +
       `Para aprobar, una liga necesita al menos ${LEAGUE_RULES.minN} partidos evaluados, mejora de 1% o más con confianza alta y un desvío chico (hasta ${Math.round(LEAGUE_RULES.maxBandGap * 100)} pts, un poco más si el grupo tiene pocos partidos, porque ahí la suerte pesa más).` +
       (toRedo ? ` <b>${toRedo} liga(s) dicen «Volver a validar»: se aprobaron con el método anterior, que era más generoso, y mientras tanto se tratan como no aprobadas. Marcalas en el Escáner y tocá «Validar».</b>` : '') +
-      (hasJoint ? ' Las de «prueba conjunta» se aprobaron todas juntas el ' + new Date(list.find(e => e.status === 'conjunta').validatedAt).toLocaleDateString('es-AR') + ': si las volvés a validar, vas a ver el detalle de cada una.' : '') + '</div>';
+      (hasJoint ? ' Las de «prueba conjunta» se aprobaron todas juntas el ' + new Date(list.find(e => e.status === 'conjunta').validatedAt).toLocaleDateString('es-AR') + ': si las volvés a validar, vas a ver el detalle de cada una.' : '') + '</div>' };
   }
+  // Las tres tablas (una por mercado) juntas; la del mercado elegido en el Escáner viene abierta.
+  function renderLeagueVal() {
+    migrateLv();
+    const cur = curMarket(), blocks = Object.keys(MKT_NAME).map(mk => Object.assign({ mk }, leagueValBlock(mk)));
+    const badge = q('#valBadge');
+    if (badge) badge.textContent = '· ' + blocks.map(b => `${MKT_NAME[b.mk]}: ${b.n ? b.ok + ' aprobada(s)' : 'sin validar'}`).join(' · ');
+    const box = q('#leagueValOut');
+    if (!box) return;
+    box.innerHTML = '<div class="val-box"><b>Ligas validadas</b> (una tabla por mercado). Cada vez que tocás «Validar», las ligas marcadas se actualizan en los tres mercados; las demás quedan como estaban. En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
+      blocks.map(b => `<details class="val-box"${b.mk === cur ? ' open' : ''}><summary><b>${esc(MKT_NAME[b.mk])}</b> · ${b.n ? b.ok + ' aprobada(s) de ' + b.n : 'sin validar'}</summary>${b.html}</details>`).join('');
+  }
+
   root.tanoRenderLeagueVal = renderLeagueVal;
 
   function renderValidation(v) {
     const m = v.finalMetrics;
     const tune = v.results.slice().sort((a, b) => a.brier - b.brier).slice(0, 6)
       .map(r => `<tr><td>${r.halfLifeDays} d</td><td>${r.priorMatches}</td><td>${Math.round((r.xgWeight || 0) * 100)}%</td><td>${num(r.brier, 4)}</td></tr>`).join('');
-    q('#valOut').innerHTML =
-      `<div class="val-box"><b>${v.verdict.validated ? 'Todas las ligas de esta prueba juntas: pasó' : 'Todas las ligas de esta prueba juntas: NO pasó'}</b><br>` +
+    return `<div class="val-box"><b>${v.verdict.validated ? 'Todas las ligas de esta prueba juntas: pasó' : 'Todas las ligas de esta prueba juntas: NO pasó'}</b><br>` +
       v.verdict.reasons.map(esc).join('<br>') + '<br><br>' +
       `Predicciones evaluadas: <b>${m.count}</b> en ${v.comps.length} liga(s). Cada una se juzga con un modelo, parámetros y calibración elegidos solo con partidos anteriores.<br>` +
       `Brier ${num(m.brier, 4)} vs tasa base ${num(m.baselineBrier, 4)} · mejora ${num(m.skill * 100, 1)}% · log loss ${num(m.logloss, 4)}<br>` +
