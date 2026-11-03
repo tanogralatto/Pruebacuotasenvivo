@@ -82,13 +82,37 @@
       ok = false;
       reasons.push(`Mejora sobre la tasa base de solo ${(metrics.skill * 100).toFixed(1)}% (mínimo ${(o.minSkill * 100).toFixed(0)}%).`);
     }
-    const bad = (metrics.calibration || []).filter(b => b.count >= o.minBand && Math.abs(b.predicted - b.observed) > o.maxBandGap);
+    // seFactor (opcional): con muestras chicas se tolera además el ruido normal (seFactor × error estándar de la banda).
+    const tol = b => o.seFactor ? Math.max(o.maxBandGap, o.seFactor * Math.sqrt(b.predicted * (1 - b.predicted) / b.count)) : o.maxBandGap;
+    const bad = (metrics.calibration || []).filter(b => b.count >= o.minBand && Math.abs(b.predicted - b.observed) > tol(b));
     if (bad.length) {
       ok = false;
       reasons.push('Bandas mal calibradas: ' + bad.map(b => `${b.range} (dice ${(b.predicted * 100).toFixed(0)}%, ocurre ${(b.observed * 100).toFixed(0)}%)`).join('; ') + '.');
     }
     if (ok) reasons.push('Supera la tasa base y las bandas con muestra suficiente están bien calibradas.');
     return { validated: ok, reasons };
+  }
+
+  // Resultado de cada liga por separado (con las mismas predicciones fuera de muestra del backtest).
+  // status: 'aprobada' | 'no' | 'faltan' (pocos partidos para decidir).
+  const LEAGUE_RULES = { minN: 100, minSkill: 0.01, maxBandGap: 0.07, minBand: 30, seFactor: 2 };
+  function leagueVerdicts(rows, T, pick) {
+    const byLeague = new Map();
+    for (const r of rows || []) { const k = String(r.leagueId); if (!byLeague.has(k)) byLeague.set(k, []); byLeague.get(k).push(r); }
+    const out = {};
+    for (const [lid, list] of byLeague) {
+      const m = T.scoreRows(list, pick);
+      const bands = (m.calibration || []).filter(b => b.count >= LEAGUE_RULES.minBand);
+      const gap = bands.length ? Math.max(...bands.map(b => Math.abs(b.predicted - b.observed))) : null;
+      let status;
+      if (m.count < LEAGUE_RULES.minN) status = 'faltan';
+      else {
+        const v = validationVerdict(m, LEAGUE_RULES);
+        status = v.validated ? 'aprobada' : 'no';
+      }
+      out[lid] = { lid, status, n: m.count, skill: m.skill, brier: m.brier, meanP: m.meanP, observed: m.observed, gap };
+    }
+    return out;
   }
 
   function bestByBrier(results) {
@@ -121,7 +145,8 @@
     return keep;
   }
 
-  const pure = { settleFromFixture, chunk, summarizeLog, validationVerdict, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY };
+  const LV_KEY = 'o05:leagueval:v1';
+  const pure = { settleFromFixture, chunk, summarizeLog, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
   if (typeof module !== 'undefined' && module.exports) module.exports = pure;
   root.TanoVal = pure;
 
@@ -162,6 +187,7 @@
       added++;
     }
     if (added) writeLog(log);
+    try { renderLeagueVal(); } catch (e) {}
     return added;
   };
 
@@ -427,21 +453,80 @@
         leagues: comps.map(c => c.lid)
       };
       LS.set('o05:model:v1', saved);
+      // Se suma a la lista de ligas validadas: las ligas de esta prueba se actualizan, las demás quedan como estaban.
+      const pick = useCal ? (r => T.applyCalibration(cal.calibration, r.p)) : undefined;
+      const per = leagueVerdicts(bt.rows, T, pick);
+      const names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
+      const lv = readLv(), stamp = Date.now();
+      const cfgSaved = { halfLifeDays: saved.halfLifeDays, priorMatches: saved.priorMatches, xgWeight: saved.xgWeight, calibration: saved.calibration };
+      for (const c of comps) {
+        const k = String(c.lid), r = per[k] || { lid: k, status: 'faltan', n: 0, skill: null, brier: null, meanP: null, observed: null, gap: null };
+        lv[k] = Object.assign({}, r, { name: names.get(k) || (lv[k] && lv[k].name) || 'Liga ' + k, cfg: cfgSaved, validatedAt: stamp });
+      }
+      LS.set(LV_KEY, lv);
+      renderLeagueVal();
       renderValidation({ results, finalCfg, finalMetrics, rawMetrics: bt.metrics, cal, useCal, verdict, xgNote, skipped: bt.skipped, comps });
-      valStatus(`Validación terminada con ${finalMetrics.count} predicciones. ${verdict.validated ? 'El modelo pasó.' : 'El modelo NO pasó todavía.'}`, !verdict.validated);
+      const okNow = comps.filter(c => per[String(c.lid)] && per[String(c.lid)].status === 'aprobada').length;
+      valStatus(`Validación terminada: ${okNow} de ${comps.length} liga(s) aprobada(s). Mirá la tabla «Ligas validadas».`, okNow === 0);
     } catch (e) {
       valStatus('No se pudo validar: ' + e.message, true);
     } finally { q('#btnValidate').disabled = false; }
   }
 
+  /* ---- ligas validadas (se van sumando) ---- */
+  function readLv() { const m = LS.get(LV_KEY, null); return m && typeof m === 'object' ? m : {}; }
+  // La validación del 31/10 fue conjunta (sin detalle por liga): esas ligas quedan aprobadas como «prueba conjunta».
+  function migrateLv() {
+    const lv = readLv(), old = LS.get('o05:model:v1', null);
+    if (Object.keys(lv).length || !old || !Array.isArray(old.leagues) || !old.leagues.length) return;
+    const names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
+    const cfg = { halfLifeDays: old.halfLifeDays, priorMatches: old.priorMatches, xgWeight: old.xgWeight || 0, calibration: old.calibration || null };
+    for (const id of old.leagues) {
+      const k = String(id);
+      lv[k] = { lid: k, name: names.get(k) || 'Liga ' + k, status: old.validated ? 'conjunta' : 'no', n: null, skill: null, gap: null, cfg, validatedAt: old.validatedAt || 0 };
+    }
+    LS.set(LV_KEY, lv);
+  }
+  const ST_LABEL = { aprobada: '✅ Aprobada', conjunta: '✅ Aprobada (prueba conjunta)', no: '❌ No aprobada', faltan: '⏳ Faltan datos' };
+  const ST_ORDER = { aprobada: 0, conjunta: 1, faltan: 2, no: 3 };
+  function renderLeagueVal() {
+    migrateLv();
+    const lv0 = readLv(), names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
+    let renamed = false;
+    for (const e of Object.values(lv0)) if (/^Liga \d+$/.test(e.name || '') && names.has(String(e.lid))) { e.name = names.get(String(e.lid)); renamed = true; }
+    if (renamed) LS.set(LV_KEY, lv0);
+    const lv = readLv(), box = q('#leagueValOut'), list = Object.values(lv);
+    const ok = list.filter(e => e.status === 'aprobada' || e.status === 'conjunta').length;
+    const badge = q('#valBadge');
+    if (badge) badge.textContent = list.length ? `· ${ok} liga(s) aprobada(s)` : '· sin validar';
+    if (!box) return;
+    if (!list.length) { box.innerHTML = ''; return; }
+    // Mejor calibrada primero: aprobadas arriba, y dentro de cada grupo la que más mejora sobre la tasa base.
+    list.sort((a, b) => (ST_ORDER[a.status] - ST_ORDER[b.status]) || ((b.skill ?? -9) - (a.skill ?? -9)));
+    const rows = list.map(e => `<tr><td>${esc(e.name || 'Liga ' + e.lid)}</td><td>${ST_LABEL[e.status] || esc(e.status)}</td>` +
+      `<td>${e.n == null ? '—' : e.n}</td>` +
+      `<td>${isNum(e.skill) ? (e.skill >= 0 ? '+' : '') + num(e.skill * 100, 1) + '%' : '—'}</td>` +
+      `<td>${isNum(e.meanP) && isNum(e.observed) ? pct(e.meanP, 0) + ' / ' + pct(e.observed, 0) : '—'}</td>` +
+      `<td>${isNum(e.gap) ? num(e.gap * 100, 1) + ' pts' : '—'}</td>` +
+      `<td>${e.validatedAt ? new Date(e.validatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '—'}</td></tr>`).join('');
+    const hasJoint = list.some(e => e.status === 'conjunta');
+    box.innerHTML = `<div class="val-box"><b>Ligas validadas: ${ok} aprobada(s) de ${list.length}</b><br>` +
+      'Cada vez que tocás «Validar», las ligas marcadas se suman o se actualizan acá. Las demás no se tocan. ' +
+      'En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
+      '<table class="val-table"><tr><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
+      '<div class="small"><b>Mejora</b>: cuánto acierta mejor que adivinar con el promedio de goles (más alto = mejor). ' +
+      '<b>Dice / pasa</b>: lo que la app predijo en promedio y lo que pasó. <b>Desvío</b>: la mayor diferencia en algún grupo de partidos (más bajo = mejor calibrada). ' +
+      `Para aprobar, una liga necesita al menos ${LEAGUE_RULES.minN} partidos evaluados, mejora de 1% o más y un desvío chico (hasta ${LEAGUE_RULES.maxBandGap * 100} pts, un poco más si el grupo tiene pocos partidos, porque ahí la suerte pesa más).` +
+      (hasJoint ? ' Las de «prueba conjunta» se aprobaron todas juntas el ' + new Date(list.find(e => e.status === 'conjunta').validatedAt).toLocaleDateString('es-AR') + ': si las volvés a validar, vas a ver el detalle de cada una.' : '') + '</div>';
+  }
+  root.tanoRenderLeagueVal = renderLeagueVal;
+
   function renderValidation(v) {
     const m = v.finalMetrics;
-    const badge = q('#valBadge');
-    if (badge) badge.textContent = v.verdict.validated ? '· validado' : '· NO validado';
     const tune = v.results.slice().sort((a, b) => a.brier - b.brier).slice(0, 6)
       .map(r => `<tr><td>${r.halfLifeDays} d</td><td>${r.priorMatches}</td><td>${Math.round((r.xgWeight || 0) * 100)}%</td><td>${num(r.brier, 4)}</td></tr>`).join('');
     q('#valOut').innerHTML =
-      `<div class="val-box"><b>${v.verdict.validated ? 'Resultado: el modelo pasó la validación' : 'Resultado: el modelo NO pasó la validación'}</b><br>` +
+      `<div class="val-box"><b>${v.verdict.validated ? 'Todas las ligas de esta prueba juntas: pasó' : 'Todas las ligas de esta prueba juntas: NO pasó'}</b><br>` +
       v.verdict.reasons.map(esc).join('<br>') + '<br><br>' +
       `Predicciones evaluadas: <b>${m.count}</b> en ${v.comps.length} liga(s), cada una con un modelo ajustado solo con partidos anteriores.<br>` +
       `Brier ${num(m.brier, 4)} vs tasa base ${num(m.baselineBrier, 4)} · mejora ${num(m.skill * 100, 1)}% · log loss ${num(m.logloss, 4)}<br>` +
@@ -493,8 +578,7 @@
   q('#btnXgDownload').addEventListener('click', downloadXg);
   q('#btnSettle').addEventListener('click', settleLog);
   q('#btnLogCopy').addEventListener('click', copyLog);
-  const cfg0 = LS.get('o05:model:v1', null);
-  if (cfg0 && q('#valBadge')) q('#valBadge').textContent = cfg0.validated ? '· validado' : '· NO validado';
+  renderLeagueVal();
   root.tanoRenderLog = renderLogOut;
   renderLogOut();
 })(typeof globalThis !== 'undefined' ? globalThis : this);

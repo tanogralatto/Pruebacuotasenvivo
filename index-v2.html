@@ -582,6 +582,7 @@ body.no-hints .poisson-metric .hint{display:none}
       </div>
       <div id="valStatus" class="status" role="status"></div>
       <div id="syncStatus" class="status" role="status">☁️ Conectando con tu cuenta…</div>
+      <div id="leagueValOut"></div>
       <div id="valOut"></div>
       <div id="logOut"></div>
     </div>
@@ -1139,8 +1140,14 @@ async function loadLeagueHistory(lid,season){
   p.catch(()=>{if(leagueHistoryMemo.get(key)===p)leagueHistoryMemo.delete(key)});
   return p;
 }
-function modelCfg(){const c=LS.get('o05:model:v1',null);return c&&typeof c==='object'?c:{}}
-function modelParams(){const c=modelCfg();return {halfLifeDays:c.halfLifeDays||240,priorMatches:c.priorMatches||14,xgWeight:c.xgWeight||0}}
+/* Ajuste por liga: cada liga validada guarda sus parámetros y si quedó aprobada. Las ligas sin validar usan el último ajuste, como provisorio. */
+function leagueValOf(lid){const m=LS.get('o05:leagueval:v1',null);return m&&typeof m==='object'&&lid!=null?m[String(lid)]||null:null}
+function modelCfg(lid){
+  const c=LS.get('o05:model:v1',null)||{},lv=leagueValOf(lid);
+  if(lv&&lv.cfg)return Object.assign({},lv.cfg,{validated:lv.status==='aprobada'||lv.status==='conjunta'});
+  return Object.assign({},c,{validated:false});
+}
+function modelParams(lid){const c=modelCfg(lid);return {halfLifeDays:c.halfLifeDays||240,priorMatches:c.priorMatches||14,xgWeight:c.xgWeight||0}}
 
 /* ---- ligas ---- */
 function isFutureFixture(f,now=Date.now()){
@@ -1305,7 +1312,7 @@ function poissonForFixture(f,hist,fitCache,cutoff,oddsInfo){
   if(state.market!=='ht05'||!T)return null;
   const marketOdds=oddsInfo?oddsInfo.over05:null;
   if(!hist||hist.error)return {ok:false,reason:'No se pudo obtener el historial de la competición'+(hist&&hist.error?': '+hist.error:'')+'. No se calcula Poisson.',marketOdds};
-  const cfg=modelCfg(), params=modelParams(), key=f.lid+':'+f.season;
+  const cfg=modelCfg(f.lid), params=modelParams(f.lid), key=f.lid+':'+f.season;
   let fit=fitCache.get(key);
   if(!fit){
     const fm=T.buildFitMatches(hist.games,{cutoffTs:cutoff,currentSeason:f.season,halfLifeDays:params.halfLifeDays,xgWeight:params.xgWeight});
@@ -2383,7 +2390,7 @@ function startTelegramSettings(user) {
 }
 
 /* ===== Sincronización v2: registro de predicciones y ajuste del modelo, iguales en todos tus aparatos ===== */
-const SYNC_LOG = 'o05:plog:v1', SYNC_MODEL = 'o05:model:v1', SYNC_LAM = 'o05:lam:v1';
+const SYNC_LOG = 'o05:plog:v1', SYNC_MODEL = 'o05:model:v1', SYNC_LAM = 'o05:lam:v1', SYNC_LV = 'o05:leagueval:v1';
 let unsubSyncLog = null, unsubSyncMain = null, syncPushTimer = null, syncReady = false;
 const cloudLog = new Map(); // id -> JSON del registro tal como está en la nube
 const lsRaw = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -2397,8 +2404,7 @@ function betterEntry(a, b) { // devuelve la versión más completa de la misma p
 }
 function refreshV2Views() {
   try { if (window.tanoRenderLog) window.tanoRenderLog(); } catch (e) {}
-  const m = lsRaw.get(SYNC_MODEL, null), badge = q('#valBadge');
-  if (m && badge) badge.textContent = m.validated ? '· validado' : '· NO validado';
+  try { if (window.tanoRenderLeagueVal) window.tanoRenderLeagueVal(); } catch (e) {}
 }
 function pushLogChanges() {
   if (!syncReady || !inAppUid) return;
@@ -2429,11 +2435,12 @@ function stopV2Sync() {
 function startV2Sync(user) {
   stopV2Sync();
   const uid = user.uid, mainRef = doc(db, 'tanoapp_v2_datos', uid), col = collection(db, 'tanoapp_v2_datos', uid, 'registro');
-  let gotLog = false, gotMain = false;
+  let gotLog = false, gotMain = false, pendingMain = null;
   const maybeReady = () => {
     if (syncReady || !gotLog || !gotMain) return;
     syncReady = true;
     pushLogChanges(); // sube lo que este aparato tenía y la nube no
+    if (pendingMain) { pushMain(pendingMain); pendingMain = null; }
     syncMsg('☁️ Sincronizado con tu cuenta: ' + cloudLog.size + ' predicciones. Mac y iPhone ven lo mismo.');
   };
   window.tanoSyncHook = (k, v) => {
@@ -2441,6 +2448,7 @@ function startV2Sync(user) {
     if (k === SYNC_LOG) { clearTimeout(syncPushTimer); syncPushTimer = setTimeout(pushLogChanges, 1500); }
     else if (k === SYNC_MODEL) pushMain({ model: v });
     else if (k === SYNC_LAM) pushMain({ lam: JSON.stringify(v || {}) });
+    else if (k === SYNC_LV) pushMain({ leagueval: JSON.stringify(v || {}) });
   };
   unsubSyncLog = onSnapshot(col, snap => {
     const local = lsRaw.get(SYNC_LOG, {}) || {};
@@ -2461,15 +2469,23 @@ function startV2Sync(user) {
     const lm = lsRaw.get(SYNC_MODEL, null), cm = d.model || null;
     if (cm && (!lm || (cm.validatedAt || 0) > (lm.validatedAt || 0))) { lsRaw.set(SYNC_MODEL, cm); refreshV2Views(); }
     const needModelUp = lm && (!cm || (lm.validatedAt || 0) > (cm.validatedAt || 0));
-    let lamUp = false;
+    let lamUp = false, lvUp = false, lvMerged = null;
+    try { // ligas validadas: por cada liga gana la validación más reciente
+      const ll = lsRaw.get(SYNC_LV, {}) || {}, cl = d.leagueval ? JSON.parse(d.leagueval) : {};
+      lvMerged = { ...ll };
+      for (const [k, v] of Object.entries(cl)) if (!lvMerged[k] || (v.validatedAt || 0) > (lvMerged[k].validatedAt || 0)) lvMerged[k] = v;
+      if (JSON.stringify(lvMerged) !== JSON.stringify(ll)) { lsRaw.set(SYNC_LV, lvMerged); refreshV2Views(); }
+      lvUp = Object.keys(lvMerged).some(k => !cl[k] || (lvMerged[k].validatedAt || 0) > (cl[k].validatedAt || 0));
+    } catch (e) {}
     try {
       const ll = lsRaw.get(SYNC_LAM, {}) || {}, cl = d.lam ? JSON.parse(d.lam) : {}, now = Date.now() / 1000;
       const merged = { ...cl, ...ll };
       for (const k of Object.keys(merged)) if (!(merged[k].ts > now - 3 * 86400)) delete merged[k];
       if (JSON.stringify(merged) !== JSON.stringify(ll)) lsRaw.set(SYNC_LAM, merged);
       lamUp = Object.keys(merged).some(k => !cl[k]);
-      if (!gotMain) { gotMain = true; maybeReady(); }
-      if (syncReady && (needModelUp || lamUp)) pushMain({ ...(needModelUp ? { model: lm } : {}), ...(lamUp ? { lam: JSON.stringify(merged) } : {}) });
+      const up = (needModelUp || lamUp || lvUp) ? { ...(needModelUp ? { model: lm } : {}), ...(lamUp ? { lam: JSON.stringify(merged) } : {}), ...(lvUp ? { leagueval: JSON.stringify(lvMerged) } : {}) } : null;
+      if (syncReady) { if (up) pushMain(up); }
+      else { pendingMain = up; if (!gotMain) { gotMain = true; maybeReady(); } }
     } catch (e) { if (!gotMain) { gotMain = true; maybeReady(); } }
   }, e => syncMsg('☁️ No se pudo leer tu ajuste en la nube: ' + friendly(e), true));
 }
