@@ -427,7 +427,9 @@
       for (let i = 0; i < comps.length; i++) {
         valStatus(`Bajando historial de la liga ${i + 1}/${comps.length}…`);
         const h = await loadLeagueHistory(comps[i].lid, comps[i].season);
-        for (const g of (ft ? h.gamesFT || [] : h.games)) { const k = g.id + ':' + g.leagueId; if (!seen.has(k)) { seen.add(k); games.push(g); } }
+        // También se evalúa la temporada pasada (cada partido se predice solo con partidos anteriores),
+        // así las ligas europeas, que llevan pocas fechas, tienen muestra suficiente para decidir.
+        for (const g of (ft ? h.gamesFT || [] : h.games)) { const k = g.id + ':' + g.leagueId; if (!seen.has(k)) { seen.add(k); games.push(Object.assign({}, g, { isTarget: true })); } }
       }
       const targets = games.filter(g => g.isTarget !== false);
       const withXg = targets.filter(g => isNum(g.xh) && isNum(g.xa)).length;
