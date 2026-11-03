@@ -401,6 +401,12 @@ body.no-hints .poisson-metric .hint{display:none}
 .val-table th:first-child,.val-table td:first-child{text-align:left}
 .val-box{padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:13px;line-height:1.5}
 .val-box b{font-weight:600}
+.routine{margin:0 0 14px;padding:10px 14px;border:2px solid var(--accent);border-radius:10px;background:var(--surface);font-size:14px;line-height:1.5}
+.routine summary{cursor:pointer;font-weight:700;font-size:16px;color:var(--accent);min-height:36px;display:flex;align-items:center}
+.routine ol{margin:6px 0 10px;padding-left:22px}
+.routine li{margin-bottom:6px}
+.routine p{margin:0 0 8px}
+.routine p:last-child{margin-bottom:0}
 .val-why summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--accent);min-height:32px;display:flex;align-items:center}
 .val-why .val-box p{margin:0 0 8px}
 .val-why .val-box ul,.val-why .val-box ol{margin:0 0 8px;padding-left:20px}
@@ -426,6 +432,18 @@ body.no-hints .poisson-metric .hint{display:none}
   <h1 id="appTitle">Over 0.5 1T</h1>
   <p class="sub" id="appSubtitle">Elegí el mercado, la fecha y las ligas. La app calcula tus 7 criterios históricos con datos reales de API-Football y ordena los partidos por su promedio descriptivo.</p>
 </header>
+
+<details id="routineBox" class="routine" open>
+  <summary>📌 Tu rutina (tocá para ocultar o mostrar)</summary>
+  <p><b>Todos los días, dos pasos:</b></p>
+  <ol>
+    <li><b>Tocá «Liquidar registro»</b> (Escáner, sección 5). Anota cómo salieron los partidos de ayer.</li>
+    <li><b>Analizá los partidos del día</b> en el Escáner, como siempre. La app guarda sola cada predicción con su cuota.</li>
+  </ol>
+  <p><b>EV:</b> el número más confiable es <b>«EV vs mercado (sin margen)»</b>. Todavía no sabemos si gana plata: hasta entonces, si apostás, que sea poco.</p>
+  <p><b>En 2 o 3 semanas</b> (unas 300 predicciones liquidadas): tocá <b>«Copiar registro»</b> y pasáselo a Claude. Ahí se sabe si el sistema gana plata de verdad.</p>
+  <p class="small">Ya hecho: la validación salió bien (el Poisson calcula bien). Opcional, sin apuro: para probar el xG, poné 500 en «Consultas para bajar xG», tocá «Bajar xG» y después «Validar».</p>
+</details>
 
 <div class="userbar">
   <span id="userLabel" class="mono"></span>
@@ -1532,6 +1550,7 @@ $('#evMinEdge').addEventListener('input',()=>{
   }
   renderResults();
 });
+(function(){const d=$('#routineBox');if(!d)return;if(LS.get('o05:routine',true)===false)d.open=false;d.addEventListener('toggle',()=>LS.set('o05:routine',d.open));})();
 (function(){const c=$('#showHints');if(!c)return;const on=LS.get('o05:hints',true)!==false;c.checked=on;document.body.classList.toggle('no-hints',!on);c.addEventListener('change',()=>{document.body.classList.toggle('no-hints',!c.checked);LS.set('o05:hints',c.checked);});})();
 $('#lfilter').addEventListener('input',renderLeagues);
 $('#leagues').addEventListener('change',e=>{
