@@ -26,10 +26,17 @@
   /* ============================== PURO ============================== */
 
   // Resultado al descanso de un partido de /fixtures. Nunca inventa un HT.
-  function settleFromFixture(f) {
+  // market: 'ht05' (por defecto), 'btts' u 'over25'. Los de 90 minutos usan el marcador final reglamentario.
+  function settleFromFixture(f, market) {
     const st = f && f.fixture && f.fixture.status && f.fixture.status.short;
     if (VOID_ST.includes(st)) return { status: 'void', reason: st };
     if (!DONE.includes(st)) return { status: 'pending', reason: st || 'sin estado' };
+    if (market === 'btts' || market === 'over25') {
+      const ft = (f.score && f.score.fulltime) || {};
+      if (!isGoals(ft.home) || !isGoals(ft.away)) return { status: 'unverified', reason: 'La API no informó el marcador final.' };
+      const y = market === 'btts' ? (ft.home > 0 && ft.away > 0 ? 1 : 0) : (ft.home + ft.away >= 3 ? 1 : 0);
+      return { status: 'settled', y, ft: [ft.home, ft.away], source: 'api' };
+    }
     const ht = (f.score && f.score.halftime) || {};
     if (isGoals(ht.home) && isGoals(ht.away)) {
       return { status: 'settled', y: ht.home + ht.away > 0 ? 1 : 0, ht: [ht.home, ht.away], source: 'api' };
@@ -164,7 +171,12 @@
   const tick = () => new Promise(r => setTimeout(r, 0));
 
   /* ---- registro de predicciones (antes del partido) ---- */
-  root.logPredictions = function (results) {
+  const MKT_NAME = { ht05: '+0,5 1T', btts: 'Ambos marcan', over25: '+2,5 goles' };
+  const mktOf = e => (e && e.market) || 'ht05';
+  // Clave del registro: +0,5 1T usa el id del partido (como siempre); los otros mercados, "id:mercado".
+  const logId = (fid, market) => !market || market === 'ht05' ? String(fid) : String(fid) + ':' + market;
+  root.logPredictions = function (results, market) {
+    market = market || 'ht05';
     const log = readLog(), now = nowSec();
     let added = 0;
     for (const r of results || []) {
@@ -172,11 +184,11 @@
       if (!p || !p.ok || !r.fx) continue;
       const ts = Math.floor(Date.parse(r.fx.iso) / 1000);
       if (!Number.isFinite(ts) || now >= ts) continue; // nunca se registra con el partido iniciado
-      const id = String(r.fx.id), prev = log[id];
+      const id = logId(r.fx.id, market), prev = log[id];
       if (prev && (prev.y === 0 || prev.y === 1)) continue;
       const d = p.decision || {};
       log[id] = {
-        id, ts, lid: r.fx.lid, season: r.fx.season, hid: r.fx.hid, aid: r.fx.aid, hn: r.fx.hn, an: r.fx.an, ln: r.fx.ln,
+        id, fid: String(r.fx.id), market, ts, lid: r.fx.lid, season: r.fx.season, hid: r.fx.hid, aid: r.fx.aid, hn: r.fx.hn, an: r.fx.an, ln: r.fx.ln,
         p: p.probability, pRaw: p.probabilityRaw, pLow: p.pLow, lam: p.lambdas && p.lambdas.total,
         odds: p.marketOdds ? p.marketOdds.price : null, bk: p.marketOdds ? p.marketOdds.bookmaker : null,
         marketProb: Number.isFinite(p.marketProb) ? p.marketProb : null,
@@ -187,7 +199,7 @@
       added++;
     }
     if (added) writeLog(log);
-    try { renderLeagueVal(); } catch (e) {}
+    try { renderLeagueVal(); if (added) renderLogOut(); } catch (e) {}
     return added;
   };
 
@@ -211,22 +223,23 @@
     if (!pending.length) { valStatus('No hay predicciones pendientes de liquidar (el partido debe haber terminado hace más de 2 h y media).'); renderLogOut(); return; }
     state.cancel = false;
     let settled = 0, voided = 0, left = 0;
-    for (const ids of chunk(pending.map(e => e.id), 20)) {
+    const fidOf = e => String(e.fid || e.id);
+    for (const ids of chunk([...new Set(pending.map(fidOf))], 20)) {
       try {
         const j = await api('/fixtures', { ids: ids.join('-'), timezone: TZ });
         const byId = new Map((j.response || []).map(f => [String(f.fixture.id), f]));
-        for (const id of ids) {
-          const f = byId.get(String(id));
+        for (const e of pending.filter(x => ids.includes(fidOf(x)))) {
+          const id = e.id, f = byId.get(fidOf(e));
           if (!f) { left++; continue; }
-          const s = settleFromFixture(f);
-          if (s.status === 'settled') { log[id].y = s.y; log[id].ht = s.ht; log[id].htSource = s.source; log[id].settledAt = now; settled++; }
+          const s = settleFromFixture(f, mktOf(e));
+          if (s.status === 'settled') { log[id].y = s.y; if (s.ht) log[id].ht = s.ht; if (s.ft) log[id].ft = s.ft; log[id].htSource = s.source; log[id].settledAt = now; settled++; }
           else if (s.status === 'void') { log[id].void = true; voided++; }
           else left++;
         }
       } catch (e) { valStatus('Error al liquidar: ' + e.message, true); writeLog(log); return; }
     }
     writeLog(log);
-    valStatus(`Liquidación lista: ${settled} resueltas, ${voided} anuladas/suspendidas, ${left} todavía pendientes o sin marcador al descanso.`);
+    valStatus(`Liquidación lista: ${settled} resueltas, ${voided} anuladas/suspendidas, ${left} todavía pendientes o sin marcador.`);
     renderLogOut();
   }
 
@@ -240,13 +253,20 @@
   function renderLogOut() {
     const box = q('#logOut');
     if (!box) return;
-    const s = summarizeLog(Object.values(readLog()), T);
-    if (!s.settled && !s.pending) {
-      box.innerHTML = '<div class="val-box"><b>Registro propio vacío.</b> Cada vez que analizás partidos del 1T con cuota, la predicción se guarda antes del inicio. Después tocá «Liquidar registro» para medir resultados reales.</div>';
+    const all = Object.values(readLog());
+    if (!all.length) {
+      box.innerHTML = '<div class="val-box"><b>Registro propio vacío.</b> Cada vez que analizás partidos con cuota, la predicción se guarda antes del inicio. Después tocá «Liquidar registro» para medir resultados reales.</div>';
       return;
     }
+    // Un bloque por mercado, porque cada uno gana o pierde por su lado.
+    box.innerHTML = Object.keys(MKT_NAME).map(mk => {
+      const list = all.filter(e => mktOf(e) === mk);
+      return list.length ? logBlock(summarizeLog(list, T), MKT_NAME[mk]) : '';
+    }).join('');
+  }
+  function logBlock(s, title) {
     const m = s.metrics;
-    box.innerHTML = '<div class="val-box"><b>Registro propio (predicciones guardadas antes del partido)</b><br>' +
+    return '<div class="val-box"><b>Registro propio · ' + esc(title) + ' (predicciones guardadas antes del partido)</b><br>' +
       `Liquidadas: <b>${s.settled}</b> · pendientes: <b>${s.pending}</b>` +
       (m.count ? `<br>Brier ${num(m.brier, 4)} (tasa base ${num(m.baselineBrier, 4)}) · mejora sobre la base ${num(m.skill * 100, 1)}% · promedio predicho ${pct(m.meanP, 1)} vs real ${pct(m.observed, 1)}` : '') +
       '</div>' + (m.count ? bandsTable(m.calibration) : '') +
@@ -399,6 +419,7 @@
     if (!state.key) { valStatus('Primero guardá y probá tu clave de API-Football.', true); return; }
     const comps = selectedComps();
     if (!comps.length) { valStatus('Buscá partidos y marcá al menos una liga en la sección 2.', true); return; }
+    const market = MKT_NAME[state.market] ? state.market : 'ht05', ft = market !== 'ht05';
     state.cancel = false;
     q('#btnValidate').disabled = true;
     try {
@@ -406,13 +427,13 @@
       for (let i = 0; i < comps.length; i++) {
         valStatus(`Bajando historial de la liga ${i + 1}/${comps.length}…`);
         const h = await loadLeagueHistory(comps[i].lid, comps[i].season);
-        for (const g of h.games) { const k = g.id + ':' + g.leagueId; if (!seen.has(k)) { seen.add(k); games.push(g); } }
+        for (const g of (ft ? h.gamesFT || [] : h.games)) { const k = g.id + ':' + g.leagueId; if (!seen.has(k)) { seen.add(k); games.push(g); } }
       }
       const targets = games.filter(g => g.isTarget !== false);
       const withXg = targets.filter(g => isNum(g.xh) && isNum(g.xa)).length;
       const xgCoverage = targets.length ? withXg / targets.length : 0;
 
-      const runCfg = cfg => T.rollingBacktest(games, cfg);
+      const runCfg = cfg => T.rollingBacktest(games, Object.assign({ market }, cfg));
       const results = [];
       const grid = [];
       for (const halfLifeDays of [120, 240, 500]) for (const priorMatches of [8, 14, 25]) grid.push({ halfLifeDays, priorMatches, xgWeight: 0 });
@@ -452,29 +473,31 @@
         validated: verdict.validated, validatedAt: Date.now(), n: finalMetrics.count, skill: finalMetrics.skill, brier: finalMetrics.brier,
         leagues: comps.map(c => c.lid)
       };
-      LS.set('o05:model:v1', saved);
+      if (!ft) LS.set('o05:model:v1', saved); // ajuste general de +0,5 1T (para ligas sin validar)
       // Se suma a la lista de ligas validadas: las ligas de esta prueba se actualizan, las demás quedan como estaban.
       const pick = useCal ? (r => T.applyCalibration(cal.calibration, r.p)) : undefined;
       const per = leagueVerdicts(bt.rows, T, pick);
       const names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
-      const lv = readLv(), stamp = Date.now();
+      const lv = readLv(market), stamp = Date.now();
       const cfgSaved = { halfLifeDays: saved.halfLifeDays, priorMatches: saved.priorMatches, xgWeight: saved.xgWeight, calibration: saved.calibration };
       for (const c of comps) {
         const k = String(c.lid), r = per[k] || { lid: k, status: 'faltan', n: 0, skill: null, brier: null, meanP: null, observed: null, gap: null };
         lv[k] = Object.assign({}, r, { name: names.get(k) || (lv[k] && lv[k].name) || 'Liga ' + k, cfg: cfgSaved, validatedAt: stamp });
       }
-      LS.set(LV_KEY, lv);
+      LS.set(lvKeyOf(market), lv);
       renderLeagueVal();
       renderValidation({ results, finalCfg, finalMetrics, rawMetrics: bt.metrics, cal, useCal, verdict, xgNote, skipped: bt.skipped, comps });
       const okNow = comps.filter(c => per[String(c.lid)] && per[String(c.lid)].status === 'aprobada').length;
-      valStatus(`Validación terminada: ${okNow} de ${comps.length} liga(s) aprobada(s). Mirá la tabla «Ligas validadas».`, okNow === 0);
+      valStatus(`Validación de ${MKT_NAME[market]} terminada: ${okNow} de ${comps.length} liga(s) aprobada(s). Mirá la tabla «Ligas validadas».`, okNow === 0);
     } catch (e) {
       valStatus('No se pudo validar: ' + e.message, true);
     } finally { q('#btnValidate').disabled = false; }
   }
 
   /* ---- ligas validadas (se van sumando) ---- */
-  function readLv() { const m = LS.get(LV_KEY, null); return m && typeof m === 'object' ? m : {}; }
+  const curMarket = () => (typeof state !== 'undefined' && MKT_NAME[state.market]) ? state.market : 'ht05';
+  const lvKeyOf = market => !market || market === 'ht05' ? LV_KEY : 'o05:leagueval:' + market + ':v1';
+  function readLv(market) { const m = LS.get(lvKeyOf(market), null); return m && typeof m === 'object' ? m : {}; }
   // La validación del 31/10 fue conjunta (sin detalle por liga): esas ligas quedan aprobadas como «prueba conjunta».
   function migrateLv() {
     const lv = readLv(), old = LS.get('o05:model:v1', null);
@@ -491,16 +514,17 @@
   const ST_ORDER = { aprobada: 0, conjunta: 1, faltan: 2, no: 3 };
   function renderLeagueVal() {
     migrateLv();
-    const lv0 = readLv(), names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
+    const market = curMarket(), key = lvKeyOf(market);
+    const lv0 = readLv(market), names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
     let renamed = false;
     for (const e of Object.values(lv0)) if (/^Liga \d+$/.test(e.name || '') && names.has(String(e.lid))) { e.name = names.get(String(e.lid)); renamed = true; }
-    if (renamed) LS.set(LV_KEY, lv0);
-    const lv = readLv(), box = q('#leagueValOut'), list = Object.values(lv);
+    if (renamed) LS.set(key, lv0);
+    const lv = readLv(market), box = q('#leagueValOut'), list = Object.values(lv);
     const ok = list.filter(e => e.status === 'aprobada' || e.status === 'conjunta').length;
     const badge = q('#valBadge');
-    if (badge) badge.textContent = list.length ? `· ${ok} liga(s) aprobada(s)` : '· sin validar';
+    if (badge) badge.textContent = list.length ? `· ${MKT_NAME[market]}: ${ok} liga(s) aprobada(s)` : `· ${MKT_NAME[market]}: sin validar`;
     if (!box) return;
-    if (!list.length) { box.innerHTML = ''; return; }
+    if (!list.length) { box.innerHTML = `<div class="val-box"><b>Ligas validadas para ${MKT_NAME[market]}: ninguna todavía.</b> Marcá ligas en la sección 2 y tocá «Validar». Cada mercado se valida por separado (arriba elegís el mercado).</div>`; return; }
     // Mejor calibrada primero: aprobadas arriba, y dentro de cada grupo la que más mejora sobre la tasa base.
     list.sort((a, b) => (ST_ORDER[a.status] - ST_ORDER[b.status]) || ((b.skill ?? -9) - (a.skill ?? -9)));
     const rows = list.map(e => `<tr><td>${esc(e.name || 'Liga ' + e.lid)}</td><td>${ST_LABEL[e.status] || esc(e.status)}</td>` +
@@ -510,8 +534,8 @@
       `<td>${isNum(e.gap) ? num(e.gap * 100, 1) + ' pts' : '—'}</td>` +
       `<td>${e.validatedAt ? new Date(e.validatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '—'}</td></tr>`).join('');
     const hasJoint = list.some(e => e.status === 'conjunta');
-    box.innerHTML = `<div class="val-box"><b>Ligas validadas: ${ok} aprobada(s) de ${list.length}</b><br>` +
-      'Cada vez que tocás «Validar», las ligas marcadas se suman o se actualizan acá. Las demás no se tocan. ' +
+    box.innerHTML = `<div class="val-box"><b>Ligas validadas para ${MKT_NAME[market]}: ${ok} aprobada(s) de ${list.length}</b><br>` +
+      'Cada vez que tocás «Validar», las ligas marcadas se suman o se actualizan acá, solo para el mercado elegido arriba. Las demás no se tocan. ' +
       'En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
       '<table class="val-table"><tr><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
       '<div class="small"><b>Mejora</b>: cuánto acierta mejor que adivinar con el promedio de goles (más alto = mejor). ' +

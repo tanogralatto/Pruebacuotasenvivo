@@ -1117,20 +1117,27 @@ function toModelGame(g,leagueId,isTarget){
   return {id:g.i,ts:g.d,h:g.h,a:g.a,hg,ag,season:g.s,leagueId:g.l!=null?g.l:leagueId,
     fth:g.fs?g.fs[0]:null,fta:g.fs?g.fs[1]:null,xh:Array.isArray(x)?x[0]:null,xa:Array.isArray(x)?x[1]:null,isTarget};
 }
+// Partido para mercados de 90 minutos (Ambos marcan, +2,5): solo necesita el marcador final.
+function toModelGameFT(g,leagueId,isTarget){
+  if(!g||!Array.isArray(g.fs)||g.fs.length!==2||!g.fs.every(n=>Number.isInteger(n)&&n>=0)||!Number.isFinite(g.d))return null;
+  const x=xgStore[String(g.i)];
+  return {id:g.i,ts:g.d,h:g.h,a:g.a,hg:g.fs[0],ag:g.fs[1],fth:g.fs[0],fta:g.fs[1],season:g.s,leagueId:g.l!=null?g.l:leagueId,
+    xh:Array.isArray(x)?x[0]:null,xa:Array.isArray(x)?x[1]:null,isTarget};
+}
 const leagueHistoryMemo=new Map();
 async function loadLeagueHistory(lid,season){
   const key=String(lid)+':'+String(season);
   if(leagueHistoryMemo.has(key))return leagueHistoryMemo.get(key);
   const p=(async()=>{
-    const out={games:[],current:0,previous:0,notes:[]};
+    const out={games:[],gamesFT:[],current:0,previous:0,notes:[]};
     const cur=await leagueSeasonGames(lid,season);
-    for(const g of cur){const m=toModelGame(g,lid,true);if(m)out.games.push(m);}
+    for(const g of cur){const m=toModelGame(g,lid,true);if(m)out.games.push(m);const n=toModelGameFT(g,lid,true);if(n)out.gamesFT.push(n);}
     out.current=out.games.length;
     const prevSeason=Number(season)-1;
     if(Number.isFinite(prevSeason)){
       try{
         const prev=await leagueSeasonGames(lid,prevSeason);
-        for(const g of prev){const m=toModelGame(g,lid,false);if(m)out.games.push(m);}
+        for(const g of prev){const m=toModelGame(g,lid,false);if(m)out.games.push(m);const n=toModelGameFT(g,lid,false);if(n)out.gamesFT.push(n);}
         out.previous=out.games.length-out.current;
       }catch(e){if(e.message==='Cancelado')throw e;out.notes.push('Sin temporada anterior: '+e.message);}
     }
@@ -1141,13 +1148,16 @@ async function loadLeagueHistory(lid,season){
   return p;
 }
 /* Ajuste por liga: cada liga validada guarda sus parámetros y si quedó aprobada. Las ligas sin validar usan el último ajuste, como provisorio. */
-function leagueValOf(lid){const m=LS.get('o05:leagueval:v1',null);return m&&typeof m==='object'&&lid!=null?m[String(lid)]||null:null}
-function modelCfg(lid){
-  const c=LS.get('o05:model:v1',null)||{},lv=leagueValOf(lid);
+// Cada mercado tiene su propia lista de ligas validadas (+0,5 1T usa la clave de siempre).
+const lvKey=market=>!market||market==='ht05'?'o05:leagueval:v1':'o05:leagueval:'+market+':v1';
+function leagueValOf(lid,market){const m=LS.get(lvKey(market),null);return m&&typeof m==='object'&&lid!=null?m[String(lid)]||null:null}
+function modelCfg(lid,market){
+  const lv=leagueValOf(lid,market);
   if(lv&&lv.cfg)return Object.assign({},lv.cfg,{validated:lv.status==='aprobada'||lv.status==='conjunta'});
-  return Object.assign({},c,{validated:false});
+  const c=!market||market==='ht05'?(LS.get('o05:model:v1',null)||{}):{};
+  return {halfLifeDays:c.halfLifeDays,priorMatches:c.priorMatches,xgWeight:c.xgWeight,calibration:c.calibration||null,validated:false};
 }
-function modelParams(lid){const c=modelCfg(lid);return {halfLifeDays:c.halfLifeDays||240,priorMatches:c.priorMatches||14,xgWeight:c.xgWeight||0}}
+function modelParams(lid,market){const c=modelCfg(lid,market);return {halfLifeDays:c.halfLifeDays||240,priorMatches:c.priorMatches||14,xgWeight:c.xgWeight||0}}
 
 /* ---- ligas ---- */
 function isFutureFixture(f,now=Date.now()){
@@ -1235,7 +1245,7 @@ async function analizar(){
   // Cuotas prepartido 0,5 1T: una consulta por liga seleccionada y fecha (con sus páginas),
   // no un barrido de todo el día. Se corta apenas todos los partidos de esa liga tienen cuota.
   const prematchOddsByFixture=new Map();
-  if(state.market==='ht05'&&fxs.length){
+  if(fxs.length){
     const oddsDate=$('#date').value||fxs[0].iso.slice(0,10);
     const oddsComps=new Map();
     for(const f of fxs)oddsComps.set(f.lid+':'+f.season,{lid:f.lid,season:f.season});
@@ -1249,8 +1259,8 @@ async function analizar(){
           for(const item of (oddsResponse.response||[])){
             const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
             if(!fixtureId) continue;
-            const parsed=findFirstHalfOdds([item],{pick:'best'});
-            if(parsed.over05) prematchOddsByFixture.set(fixtureId,parsed);
+            const parsed=state.market==='ht05'?findFirstHalfOdds([item],{pick:'best'}):findMarketOdds([item],state.market);
+            if(parsed.over05||parsed.best) prematchOddsByFixture.set(fixtureId,parsed);
           }
           const reportedTotal=Number(oddsResponse.paging?.total);
           totalPages=Number.isFinite(reportedTotal)&&reportedTotal>0?reportedTotal:page;
@@ -1264,7 +1274,7 @@ async function analizar(){
   }
   // Historial completo (temporada actual + anterior) de cada competición, para ajustar el modelo.
   const leagueDataByKey=new Map();
-  if(state.market==='ht05'){
+  {
     const competitions=new Map();
     for(const f of fxs)competitions.set(String(f.lid)+':'+String(f.season),{lid:f.lid,season:f.season});
     let leagueIndex=0;
@@ -1286,12 +1296,11 @@ async function analizar(){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
     const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
     const leagueKey=String(f.lid)+':'+String(f.season);
-    const poisson=state.market==='ht05'
-      ?poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null)
-      :null;
+    const poisson=poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null);
+    if(poisson)poisson.market=state.market;
     out.push({fx:f,tr,poisson,...resumen(tr)});
   }
-  if(state.market==='ht05'){try{logPredictions(out);saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}}
+  try{logPredictions(out,state.market);if(state.market==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
   state.strategyHistory=new Map(tg);
   state.results=out;
   state.running=false;
@@ -1309,29 +1318,36 @@ const fmtNum=(x,d=2)=>Number.isFinite(x)?Number(x).toLocaleString('es-AR',{minim
 function evMinEdge(){const el=$('#evMinEdge');const v=el?parseFloat(String(el.value).replace(',','.')):NaN;return Math.max(0,Number.isFinite(v)?v:5)/100}
 function poissonForFixture(f,hist,fitCache,cutoff,oddsInfo){
   const T=window.TanoPoissonModel;
-  if(state.market!=='ht05'||!T)return null;
-  const marketOdds=oddsInfo?oddsInfo.over05:null;
+  const market=state.market;
+  if(!T||!MKT_TXT[market])return null;
+  const marketOdds=oddsInfo?(market==='ht05'?oddsInfo.over05:oddsInfo.best)||null:null;
   if(!hist||hist.error)return {ok:false,reason:'No se pudo obtener el historial de la competición'+(hist&&hist.error?': '+hist.error:'')+'. No se calcula Poisson.',marketOdds};
-  const cfg=modelCfg(f.lid), params=modelParams(f.lid), key=f.lid+':'+f.season;
+  const cfg=modelCfg(f.lid,market), params=modelParams(f.lid,market), key=f.lid+':'+f.season+':'+market;
+  const ft=market!=='ht05', games=ft?(hist.gamesFT||[]):hist.games;
   let fit=fitCache.get(key);
   if(!fit){
-    const fm=T.buildFitMatches(hist.games,{cutoffTs:cutoff,currentSeason:f.season,halfLifeDays:params.halfLifeDays,xgWeight:params.xgWeight});
+    const fm=T.buildFitMatches(games,{cutoffTs:cutoff,currentSeason:f.season,halfLifeDays:params.halfLifeDays,xgWeight:params.xgWeight,goals:ft?'ft':'ht'});
     fit=T.fitLeague(fm,{priorMatches:params.priorMatches});
     fitCache.set(key,fit);
   }
   const pr=T.predictMatch(fit,f.hid,f.aid,{});
   if(!pr.ok)return {ok:false,reason:pr.reason,leagueMatches:fit&&fit.matches,marketOdds};
-  const cal=cfg.calibration||null;
-  const p=T.applyCalibration(cal,pr.pOver05), pLow=T.applyCalibration(cal,pr.pLow), pHigh=T.applyCalibration(cal,pr.pHigh);
+  const cal=cfg.calibration||null, mp=T.marketProbs(pr,market);
+  const p=T.applyCalibration(cal,mp.p), pLow=T.applyCalibration(cal,mp.pLow), pHigh=T.applyCalibration(cal,mp.pHigh);
   const marketProb=oddsInfo?oddsInfo.marketProb:null;
   const decision=T.evDecision({p,pLow,odds:marketOdds?marketOdds.price:null,marketProb,minEdge:evMinEdge(),validated:!!cfg.validated});
-  return {ok:true,probability:p,probabilityRaw:pr.pOver05,calibrated:!!cal,pLow,pHigh,fairOdds:1/p,
+  return {ok:true,market,probability:p,probabilityRaw:mp.p,calibrated:!!cal,pLow,pHigh,fairOdds:1/p,
     lambdas:{home:pr.lambdaHome,away:pr.lambdaAway,total:pr.lambdaTotal},seLambda:pr.seLambda,
     sample:{homeEff:pr.nEffHome,awayEff:pr.nEffAway,homeN:pr.nHome,awayN:pr.nAway,leagueMatches:fit.matches,teams:fit.teamCount,current:hist.current,previous:hist.previous},
     marketOdds,marketProb,marketRef:oddsInfo?oddsInfo.marketRef:null,
     decision,evPercent:decision.ev==null?null:decision.ev*100,params,validated:!!cfg.validated,
-    dataSource:'API-Football · temporada completa'+(hist.previous?' + anterior':'')+' · HT verificado'+(params.xgWeight>0?' · mezcla xG '+Math.round(params.xgWeight*100)+'%':'')};
+    dataSource:'API-Football · temporada completa'+(hist.previous?' + anterior':'')+(ft?' · marcador final':' · HT verificado')+(params.xgWeight>0?' · mezcla xG '+Math.round(params.xgWeight*100)+'%':'')};
 }
+const MKT_TXT={
+  ht05:{name:'+0,5 1T',title:'1T',probHint:'Chances de que haya al menos un gol antes del descanso, según el cálculo de la app.',lamLabel:'Goles esperados 1T (λ)',lamHint:'Cuántos goles se esperan en el primer tiempo, sumando los dos equipos.',oddsHint:'La cuota más alta que encontró entre las casas para que haya gol en el primer tiempo.'},
+  btts:{name:'Ambos marcan',title:'Ambos marcan',probHint:'Chances de que los dos equipos hagan al menos un gol en el partido, según el cálculo de la app.',lamLabel:'Goles esperados (local + visita)',lamHint:'Cuántos goles se esperan en el partido entero, y cuántos de cada equipo.',oddsHint:'La cuota más alta que encontró entre las casas para «Ambos marcan: Sí».'},
+  over25:{name:'+2,5 goles',title:'+2,5 goles',probHint:'Chances de que haya 3 goles o más en el partido, según el cálculo de la app.',lamLabel:'Goles esperados en el partido (λ)',lamHint:'Cuántos goles se esperan en el partido entero, sumando los dos equipos.',oddsHint:'La cuota más alta que encontró entre las casas para «Más de 2,5 goles».'}
+};
 function evBadge(dec){
   if(!dec)return '';
   const cls=dec.signal==='ev_solido'?'solid':dec.signal==='ev_posible'?'possible':'none';
@@ -1339,13 +1355,14 @@ function evBadge(dec){
   return '<span class="ev-badge '+cls+'">'+esc(dec.label)+prov+'</span>';
 }
 function poissonHtml(model){
-  if(state.market!=='ht05') return '';
+  const mk=(model&&model.market)||state.market, M=MKT_TXT[mk];
+  if(!M) return '';
   const metric=(label,value,style,hint)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value"'+(style?' style="'+style+'"':'')+'>'+value+'</span>'+(hint?'<span class="hint">'+hint+'</span>':'')+'</div>';
   if(!model||!model.ok){
     const odds=model&&model.marketOdds;
-    return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span><span class="ev-badge none">No evaluable</span></div>'+
+    return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson '+M.title+'</span><span class="ev-badge none">No evaluable</span></div>'+
       '<div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div>'+
-      '<div class="poisson-grid">'+metric('Cuota prepartido +0,5 1T',odds?Number(odds.price).toFixed(2):'No disponible')+metric('EV estimado','Sin calcular')+'</div>'+
+      '<div class="poisson-grid">'+metric('Cuota prepartido '+M.name,odds?Number(odds.price).toFixed(2):'No disponible')+metric('EV estimado','Sin calcular')+'</div>'+
       '<div class="poisson-note">No se inventan ni se completan datos faltantes. Esto no altera los siete criterios ni las alertas.</div></section>';
   }
   const d=model.decision, odds=model.marketOdds, s=model.sample;
@@ -1357,11 +1374,11 @@ function poissonHtml(model){
   const evMktText=hasMkt?(evMkt>=0?'+':'')+fmtNum(evMkt*100,1)+'%':'—';
   const evMktColor=hasMkt?'color:'+(evMkt>=0?'var(--c4)':'var(--c1)'):'';
   const grid=
-    metric('Probabilidad +0,5 1T'+(model.calibrated?' (calibrada)':''),fmtPct(model.probability),'','Chances de que haya al menos un gol antes del descanso, según el cálculo de la app.')+
+    metric('Probabilidad '+M.name+(model.calibrated?' (calibrada)':''),fmtPct(model.probability),'',M.probHint)+
     metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0),'','Entre qué valores podría estar la chance real. Si el rango es ancho, el cálculo es menos seguro.')+
     metric('Cuota justa',fmtNum(model.fairOdds),'','La cuota que no daría ventaja a nadie. Si tu casa paga más que esta, el cálculo de la app ve ventaja.')+
-    metric('Goles esperados 1T (λ)',fmtNum(model.lambdas.total),'','Cuántos goles se esperan en el primer tiempo, sumando los dos equipos.')+
-    metric(odds?'Mejor cuota · '+esc(odds.bookmaker||'casa no informada'):'Cuota prepartido +0,5 1T',odds?Number(odds.price).toFixed(2):'No disponible','','La cuota más alta que encontró entre las casas para que haya gol en el primer tiempo.')+
+    metric(M.lamLabel,fmtNum(model.lambdas.total)+(mk==='btts'?' ('+fmtNum(model.lambdas.home)+' + '+fmtNum(model.lambdas.away)+')':''),'',M.lamHint)+
+    metric(odds?'Mejor cuota · '+esc(odds.bookmaker||'casa no informada'):'Cuota prepartido '+M.name,odds?Number(odds.price).toFixed(2):'No disponible','',M.oddsHint)+
     metric('EV estimado',evText,evColor,'Ganancia promedio por cada 100 apostados si el cálculo de la app fuera exacto. Verde = a favor. Todavía no está validado.')+
     metric('EV conservador',evLowText,'','Lo mismo, pero suponiendo que el cálculo fue demasiado optimista. Si da negativo, la ventaja no es segura.')+
     metric('Mercado sin margen',Number.isFinite(model.marketProb)?fmtPct(model.marketProb,1):'—','','Chances que dan las casas de apuestas juntas, sacándoles su ganancia. Es la referencia más confiable.')+
@@ -1385,7 +1402,7 @@ function poissonHtml(model){
   const verdictHtml='<div class="poisson-verdict '+verdict.cls+'"><b>'+esc(verdict.title)+'.</b> '+esc(verdict.text)+'</div>';
   const reasons=d&&d.reasons&&d.reasons.length?'<ul class="poisson-reasons">'+d.reasons.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul>':'';
   const refText=model.marketRef?' Referencia del mercado: '+esc(model.marketRef)+'.':'';
-  return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span>'+evBadge(d)+'</div>'+
+  return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson '+M.title+'</span>'+evBadge(d)+'</div>'+
     verdictHtml+'<div class="poisson-grid">'+grid+'</div>'+reasons+
     '<div class="poisson-status">Muestra: local '+fmtNum(s.homeEff,1)+' partidos ponderados ('+s.homeN+' reales) · visitante '+fmtNum(s.awayEff,1)+' ('+s.awayN+') · liga '+s.leagueMatches+' partidos, '+s.teams+' equipos'+(s.previous?' · temporada actual '+s.current+' + anterior '+s.previous:'')+'.</div>'+
     '<div class="poisson-status">'+esc(model.dataSource||'Fuente no especificada')+'.'+refText+'</div>'+
@@ -1504,6 +1521,7 @@ document.querySelector('.market-switch').addEventListener('click',e=>{
   const button=e.target.closest('[data-market]');
   if(!button||button.dataset.market===state.market) return;
   state.market=button.dataset.market;LS.set('o05:market',state.market);updateMarketUI();
+  try{if(window.tanoRenderLeagueVal)window.tanoRenderLeagueVal();}catch(e){}
   if(state.results.length){state.results=[];$('#resTools').classList.add('hidden');$('#notes').innerHTML='';$('#results').innerHTML='<div class="empty">Cambiaste el mercado. Tocá Analizar para calcular los partidos con esta opción.</div>';}
 });
 $('#key').value=state.key;
@@ -1982,6 +2000,58 @@ function findFirstHalfOdds(response,opts){
   }
   return found;
 }
+// Cuotas prepartido de Ambos marcan (Sí/No) y Más/Menos de 2,5 goles del PARTIDO completo.
+// Devuelve best (mejor cuota del Sí / Más) y la probabilidad sin margen del mercado (Pinnacle o mediana).
+function findMarketOdds(response,market){
+  const perBook=new Map(),found={};
+  const HALF=/(half|1st|2nd|first|second|tiempo|parte|period|\bht\b)/i;
+  const OTHER=/(home|away|local|visit|team|equipo|handicap|asian|corner|card|tarjeta|booking|exact|result|1x2|\bwin\b|margin|alternative|both halves|minute|minuto|draw|double|&|\band\b)/i;
+  const isMarket=name=>{
+    if(HALF.test(name))return false;
+    if(market==='btts')return /(both\s*teams?\s*(to\s*)?score|ambos\s*marcan|btts)/i.test(name)&&!/(\bhome\b|\baway\b|result|&|\band\b|draw|double|win|total|\/|goals?\b)/i.test(name);
+    return /(goals?\s*over\s*\/?\s*under|over\s*\/\s*under|total\s*goals?|más\/menos|goles)/i.test(name)&&!OTHER.test(name);
+  };
+  const consider=(bet,bk,st={})=>{
+    const name=String(bet.name||bet.bet||'');
+    if(!isMarket(name))return;
+    if(st.blocked===true||st.finished===true||st.stopped===true)return;
+    for(const value of (bet.values||[])){
+      if(value.suspended===true)continue;
+      const v=String(value.value||'').toLowerCase().replace(',','.').trim();
+      const price=Number(value.odd||value.price);
+      if(!Number.isFinite(price)||price<=1)continue;
+      let side=null;
+      if(market==='btts')side=/^(yes|sí|si)$/.test(v)?'yes':/^no$/.test(v)?'no':null;
+      else{
+        const m=v.match(/^(over|under|más de|mas de|menos de)\s*([0-9]+(?:\.[0-9]+)?)$/);
+        const line=m?Number(m[2]):Number(String(value.handicap||'').replace(',','.'));
+        if(line===2.5&&m)side=/^(over|más de|mas de)/.test(m[1])?'yes':'no';
+      }
+      if(!side)continue;
+      const name0=bk||'Casa no informada por API-Football';
+      const rec=perBook.get(name0)||{yes:null,no:null};
+      if(!rec[side])rec[side]={price,bookmaker:name0,market:name,marketId:bet.id??null,line:market==='over25'?2.5:null,suspended:false};
+      perBook.set(name0,rec);
+    }
+  };
+  for(const item of response||[]){
+    const st=item.status||item.fixture?.status||{};
+    for(const bookmaker of item.bookmakers||item.odds?.bookmakers||[])for(const bet of bookmaker.bets||bookmaker.odds||[])consider(bet,bookmaker.name||bookmaker.title||'',st);
+    if(Array.isArray(item.bets))for(const bet of item.bets)consider(bet,item.bookmaker?.name||'',st);
+  }
+  for(const rec of perBook.values())if(rec.yes&&(!found.best||rec.yes.price>found.best.price))found.best=rec.yes;
+  const pairs=[...perBook.entries()].filter(([,r])=>r.yes&&r.no).map(([bk,r])=>({bk,p:(1/r.yes.price)/((1/r.yes.price)+(1/r.no.price))}));
+  if(pairs.length){
+    const pin=pairs.find(x=>/pinnacle/i.test(x.bk));
+    if(pin){found.marketProb=pin.p;found.marketRef='Pinnacle, sin margen';}
+    else{
+      const ps=pairs.map(x=>x.p).sort((a,b)=>a-b);
+      found.marketProb=ps.length%2?ps[(ps.length-1)/2]:(ps[ps.length/2-1]+ps[ps.length/2])/2;
+      found.marketRef='mediana de '+pairs.length+' casa'+(pairs.length>1?'s':'')+', sin margen';
+    }
+  }
+  return found;
+}
 async function loadLiveOdds(id){
   if(!state.key){liveStatus('Primero guardá y probá tu clave de API-Football.',true);return;}
   const f=liveState.fixtures.find(x=>String(x.fixture.id)===String(id));
@@ -2390,7 +2460,9 @@ function startTelegramSettings(user) {
 }
 
 /* ===== Sincronización v2: registro de predicciones y ajuste del modelo, iguales en todos tus aparatos ===== */
-const SYNC_LOG = 'o05:plog:v1', SYNC_MODEL = 'o05:model:v1', SYNC_LAM = 'o05:lam:v1', SYNC_LV = 'o05:leagueval:v1';
+const SYNC_LOG = 'o05:plog:v1', SYNC_MODEL = 'o05:model:v1', SYNC_LAM = 'o05:lam:v1';
+// Ligas validadas de cada mercado → campo del documento en la nube.
+const SYNC_LV = { 'o05:leagueval:v1': 'leagueval', 'o05:leagueval:btts:v1': 'leagueval_btts', 'o05:leagueval:over25:v1': 'leagueval_over25' };
 let unsubSyncLog = null, unsubSyncMain = null, syncPushTimer = null, syncReady = false;
 const cloudLog = new Map(); // id -> JSON del registro tal como está en la nube
 const lsRaw = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -2448,7 +2520,7 @@ function startV2Sync(user) {
     if (k === SYNC_LOG) { clearTimeout(syncPushTimer); syncPushTimer = setTimeout(pushLogChanges, 1500); }
     else if (k === SYNC_MODEL) pushMain({ model: v });
     else if (k === SYNC_LAM) pushMain({ lam: JSON.stringify(v || {}) });
-    else if (k === SYNC_LV) pushMain({ leagueval: JSON.stringify(v || {}) });
+    else if (SYNC_LV[k]) pushMain({ [SYNC_LV[k]]: JSON.stringify(v || {}) });
   };
   unsubSyncLog = onSnapshot(col, snap => {
     const local = lsRaw.get(SYNC_LOG, {}) || {};
@@ -2469,21 +2541,25 @@ function startV2Sync(user) {
     const lm = lsRaw.get(SYNC_MODEL, null), cm = d.model || null;
     if (cm && (!lm || (cm.validatedAt || 0) > (lm.validatedAt || 0))) { lsRaw.set(SYNC_MODEL, cm); refreshV2Views(); }
     const needModelUp = lm && (!cm || (lm.validatedAt || 0) > (cm.validatedAt || 0));
-    let lamUp = false, lvUp = false, lvMerged = null;
-    try { // ligas validadas: por cada liga gana la validación más reciente
-      const ll = lsRaw.get(SYNC_LV, {}) || {}, cl = d.leagueval ? JSON.parse(d.leagueval) : {};
-      lvMerged = { ...ll };
-      for (const [k, v] of Object.entries(cl)) if (!lvMerged[k] || (v.validatedAt || 0) > (lvMerged[k].validatedAt || 0)) lvMerged[k] = v;
-      if (JSON.stringify(lvMerged) !== JSON.stringify(ll)) { lsRaw.set(SYNC_LV, lvMerged); refreshV2Views(); }
-      lvUp = Object.keys(lvMerged).some(k => !cl[k] || (lvMerged[k].validatedAt || 0) > (cl[k].validatedAt || 0));
-    } catch (e) {}
+    let lamUp = false;
+    const lvUp = {};
+    for (const [lsKey, field] of Object.entries(SYNC_LV)) {
+      try { // ligas validadas: por cada liga gana la validación más reciente
+        const ll = lsRaw.get(lsKey, {}) || {}, cl = d[field] ? JSON.parse(d[field]) : {};
+        const lvMerged = { ...ll };
+        for (const [k, v] of Object.entries(cl)) if (!lvMerged[k] || (v.validatedAt || 0) > (lvMerged[k].validatedAt || 0)) lvMerged[k] = v;
+        if (JSON.stringify(lvMerged) !== JSON.stringify(ll)) { lsRaw.set(lsKey, lvMerged); refreshV2Views(); }
+        if (Object.keys(lvMerged).some(k => !cl[k] || (lvMerged[k].validatedAt || 0) > (cl[k].validatedAt || 0))) lvUp[field] = JSON.stringify(lvMerged);
+      } catch (e) {}
+    }
+    const anyLvUp = Object.keys(lvUp).length > 0;
     try {
       const ll = lsRaw.get(SYNC_LAM, {}) || {}, cl = d.lam ? JSON.parse(d.lam) : {}, now = Date.now() / 1000;
       const merged = { ...cl, ...ll };
       for (const k of Object.keys(merged)) if (!(merged[k].ts > now - 3 * 86400)) delete merged[k];
       if (JSON.stringify(merged) !== JSON.stringify(ll)) lsRaw.set(SYNC_LAM, merged);
       lamUp = Object.keys(merged).some(k => !cl[k]);
-      const up = (needModelUp || lamUp || lvUp) ? { ...(needModelUp ? { model: lm } : {}), ...(lamUp ? { lam: JSON.stringify(merged) } : {}), ...(lvUp ? { leagueval: JSON.stringify(lvMerged) } : {}) } : null;
+      const up = (needModelUp || lamUp || anyLvUp) ? { ...(needModelUp ? { model: lm } : {}), ...(lamUp ? { lam: JSON.stringify(merged) } : {}), ...lvUp } : null;
       if (syncReady) { if (up) pushMain(up); }
       else { pendingMain = up; if (!gotMain) { gotMain = true; maybeReady(); } }
     } catch (e) { if (!gotMain) { gotMain = true; maybeReady(); } }

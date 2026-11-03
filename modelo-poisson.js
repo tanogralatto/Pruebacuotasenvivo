@@ -73,7 +73,8 @@
         ft += g.fth + g.fta;
       }
     }
-    const htShare = ft >= 100 ? clamp(ht / ft, 0.3, 0.6) : 0.45;
+    // Con goles del partido completo (o.goals === 'ft') el xG se usa tal cual, sin escalar al 1T.
+    const htShare = o.goals === 'ft' ? 1 : ft >= 100 ? clamp(ht / ft, 0.3, 0.6) : 0.45;
 
     const out = [];
     for (const g of games) {
@@ -192,15 +193,48 @@
     const p = 1 - Math.exp(-lam);
     const pLow = clamp(1 - Math.exp(-Math.max(0, lam - o.zLow * seLam)), 0, 1);
     const pHigh = clamp(1 - Math.exp(-(lam + o.zLow * seLam)), 0, 1);
+    const seH = lamH * Math.sqrt(relH), seA = lamA * Math.sqrt(relA);
     return {
       ok: true,
-      lambdaHome: lamH, lambdaAway: lamA, lambdaTotal: lam, seLambda: seLam,
+      lambdaHome: lamH, lambdaAway: lamA, lambdaTotal: lam, seLambda: seLam, seHome: seH, seAway: seA,
       pOver05: p, pLow, pHigh,
       pOver10: 1 - Math.exp(-lam) * (1 + lam),
       nEffHome: H.nEff, nEffAway: A.nEff, nHome: H.n, nAway: A.n,
       strengths: { homeAttack: H.attack, homeDefence: H.defence, awayAttack: A.attack, awayDefence: A.defence },
       league: { muH: fit.muH, muA: fit.muA, matches: fit.matches, teams: fit.teamCount }
     };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 3b. Mercados: +0,5 1T, Ambos marcan y +2,5 goles                    */
+  /* ------------------------------------------------------------------ */
+  // Para 'btts' y 'over25' el ajuste se hace con goles del PARTIDO COMPLETO (ver ftGames).
+  const MARKETS = ['ht05', 'btts', 'over25'];
+  const pOver25 = l => 1 - Math.exp(-l) * (1 + l + l * l / 2);
+  const pBtts = (lh, la) => (1 - Math.exp(-lh)) * (1 - Math.exp(-la));
+  // Probabilidad del mercado con su rango (±zLow desvíos de λ). pr = resultado de predictMatch.
+  function marketProbs(pr, market, opts) {
+    const z = opts && isNum(opts.zLow) ? opts.zLow : DEFAULTS.zLow;
+    if (!pr || !pr.ok) return null;
+    if (market === 'over25') {
+      const l = pr.lambdaTotal, se = pr.seLambda;
+      return { p: pOver25(l), pLow: pOver25(Math.max(0, l - z * se)), pHigh: pOver25(l + z * se) };
+    }
+    if (market === 'btts') {
+      const lh = pr.lambdaHome, la = pr.lambdaAway, sh = pr.seHome || 0, sa = pr.seAway || 0;
+      return { p: pBtts(lh, la), pLow: pBtts(Math.max(0, lh - z * sh), Math.max(0, la - z * sa)), pHigh: pBtts(lh + z * sh, la + z * sa) };
+    }
+    return { p: pr.pOver05, pLow: pr.pLow, pHigh: pr.pHigh };
+  }
+  // Resultado real (1 = se cumplió) de un partido normalizado. Para btts/over25 usa goles finales.
+  function marketOutcome(g, market) {
+    if (market === 'btts') return validGoals(g.fth) && validGoals(g.fta) ? (g.fth > 0 && g.fta > 0 ? 1 : 0) : null;
+    if (market === 'over25') return validGoals(g.fth) && validGoals(g.fta) ? (g.fth + g.fta >= 3 ? 1 : 0) : null;
+    return validGoals(g.hg) && validGoals(g.ag) ? (g.hg + g.ag > 0 ? 1 : 0) : null;
+  }
+  // Partidos con goles del partido completo en hg/ag (para ajustar mercados de 90 minutos).
+  function ftGames(games) {
+    return (games || []).filter(g => g && validGoals(g.fth) && validGoals(g.fta)).map(g => Object.assign({}, g, { hg: g.fth, ag: g.fta }));
   }
 
   /* ------------------------------------------------------------------ */
@@ -236,7 +270,7 @@
   /* ------------------------------------------------------------------ */
   /* 5. Métricas y backtest                                              */
   /* ------------------------------------------------------------------ */
-  const BANDS = [[0, 0.5], [0.5, 0.6], [0.6, 0.7], [0.7, 0.8], [0.8, 0.9], [0.9, 1.000001]];
+  const BANDS = [[0, 0.3], [0.3, 0.4], [0.4, 0.5], [0.5, 0.6], [0.6, 0.7], [0.7, 0.8], [0.8, 0.9], [0.9, 1.000001]];
 
   function scoreRows(rows, pick) {
     const get = pick || (r => r.p);
@@ -269,8 +303,11 @@
     };
   }
 
+  // opts.market: 'ht05' (por defecto), 'btts' u 'over25'. Para los dos últimos, games debe venir de ftGames().
   function rollingBacktest(games, opts) {
     const o = Object.assign({}, DEFAULTS, opts || {});
+    const market = o.market || 'ht05';
+    if (market !== 'ht05') o.goals = 'ft';
     const byLeague = new Map();
     for (const g of (games || [])) {
       if (!g || !isNum(g.ts) || g.h == null || g.a == null || !validGoals(g.hg) || !validGoals(g.ag)) continue;
@@ -294,7 +331,9 @@
           for (const g of batch) {
             const pr = predictMatch(fit, g.h, g.a, o);
             if (!pr.ok) { skipped.insufficient++; continue; }
-            rows.push({ id: g.id, ts: g.ts, leagueId, p: pr.pOver05, lam: pr.lambdaTotal, se: pr.seLambda, pLow: pr.pLow, y: (g.hg + g.ag) > 0 ? 1 : 0 });
+            const y = marketOutcome(g, market), mp = marketProbs(pr, market, o);
+            if (y === null) continue;
+            rows.push({ id: g.id, ts: g.ts, leagueId, p: mp.p, lam: pr.lambdaTotal, se: pr.seLambda, pLow: mp.pLow, y });
           }
         }
         i = j;
@@ -474,6 +513,7 @@
   const api = {
     DEFAULTS, buildFitMatches, fitLeague, predictMatch, fitCalibration, applyCalibration,
     scoreRows, rollingBacktest, tuneParams, validateCalibration, evDecision,
+    MARKETS, marketProbs, marketOutcome, ftGames,
     liveRemainingLambda, liveMarket, elapsedShare, poissonPmf,
     calculate, summarizeTeam, DEFAULT_PRIOR_MATCHES: 8
   };
