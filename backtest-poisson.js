@@ -134,4 +134,6 @@ function runBacktest(matches, options = {}) {
   };
 }
 
-module.exports = {runBacktest, scorePredictions, uniqueChronological, buildPrediction};
+const api = {runBacktest, scorePredictions, uniqueChronological, buildPrediction};
+if (typeof module !== 'undefined' && module.exports) module.exports = api;
+if (typeof globalThis !== 'undefined') globalThis.TanoBacktest = api;
