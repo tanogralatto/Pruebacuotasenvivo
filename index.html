@@ -1111,9 +1111,13 @@ function poissonInputForFixture(f,tg){
     }
     return games.sort((a,b)=>b.d-a.d).slice(0,20).map(({scoredHT,concededHT})=>({scoredHT,concededHT}));
   }
+  const homeHistory=historyFor(f.hid),awayHistory=historyFor(f.aid);
+  const MIN_TEAM_HT_MATCHES=5;
+  if(homeHistory.length<MIN_TEAM_HT_MATCHES||awayHistory.length<MIN_TEAM_HT_MATCHES){
+    return {ok:false,reason:`Muestra insuficiente por equipo: se requieren al menos ${MIN_TEAM_HT_MATCHES} partidos previos con marcador HT validado para cada equipo (local: ${homeHistory.length}, visitante: ${awayHistory.length}).`};
+  }
   return window.TanoPoissonModel.calculate({
-    homeHistory:historyFor(f.hid),awayHistory:historyFor(f.aid),
-    leagueHomeGoalsHT,leagueAwayGoalsHT
+    homeHistory,awayHistory,leagueHomeGoalsHT,leagueAwayGoalsHT
   });
 }
 function poissonHtml(model){
@@ -1154,7 +1158,7 @@ function cardHtml(r,i){
         <p class="league">${esc(f.lc)} · ${esc(f.ln)} · ${esc(marketDefs[state.market].short)}</p>
         <div class="result-actions"><span class="small">Promedio descriptivo · ${r.n} de 7 indicadores</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
         <div class="cells">${r.tr.map(cellHtml).join('')}</div>
-        ${poissonHtml(r.poisson)}
+        ${r.poisson!==undefined?poissonHtml(r.poisson):''}
         <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
       </div>
     </details>
