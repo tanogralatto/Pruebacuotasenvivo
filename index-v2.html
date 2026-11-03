@@ -1658,8 +1658,10 @@ function renderSavedFavoriteCard(f,group){
     : `<button type="button" class="primary" data-move-favorite="${esc(f.id)}">Enviar a Favoritos VIP</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`;
   const actions=`<div class="saved-favorite-actions">${action}</div>`;
   const origin='<p class="favorite-origin">Guardado desde: '+esc(favoriteOriginLabel(f))+'</p>';
+  // Modelo propio: el guardado con el favorito; si no tiene, el del análisis actual (si es el mismo mercado).
+  const savedPoisson=f.poisson||(currentResult&&currentResult.poisson&&(!f.market||f.market===marketDefs[state.market].short)?currentResult.poisson:undefined);
   if(a&&Array.isArray(a.tr)){
-    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n};
+    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson};
     let html=cardHtml(r,-1);
     html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
     html=html.replace(/<button class="fav-btn"[^>]*>.*?<\/button>/,actions);
@@ -1723,6 +1725,8 @@ function saveFavoriteToGroup(id,group,origin){
     market:origin==='golht'?'Over 0,5 HT':(current?.market||marketDefs[state.market].short),
     fixture,
     analysis:found?.analysis||current?.analysis||null,
+    // Recuadro del modelo propio (Poisson) tal como se vio al guardar. La app de siempre ignora este campo.
+    poisson:(found?.result?.poisson?JSON.parse(JSON.stringify(found.result.poisson)):null)||current?.poisson||null,
     strategyAnalysis:origin==='golht'&&found?.candidate?{
       sampleA:found.candidate.a.n,sampleB:found.candidate.b.n,
       rateA:found.candidate.a.rate,rateB:found.candidate.b.rate,
