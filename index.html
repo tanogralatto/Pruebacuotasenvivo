@@ -381,6 +381,18 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .poisson-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.45}
 .poisson-status{font-size:12px;color:var(--muted);margin-top:6px}
 @media(max-width:480px){.poisson-grid{gap:5px}.poisson-metric{padding:6px}.poisson-metric .value{font-size:15px}}
+.ev-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.ev-badge.solid{background:var(--c4);color:var(--accent-ink);border-color:var(--c4)}
+.ev-badge.possible{color:var(--c2);border-color:var(--c2)}
+.ev-badge.none{color:var(--muted)}
+.poisson-reasons{margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--muted);line-height:1.45}
+.val-body{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.val-table{width:100%;border-collapse:collapse;font-size:13px}
+.val-table th,.val-table td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right}
+.val-table th:first-child,.val-table td:first-child{text-align:left}
+.val-box{padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:13px;line-height:1.5}
+.val-box b{font-weight:600}
+.val-live{margin-top:8px;padding:8px;border:1px solid var(--line);border-radius:6px;font-size:13px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -487,14 +499,38 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
   <h2 id="t-res">4. Resultados</h2>
   <div id="resTools" class="row hidden">
     <div class="field" style="width:190px"><label for="sort">Ordenar por</label>
-      <select id="sort"><option value="avg">Promedio descriptivo</option><option value="min">Criterio más bajo</option><option value="time">Hora</option></select></div>
+      <select id="sort"><option value="avg">Promedio descriptivo</option><option value="min">Criterio más bajo</option><option value="time">Hora</option><option value="ev">EV estimado (Poisson)</option></select></div>
     <div class="field" style="width:170px"><label for="minAvg">Promedio descriptivo mínimo</label>
       <select id="minAvg"><option value="0">Todos</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
     <label class="check"><input id="applyCriteria" type="checkbox"><span>Aplicar criterios</span></label>
+    <label class="check"><input id="onlyEv" type="checkbox"><span>Solo EV+ (Poisson)</span></label>
     <button id="btnCopy" type="button">Copiar lista</button>
   </div>
   <div id="notes" class="notes"></div>
   <div id="results" class="cards"><div class="empty">Todavía no hay resultados. Buscá los partidos del día, marcá las ligas y tocá Analizar.</div></div>
+</section>
+
+<section class="panel" aria-labelledby="t-val">
+  <details id="validationPanel" class="criteria">
+    <summary id="t-val">5. Validación del modelo Poisson <span class="criteria-count" id="valBadge">· sin validar</span></summary>
+    <div class="val-body">
+      <p class="small">El Poisson solo sirve si, fuera de muestra, acierta mejor que la tasa base y sus porcentajes se cumplen (cuando dice 70%, pasa ~70%). Acá lo probás con las ligas marcadas en la sección 2, usando solo partidos anteriores a cada predicción. Si mejora, se guarda la calibración y los parámetros elegidos; si no, la app lo avisa y no marca EV como validado.</p>
+      <div class="row">
+        <div class="field" style="width:170px"><label for="evMinEdge">Ventaja mínima para EV+ (%)</label><input id="evMinEdge" type="number" min="0" max="50" step="0.5" value="5"></div>
+        <div class="field" style="width:190px"><label for="xgBudget">Consultas para bajar xG</label><input id="xgBudget" type="number" min="10" max="2000" step="10" value="200"></div>
+      </div>
+      <div class="row">
+        <button id="btnValidate" type="button" class="primary">Validar con las ligas marcadas</button>
+        <button id="btnXgProbe" type="button">Probar xG</button>
+        <button id="btnXgDownload" type="button">Bajar xG</button>
+        <button id="btnSettle" type="button">Liquidar registro</button>
+        <button id="btnLogCopy" type="button">Copiar registro</button>
+      </div>
+      <div id="valStatus" class="status" role="status"></div>
+      <div id="valOut"></div>
+      <div id="logOut"></div>
+    </div>
+  </details>
 </section>
 </div>
 
@@ -709,6 +745,7 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 </div>
 
 <script src="./modelo-poisson.js"></script>
+<script src="./modelo-xg.js"></script>
 <script>
 /*PURE*/
 const DONE_ST=['FT','AET','PEN'];
@@ -976,26 +1013,79 @@ function h2hGames(a,b){
   return p;
 }
 
-/* Historial reciente de una competición/temporada para Poisson.
-   Se limita a los últimos 99 partidos y evita el parámetro page,
-   que API-Football rechazó en la consulta anterior. Caché de 12 horas. */
+/* Historial COMPLETO de una competición/temporada para el Poisson (todos los partidos
+   terminados, sin el límite de 99). Una sola consulta por liga y temporada; sin parámetro page.
+   Se guarda en caché solo lo necesario para ahorrar espacio. Caché de 12 horas. */
+function slimGame(g){return {i:g.i,d:g.d,h:g.h,a:g.a,ht:g.ht,fh:g.fh,fs:g.fs,htSource:g.htSource,htRaw:g.htRaw,s:g.s,l:g.l}}
+function lsSetEvict(key,val){
+  if(LS.set(key,val))return true;
+  try{
+    const old=[];
+    for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('o05:v3:league:'))old.push({k,ts:(LS.get(k,{})||{}).ts||0});}
+    old.sort((a,b)=>a.ts-b.ts).slice(0,Math.max(1,Math.ceil(old.length/2))).forEach(x=>localStorage.removeItem(x.k));
+  }catch(e){}
+  return LS.set(key,val);
+}
 function leagueSeasonGames(leagueId,season){
-  const key=String(leagueId)+':'+String(season),cacheKey='o05:v2:league:'+key;
+  const key=String(leagueId)+':'+String(season),cacheKey='o05:v3:league:'+key;
   const cachedGames=cached(cacheKey);
   if(cachedGames!==null)return Promise.resolve(cachedGames);
   if(leagueMemo.has(key))return leagueMemo.get(key);
   const p=(async()=>{
     if(state.cancel)throw new Error('Carga de historial de liga cancelada.');
-    const j=await api('/fixtures',{league:leagueId,season,last:99,timezone:TZ});
+    const j=await api('/fixtures',{league:leagueId,season,status:'FT-AET-PEN',timezone:TZ});
     const games=compact(fixtureResponse(j,'/fixtures liga '+leagueId+' temporada '+season));
-    if(!games.length)throw new Error('API-Football no devolvió partidos finalizados para esta liga y temporada.');
-    LS.set(cacheKey,{ts:Date.now(),g:games,cacheSchema:2,source:'api-football-league-season-last99',count:games.length});
+    if(!games.length)throw new Error('API-Football no devolvió partidos finalizados para la liga '+leagueId+' en la temporada '+season+'.');
+    lsSetEvict(cacheKey,{ts:Date.now(),g:games.map(slimGame),cacheSchema:3,source:'api-football-league-season-full',count:games.length});
     return games;
   })();
   leagueMemo.set(key,p);
   p.then(()=>{if(leagueMemo.get(key)===p)leagueMemo.delete(key)},()=>{if(leagueMemo.get(key)===p)leagueMemo.delete(key)});
   return p;
 }
+
+/* ---- puente con el modelo Poisson v2 ---- */
+let xgStore=LS.get('o05:xg:v1',{})||{};
+function saveXgStore(){LS.set('o05:xg:v1',xgStore)}
+// Convierte un registro compacto al formato del modelo. Solo HT recibido de la API
+// o 0-0 final (que implica HT 0-0). Nunca inventa un marcador al descanso.
+function toModelGame(g,leagueId,isTarget){
+  if(!g)return null;
+  const status=(g.htValidation||validateHtRecord(g)).status;
+  let hg=null,ag=null;
+  if(status==='valid_api'&&Array.isArray(g.ht)&&g.ht.length===2&&g.ht.every(n=>Number.isInteger(n)&&n>=0)){hg=g.ht[0];ag=g.ht[1];}
+  else if(status==='inferred_zero_final'){hg=0;ag=0;}
+  else return null;
+  if(!Number.isFinite(g.d))return null;
+  const x=xgStore[String(g.i)];
+  return {id:g.i,ts:g.d,h:g.h,a:g.a,hg,ag,season:g.s,leagueId:g.l!=null?g.l:leagueId,
+    fth:g.fs?g.fs[0]:null,fta:g.fs?g.fs[1]:null,xh:Array.isArray(x)?x[0]:null,xa:Array.isArray(x)?x[1]:null,isTarget};
+}
+const leagueHistoryMemo=new Map();
+async function loadLeagueHistory(lid,season){
+  const key=String(lid)+':'+String(season);
+  if(leagueHistoryMemo.has(key))return leagueHistoryMemo.get(key);
+  const p=(async()=>{
+    const out={games:[],current:0,previous:0,notes:[]};
+    const cur=await leagueSeasonGames(lid,season);
+    for(const g of cur){const m=toModelGame(g,lid,true);if(m)out.games.push(m);}
+    out.current=out.games.length;
+    const prevSeason=Number(season)-1;
+    if(Number.isFinite(prevSeason)){
+      try{
+        const prev=await leagueSeasonGames(lid,prevSeason);
+        for(const g of prev){const m=toModelGame(g,lid,false);if(m)out.games.push(m);}
+        out.previous=out.games.length-out.current;
+      }catch(e){if(e.message==='Cancelado')throw e;out.notes.push('Sin temporada anterior: '+e.message);}
+    }
+    return out;
+  })();
+  leagueHistoryMemo.set(key,p);
+  p.catch(()=>{if(leagueHistoryMemo.get(key)===p)leagueHistoryMemo.delete(key)});
+  return p;
+}
+function modelCfg(){const c=LS.get('o05:model:v1',null);return c&&typeof c==='object'?c:{}}
+function modelParams(){const c=modelCfg();return {halfLifeDays:c.halfLifeDays||240,priorMatches:c.priorMatches||14,xgWeight:c.xgWeight||0}}
 
 /* ---- ligas ---- */
 function isFutureFixture(f,now=Date.now()){
@@ -1080,29 +1170,37 @@ async function analizar(){
   };
   const n=parseInt($('#conc').value,10)||4;
   await Promise.all(Array.from({length:n},worker));
-  // Cuotas prepartido: consultar por fecha y recorrer TODAS las páginas (API-Football devuelve 10 eventos por página).
-  // Se consulta una vez por fecha, no una vez por partido, para limitar consumo de API.
-  let prematchOddsByFixture=new Map();
+  // Cuotas prepartido 0,5 1T: una consulta por liga seleccionada y fecha (con sus páginas),
+  // no un barrido de todo el día. Se corta apenas todos los partidos de esa liga tienen cuota.
+  const prematchOddsByFixture=new Map();
   if(state.market==='ht05'&&fxs.length){
-    try{
-      const oddsDate=fxs[0].iso.slice(0,10);
-      let page=1,totalPages=1;
-      do{
-        const oddsResponse=await api('/odds',{date:oddsDate,timezone:TZ,page});
-        for(const item of (oddsResponse.response||[])){
-          const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
-          if(!fixtureId) continue;
-          const parsed=findFirstHalfOdds([item]);
-          if(parsed.over05) prematchOddsByFixture.set(fixtureId,parsed.over05);
-        }
-        const reportedTotal=Number(oddsResponse.paging?.total);
-        totalPages=Number.isFinite(reportedTotal)&&reportedTotal>0?reportedTotal:page;
-        page++;
-      }while(page<=totalPages&&page<=100&&!state.cancel);
-    }catch(e){
-      state.errors.push('Cuotas prepartido no disponibles: '+e.message);
+    const oddsDate=$('#date').value||fxs[0].iso.slice(0,10);
+    const oddsComps=new Map();
+    for(const f of fxs)oddsComps.set(f.lid+':'+f.season,{lid:f.lid,season:f.season});
+    for(const c of oddsComps.values()){
+      if(state.cancel)break;
+      const wanted=fxs.filter(f=>f.lid===c.lid&&f.season===c.season).map(f=>String(f.id));
+      try{
+        let page=1,totalPages=1;
+        do{
+          const oddsResponse=await api('/odds',{league:c.lid,season:c.season,date:oddsDate,timezone:TZ,page});
+          for(const item of (oddsResponse.response||[])){
+            const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
+            if(!fixtureId) continue;
+            const parsed=findFirstHalfOdds([item],{pick:'best'});
+            if(parsed.over05) prematchOddsByFixture.set(fixtureId,parsed);
+          }
+          const reportedTotal=Number(oddsResponse.paging?.total);
+          totalPages=Number.isFinite(reportedTotal)&&reportedTotal>0?reportedTotal:page;
+          page++;
+          if(wanted.every(id=>prematchOddsByFixture.has(id))) break;
+        }while(page<=totalPages&&page<=8&&!state.cancel);
+      }catch(e){
+        state.errors.push('Cuotas prepartido de la liga '+c.lid+': '+e.message);
+      }
     }
   }
+  // Historial completo (temporada actual + anterior) de cada competición, para ajustar el modelo.
   const leagueDataByKey=new Map();
   if(state.market==='ht05'){
     const competitions=new Map();
@@ -1110,29 +1208,28 @@ async function analizar(){
     let leagueIndex=0;
     for(const [leagueKey,competition] of competitions){
       if(state.cancel)break;
-      try{leagueDataByKey.set(leagueKey,await leagueSeasonGames(competition.lid,competition.season));}
+      try{leagueDataByKey.set(leagueKey,await loadLeagueHistory(competition.lid,competition.season));}
       catch(e){state.errors.push('Historial Poisson '+leagueKey+': '+e.message);leagueDataByKey.set(leagueKey,{error:e.message});}
       leagueIndex++;
       prog(total+leagueIndex,total+competitions.size,state.calls+' llamadas a la API · historiales de liga '+leagueIndex+'/'+competitions.size);
     }
+  }
+  const fitCache=new Map(), earliest=new Map();
+  for(const f of fxs){
+    const k=f.lid+':'+f.season, t=Math.floor(new Date(f.iso).getTime()/1000);
+    if(!earliest.has(k)||t<earliest.get(k)) earliest.set(k,t);
   }
   const out=[];
   for(const f of fxs){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
     const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
     const leagueKey=String(f.lid)+':'+String(f.season);
-    let poisson=state.market==='ht05'?poissonInputForFixture(f,leagueDataByKey.get(leagueKey)):null;
-    if(poisson){
-      const marketOdds=prematchOddsByFixture.get(String(f.id))||null;
-      poisson={...poisson,marketOdds};
-      if(poisson.ok&&marketOdds&&Number.isFinite(marketOdds.price)&&marketOdds.price>1){
-        const p=poisson.probability;
-        poisson.impliedProbability=1/marketOdds.price;
-        poisson.evPercent=(p*marketOdds.price-1)*100;
-      }
-    }
+    const poisson=state.market==='ht05'
+      ?poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null)
+      :null;
     out.push({fx:f,tr,poisson,...resumen(tr)});
   }
+  if(state.market==='ht05'){try{logPredictions(out);saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}}
   state.strategyHistory=new Map(tg);
   state.results=out;
   state.running=false;
@@ -1144,53 +1241,72 @@ async function analizar(){
 }
 
 
-/* ---- modelo Poisson propio: historial completo y verificado de liga/temporada ---- */
-function poissonInputForFixture(f,leagueGames){
-  if(state.market!=='ht05'||!window.TanoPoissonModel)return null;
-  if(!Array.isArray(leagueGames))return {ok:false,reason:leagueGames&&leagueGames.error?'No se pudo obtener el historial reciente de la competición: '+leagueGames.error:'No se obtuvo el historial de la competición. No se calcula Poisson.'};
-  const cutoff=Math.floor(new Date(f.iso).getTime()/1000);
-  const league=leagueGames.filter(g=>String(g.l)===String(f.lid)&&String(g.s)===String(f.season)&&Number.isFinite(g.d)&&g.d<cutoff&&(g.htValidation||validateHtRecord(g)).status==='valid_api'&&Array.isArray(g.ht)&&g.ht.length===2&&g.ht.every(n=>Number.isInteger(n)&&n>=0)).sort((a,b)=>b.d-a.d);
-  const MIN_LEAGUE_HT_MATCHES=20;
-  if(league.length<MIN_LEAGUE_HT_MATCHES)return {ok:false,reason:`Muestra insuficiente: API-Football devolvió ${league.length} partidos anteriores con HT explícito y validado de esta liga/temporada; se requieren al menos ${MIN_LEAGUE_HT_MATCHES}. No se completa ni se inventa información.`,leagueMatches:league.length};
-  const leagueHomeGoalsHT=league.reduce((sum,g)=>sum+g.ht[0],0)/league.length;
-  const leagueAwayGoalsHT=league.reduce((sum,g)=>sum+g.ht[1],0)/league.length;
-  if(!(leagueHomeGoalsHT>0&&leagueAwayGoalsHT>0))return {ok:false,reason:'Los promedios de goles HT local/visitante de la liga no son válidos. No se calcula Poisson.',leagueMatches:league.length};
-  function historyFor(teamId){return league.filter(g=>g.h===teamId||g.a===teamId).slice(0,30).map(g=>g.h===teamId?{scoredHT:g.ht[0],concededHT:g.ht[1]}:{scoredHT:g.ht[1],concededHT:g.ht[0]});}
-  const homeHistory=historyFor(f.hid),awayHistory=historyFor(f.aid),MIN_TEAM_HT_MATCHES=5;
-  if(homeHistory.length<MIN_TEAM_HT_MATCHES||awayHistory.length<MIN_TEAM_HT_MATCHES)return {ok:false,reason:`Muestra insuficiente: partidos HT válidos de esta competición/temporada — local ${homeHistory.length}/${MIN_TEAM_HT_MATCHES}, visitante ${awayHistory.length}/${MIN_TEAM_HT_MATCHES}. No se inventan ni se mezclan datos.`,leagueMatches:league.length};
-  const result=window.TanoPoissonModel.calculate({homeHistory,awayHistory,leagueHomeGoalsHT,leagueAwayGoalsHT});
-  if(!result.ok)return result;
-  const dates=league.map(g=>g.d).filter(Number.isFinite);
-  return {...result,sample:{...result.sample,leagueMatches:league.length},dataSource:'API-Football · fixtures de la misma liga y temporada · HT explícito validado',dataRange:{from:Math.min(...dates),to:Math.max(...dates)}};
+/* ---- modelo Poisson v2: ajuste de la liga completa, calibración y regla de EV ---- */
+const fmtPct=(x,d=1)=>Number.isFinite(x)?(x*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%':'—';
+const fmtNum=(x,d=2)=>Number.isFinite(x)?Number(x).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+function evMinEdge(){return Math.max(0,Number($('#evMinEdge')&&$('#evMinEdge').value)||5)/100}
+function poissonForFixture(f,hist,fitCache,cutoff,oddsInfo){
+  const T=window.TanoPoissonModel;
+  if(state.market!=='ht05'||!T)return null;
+  const marketOdds=oddsInfo?oddsInfo.over05:null;
+  if(!hist||hist.error)return {ok:false,reason:'No se pudo obtener el historial de la competición'+(hist&&hist.error?': '+hist.error:'')+'. No se calcula Poisson.',marketOdds};
+  const cfg=modelCfg(), params=modelParams(), key=f.lid+':'+f.season;
+  let fit=fitCache.get(key);
+  if(!fit){
+    const fm=T.buildFitMatches(hist.games,{cutoffTs:cutoff,currentSeason:f.season,halfLifeDays:params.halfLifeDays,xgWeight:params.xgWeight});
+    fit=T.fitLeague(fm,{priorMatches:params.priorMatches});
+    fitCache.set(key,fit);
+  }
+  const pr=T.predictMatch(fit,f.hid,f.aid,{});
+  if(!pr.ok)return {ok:false,reason:pr.reason,leagueMatches:fit&&fit.matches,marketOdds};
+  const cal=cfg.calibration||null;
+  const p=T.applyCalibration(cal,pr.pOver05), pLow=T.applyCalibration(cal,pr.pLow), pHigh=T.applyCalibration(cal,pr.pHigh);
+  const marketProb=oddsInfo?oddsInfo.marketProb:null;
+  const decision=T.evDecision({p,pLow,odds:marketOdds?marketOdds.price:null,marketProb,minEdge:evMinEdge(),validated:!!cfg.validated});
+  return {ok:true,probability:p,probabilityRaw:pr.pOver05,calibrated:!!cal,pLow,pHigh,fairOdds:1/p,
+    lambdas:{home:pr.lambdaHome,away:pr.lambdaAway,total:pr.lambdaTotal},seLambda:pr.seLambda,
+    sample:{homeEff:pr.nEffHome,awayEff:pr.nEffAway,homeN:pr.nHome,awayN:pr.nAway,leagueMatches:fit.matches,teams:fit.teamCount,current:hist.current,previous:hist.previous},
+    marketOdds,marketProb,marketRef:oddsInfo?oddsInfo.marketRef:null,
+    decision,evPercent:decision.ev==null?null:decision.ev*100,params,validated:!!cfg.validated,
+    dataSource:'API-Football · temporada completa'+(hist.previous?' + anterior':'')+' · HT verificado'+(params.xgWeight>0?' · mezcla xG '+Math.round(params.xgWeight*100)+'%':'')};
+}
+function evBadge(dec){
+  if(!dec)return '';
+  const cls=dec.signal==='ev_solido'?'solid':dec.signal==='ev_posible'?'possible':'none';
+  const prov=(dec.signal==='ev_solido'||dec.signal==='ev_posible')&&!dec.validated?' · provisorio':'';
+  return '<span class="ev-badge '+cls+'">'+esc(dec.label)+prov+'</span>';
 }
 function poissonHtml(model){
   if(state.market!=='ht05') return '';
+  const metric=(label,value,style)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value"'+(style?' style="'+style+'"':'')+'>'+value+'</span></div>';
   if(!model||!model.ok){
     const odds=model&&model.marketOdds;
-    const oddsStatus=odds
-      ? '<div class="poisson-metric"><span class="label">Cuota prepartido · '+esc(odds.bookmaker||'Casa no informada')+'</span><span class="value">'+Number(odds.price).toFixed(2)+'</span></div>'
-      : '<div class="poisson-metric"><span class="label">Cuota prepartido +0,5 1T</span><span class="value">No disponible</span></div>';
-    const leagueSample=model&&Number.isFinite(model.leagueMatches)?'<div class="poisson-status">Partidos HT explícitos y validados de liga anteriores al encuentro: '+model.leagueMatches+'</div>':'';
-    return '<section class="poisson-panel"><div class="poisson-title">Modelo propio · Poisson 1T</div><div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div>'+leagueSample+'<div class="poisson-grid">'+oddsStatus+'<div class="poisson-metric"><span class="label">EV estimado</span><span class="value">Sin calcular: falta una probabilidad Poisson válida</span></div></div><div class="poisson-note">La cuota se consulta independientemente de la muestra Poisson. El EV solo se calcula cuando hay probabilidad válida y precio verificado. No altera los siete criterios ni las alertas.</div></section>';
+    return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span><span class="ev-badge none">No evaluable</span></div>'+
+      '<div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div>'+
+      '<div class="poisson-grid">'+metric('Cuota prepartido +0,5 1T',odds?Number(odds.price).toFixed(2):'No disponible')+metric('EV estimado','Sin calcular')+'</div>'+
+      '<div class="poisson-note">No se inventan ni se completan datos faltantes. Esto no altera los siete criterios ni las alertas.</div></section>';
   }
-  const p=model.probabilityPercent.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
-  const fair=model.fairOdds.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const lam=model.lambdas.totalHT.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const odds=model.marketOdds;
-  const oddsText=odds
-    ? '<div class="poisson-metric"><span class="label">Cuota prepartido · '+esc(odds.bookmaker||'Casa no informada')+'</span><span class="value">'+Number(odds.price).toFixed(2)+'</span></div>'
-    : '<div class="poisson-metric"><span class="label">Cuota prepartido +0,5 1T</span><span class="value">No disponible</span></div>';
-  const evText=odds&&Number.isFinite(model.evPercent)
-    ? '<div class="poisson-metric"><span class="label">EV estimado</span><span class="value" style="color:'+(model.evPercent>=0?'var(--c4)':'var(--c1)')+'">'+(model.evPercent>0?'+':'')+model.evPercent.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%</span></div>'
-    : '<div class="poisson-metric"><span class="label">EV estimado</span><span class="value">Sin calcular</span></div>';
-  const implied=odds?'<div class="poisson-status">Probabilidad de equilibrio de la cuota: '+(model.impliedProbability*100).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%. Mercado: '+esc(odds.market||'Over 0,5 goles 1T')+'.</div>':'<div class="poisson-status">API-Football no devolvió una cuota verificada para Over 0,5 goles en el primer tiempo. No se usa la cuota del partido completo y no se calcula EV.</div>';
-  return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span><span class="small">Experimental</span></div><div class="poisson-grid">'+
-    '<div class="poisson-metric"><span class="label">Probabilidad estimada +0,5 1T</span><span class="value">'+p+'</span></div>'+
-    '<div class="poisson-metric"><span class="label">Cuota justa estimada</span><span class="value">'+fair+'</span></div>'+
-    '<div class="poisson-metric"><span class="label">Goles esperados 1T (λ)</span><span class="value">'+lam+'</span></div>'+oddsText+evText+'</div>'+
-    '<div class="poisson-status">Muestra HT validada: '+model.sample.homeMatches+' partidos del local · '+model.sample.awayMatches+' del visitante · '+model.sample.leagueMatches+' de la liga.</div>'+
-     '<div class="poisson-status">'+esc(model.dataSource||'Fuente no especificada')+'</div>'+implied+
-    '<div class="poisson-note">EV = (probabilidad Poisson × cuota) − 1. Estimación exploratoria, aún no calibrada ni validada fuera de muestra; no es una recomendación de apuesta.</div></section>';
+  const d=model.decision, odds=model.marketOdds, s=model.sample;
+  const evColor=d&&d.ev!=null?'color:'+(d.ev>=0?'var(--c4)':'var(--c1)'):'';
+  const evText=d&&d.ev!=null?(d.ev>0?'+':'')+fmtNum(d.ev*100,1)+'%':'Sin calcular';
+  const evLowText=d&&d.evLow!=null?(d.evLow>0?'+':'')+fmtNum(d.evLow*100,1)+'%':'—';
+  const grid=
+    metric('Probabilidad +0,5 1T'+(model.calibrated?' (calibrada)':''),fmtPct(model.probability))+
+    metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0))+
+    metric('Cuota justa',fmtNum(model.fairOdds))+
+    metric('Goles esperados 1T (λ)',fmtNum(model.lambdas.total))+
+    metric(odds?'Mejor cuota · '+esc(odds.bookmaker||'casa no informada'):'Cuota prepartido +0,5 1T',odds?Number(odds.price).toFixed(2):'No disponible')+
+    metric('EV estimado',evText,evColor)+
+    metric('EV conservador',evLowText)+
+    metric('Mercado sin margen',Number.isFinite(model.marketProb)?fmtPct(model.marketProb,1):'—')+
+    metric('EV vs mercado (sin margen)',Number.isFinite(model.marketProb)&&odds&&Number(odds.price)>1?((model.marketProb*Number(odds.price)-1)>=0?'+':'')+fmtNum((model.marketProb*Number(odds.price)-1)*100,1)+'%':'—',Number.isFinite(model.marketProb)&&odds&&Number(odds.price)>1?'color:'+((model.marketProb*Number(odds.price)-1)>=0?'var(--c4)':'var(--c1)'):'');
+  const reasons=d&&d.reasons&&d.reasons.length?'<ul class="poisson-reasons">'+d.reasons.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul>':'';
+  const refText=model.marketRef?' Referencia del mercado: '+esc(model.marketRef)+'.':'';
+  return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson 1T</span>'+evBadge(d)+'</div>'+
+    '<div class="poisson-grid">'+grid+'</div>'+reasons+
+    '<div class="poisson-status">Muestra: local '+fmtNum(s.homeEff,1)+' partidos ponderados ('+s.homeN+' reales) · visitante '+fmtNum(s.awayEff,1)+' ('+s.awayN+') · liga '+s.leagueMatches+' partidos, '+s.teams+' equipos'+(s.previous?' · temporada actual '+s.current+' + anterior '+s.previous:'')+'.</div>'+
+    '<div class="poisson-status">'+esc(model.dataSource||'Fuente no especificada')+'.'+refText+'</div>'+
+    '<div class="poisson-note">EV = probabilidad × cuota − 1. "Conservador" usa el límite inferior de la probabilidad según el tamaño de la muestra. "EV vs mercado" usa la probabilidad sin margen de Pinnacle o de la mediana de casas: si da positivo, la cuota que encontraste paga más que el precio justo del mercado, que es una señal más fiable que el modelo solo. '+(model.validated?'El modelo pasó la validación fuera de muestra de la sección 5.':'El modelo todavía no fue validado fuera de muestra (sección 5): tomá el resultado como provisorio.')+' No es una recomendación de apuesta.</div></section>';
 }
 
 /* ---- resultados ---- */
@@ -1221,12 +1337,15 @@ function cardHtml(r,i){
     </details>
   </article>`;
 }
+function evOf(r){const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return d&&Number.isFinite(d.ev)?d.ev:null}
+function isEvPlus(r){const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return !!d&&(d.signal==='ev_solido'||d.signal==='ev_posible')}
 function sorted(){
   const m=parseInt($('#minAvg').value,10)||0, s=$('#sort').value;
-  const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, now=Date.now();
-  const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(m===0||(r.avg!==null&&r.avg>=m)));
+  const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, onlyEv=!!($('#onlyEv')&&$('#onlyEv').checked), now=Date.now();
+  const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(!onlyEv||isEvPlus(r))&&(m===0||(r.avg!==null&&r.avg>=m)));
   const nv=x=>x===null?-1:x;
-  if(s==='min') list.sort((a,b)=>nv(b.min)-nv(a.min)||nv(b.avg)-nv(a.avg));
+  if(s==='ev') list.sort((a,b)=>(evOf(b)===null?-9:evOf(b))-(evOf(a)===null?-9:evOf(a))||nv(b.avg)-nv(a.avg));
+  else if(s==='min') list.sort((a,b)=>nv(b.min)-nv(a.min)||nv(b.avg)-nv(a.avg));
   else if(s==='time') list.sort((a,b)=>a.fx.iso.localeCompare(b.fx.iso));
   else list.sort((a,b)=>nv(b.avg)-nv(a.avg)||nv(b.min)-nv(a.min));
   return list;
@@ -1276,7 +1395,11 @@ function detailHtml(r){
 
 }
 function copyList(){
-  const lines=sorted().map(r=>`${fmtTime(r.fx.iso)} ${r.fx.hn} vs ${r.fx.an} (${r.fx.ln}) · prom ${r.avg===null?'s/d':Math.round(r.avg)+'%'} · `+r.tr.map(t=>t.valid?`${t.hits}/${t.valid}`:'s/d').join(' '));
+  const lines=sorted().map(r=>{
+    const p=r.poisson&&r.poisson.ok?r.poisson:null;
+    const pois=p?` · Poisson ${fmtPct(p.probability,0)} · cuota ${p.marketOdds?Number(p.marketOdds.price).toFixed(2):'s/d'} · EV ${p.decision&&Number.isFinite(p.decision.ev)?(p.decision.ev*100).toFixed(1)+'%':'s/d'} (${p.decision?p.decision.label:'—'})`:'';
+    return `${fmtTime(r.fx.iso)} ${r.fx.hn} vs ${r.fx.an} (${r.fx.ln}) · prom ${r.avg===null?'s/d':Math.round(r.avg)+'%'} · `+r.tr.map(t=>t.valid?`${t.hits}/${t.valid}`:'s/d').join(' ')+pois;
+  });
   const txt=lines.join('\n');
   const done=ok=>{const b=$('#btnCopy');const o=b.textContent;b.textContent=ok?'Copiado':'No se pudo copiar';setTimeout(()=>b.textContent=o,1600)};
   try{navigator.clipboard.writeText(txt).then(()=>done(true),()=>done(false))}catch(e){done(false)}
@@ -1338,6 +1461,7 @@ $('#conc').addEventListener('change',()=>LS.set('o05:conc',$('#conc').value));
 $('#btnFetch').addEventListener('click',buscar);
 $('#onlyNS').addEventListener('change',()=>{renderLeagues();if(state.results.length)renderResults();});
 $('#applyCriteria').addEventListener('change',()=>{if(state.results.length)renderResults();});
+$('#onlyEv').addEventListener('change',()=>{if(state.results.length)renderResults();});
 $('#lfilter').addEventListener('input',renderLeagues);
 $('#leagues').addEventListener('change',e=>{
   const id=parseInt(e.target.dataset.id,10);
@@ -1687,27 +1811,41 @@ async function loadLiveFixtures(){
   }catch(e){liveStatus('No se pudieron cargar los partidos: '+e.message,true);}
   finally{liveState.busy=false;$('#liveRefresh').disabled=false;}
 }
-function findFirstHalfOdds(response){
-  const found={};
+function findFirstHalfOdds(response,opts){
+  const pick=(opts&&opts.pick)||'first';
+  const found={},perBook=new Map();
+  // Solo el total de goles del partido en el 1T. Se excluyen mercados por equipo, hándicap,
+  // impar/par, ambos marcan, etc., que también traen líneas "Over 0.5" pero NO son este mercado.
+  const WRONG=/(home|away|local|visit|team|equipo|handicap|asian|corner|card|tarjeta|booking|exact|\bodd\b|\beven\b|impar|both|btts|double|result|1x2|\bwin\b|margin)/i;
   const consider=(bet,bookmakerName='',bookmakerStatus={})=>{
     const name=String(bet.name||bet.bet||'').toLowerCase();
     // IMPORTANTE: los IDs de mercados en vivo son distintos de los IDs prepartido.
-    // No se filtra por IDs prepartido; se exige que el nombre identifique el primer tiempo.
+    // No se filtra por IDs; se exige que el nombre identifique el primer tiempo y el total de goles.
     const isFirstHalf=/(1st\s*half|first\s*half|half\s*time|1er\s*tiempo|primer\s*tiempo|1ª?\s*parte|1st\s*period)/i.test(name);
-    if(!isFirstHalf)return;
+    if(!isFirstHalf||WRONG.test(name))return;
     if(bookmakerStatus.blocked===true||bookmakerStatus.finished===true||bookmakerStatus.stopped===true)return;
     for(const value of (bet.values||[])){
       if(value.suspended===true)continue;
       const v=String(value.value||'').toLowerCase().replace(',','.');
-      if(!/\bover\b|\bmore\b|\bmas de\b/.test(v))continue;
+      const side=/\b(over|more|mas de|más de)\b/.test(v)?'over':/\b(under|less|menos de)\b/.test(v)?'under':null;
+      if(!side)continue;
       const handicap=String(value.handicap||'').replace(',','.').trim();
-      const match=v.match(/(?:over|more|mas de)\s*([0-9]+(?:\.[0-9]+)?)/i);
+      const match=v.match(/(?:over|under|more|less|mas de|más de|menos de)\s*([0-9]+(?:\.[0-9]+)?)/i);
       const line=handicap|| (match&&match[1]) || '';
       const n=Number(line);
-      const key=n===0.5?'over05':n===1?'over10':null;
       const price=Number(value.odd||value.price);
-      if(!key||!Number.isFinite(price)||price<=1)continue;
-      const candidate={price,bookmaker:bookmakerName||'Casa no informada por API-Football',market:bet.name||'',marketId:bet.id??null,line:n,main:value.main===true,suspended:false};
+      if(!Number.isFinite(n)||!Number.isFinite(price)||price<=1)continue;
+      const bk=bookmakerName||'Casa no informada por API-Football';
+      const candidate={price,bookmaker:bk,market:bet.name||'',marketId:bet.id??null,line:n,main:value.main===true,suspended:false};
+      if(n===0.5){
+        const rec=perBook.get(bk)||{over:null,under:null};
+        if(side==='over'&&!rec.over)rec.over=candidate;
+        if(side==='under'&&!rec.under)rec.under=candidate;
+        perBook.set(bk,rec);
+      }
+      if(side!=='over')continue;
+      const key=n===0.5?'over05':n===1?'over10':null;
+      if(!key)continue;
       // Si la API marca main=true, priorizarlo. Si no, conservar la primera cuota válida.
       if(!found[key]||(candidate.main&&!found[key].main))found[key]=candidate;
     }
@@ -1726,6 +1864,24 @@ function findFirstHalfOdds(response){
     for(const bet of directOdds)consider(bet,bet.bookmaker||item.bookmaker?.name||'',fixtureStatus);
     if(Array.isArray(item.bets))for(const bet of item.bets)consider(bet,item.bookmaker?.name||'',fixtureStatus);
   }
+  // Prepartido: usar la MEJOR cuota disponible entre casas (es la que se podría apostar).
+  if(pick==='best'){
+    let best=null;
+    for(const rec of perBook.values())if(rec.over&&(!best||rec.over.price>best.price))best=rec.over;
+    if(best)found.over05=best;
+  }
+  // Probabilidad implícita SIN margen: Pinnacle si está; si no, la mediana de las casas con Over y Under.
+  const pairs=[...perBook.entries()].filter(([,r])=>r.over&&r.under)
+    .map(([bk,r])=>({bk,p:(1/r.over.price)/((1/r.over.price)+(1/r.under.price))}));
+  if(pairs.length){
+    const pin=pairs.find(x=>/pinnacle/i.test(x.bk));
+    if(pin){found.marketProb=pin.p;found.marketRef='Pinnacle, sin margen';}
+    else{
+      const ps=pairs.map(x=>x.p).sort((a,b)=>a-b);
+      found.marketProb=ps.length%2?ps[(ps.length-1)/2]:(ps[ps.length/2-1]+ps[ps.length/2])/2;
+      found.marketRef='mediana de '+pairs.length+' casa'+(pairs.length>1?'s':'')+', sin margen';
+    }
+  }
   return found;
 }
 async function loadLiveOdds(id){
@@ -1740,7 +1896,7 @@ async function loadLiveOdds(id){
     const odds=findFirstHalfOdds(rows);
     liveState.odds.set(String(id),odds);
     renderLive();
-    const n=Object.keys(odds).length;
+    const n=['over05','over10'].filter(k=>odds[k]).length;
     if(n)liveStatus(`Cuotas en vivo encontradas para ${f.teams.home.name} vs ${f.teams.away.name}: ${n} línea(s). La API puede no informar el nombre de la casa en este endpoint.`);
     else liveStatus('API-Football no devolvió líneas Over 0,5/1,0 identificables para el primer tiempo en este partido. Puede que el mercado no esté cubierto, esté suspendido o use un nombre distinto.');
   }catch(e){liveStatus('Error al consultar cuotas en vivo: '+e.message,true);}
@@ -1988,6 +2144,7 @@ document.getElementById('ghAnalyze').addEventListener('click',()=>{
 });
 
 </script>
+<script src="./validacion-v2.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
