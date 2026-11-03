@@ -1147,7 +1147,7 @@ async function analizar(){
 /* ---- modelo Poisson propio: historial completo y verificado de liga/temporada ---- */
 function poissonInputForFixture(f,leagueGames){
   if(state.market!=='ht05'||!window.TanoPoissonModel)return null;
-  if(!Array.isArray(leagueGames))return {ok:false,reason:leagueGames&&leagueGames.error?'No se pudo obtener el historial completo de la competición: '+leagueGames.error:'No se obtuvo el historial de la competición. No se calcula Poisson.'};
+  if(!Array.isArray(leagueGames))return {ok:false,reason:leagueGames&&leagueGames.error?'No se pudo obtener el historial reciente de la competición: '+leagueGames.error:'No se obtuvo el historial de la competición. No se calcula Poisson.'};
   const cutoff=Math.floor(new Date(f.iso).getTime()/1000);
   const league=leagueGames.filter(g=>String(g.l)===String(f.lid)&&String(g.s)===String(f.season)&&Number.isFinite(g.d)&&g.d<cutoff&&(g.htValidation||validateHtRecord(g)).status==='valid_api'&&Array.isArray(g.ht)&&g.ht.length===2&&g.ht.every(n=>Number.isInteger(n)&&n>=0)).sort((a,b)=>b.d-a.d);
   const MIN_LEAGUE_HT_MATCHES=20;
