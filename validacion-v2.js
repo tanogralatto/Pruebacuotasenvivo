@@ -312,26 +312,57 @@
       if (!batch.length) { valStatus('No quedan partidos sin xG para bajar en las ligas marcadas.' + badNote, badLeagues.length > 0); return; }
 
       // Paso 2: xG partido por partido. Los que fallan no se guardan, así se reintentan tocando el botón otra vez.
-      let idx = 0, got = 0, none = 0, failed = 0;
-      valStatus(`Bajando xG… 0/${batch.length}`);
-      const worker = async () => {
-        while (idx < batch.length && !state.cancel) {
-          const g = batch[idx++];
+      // Si la API frena por consultas por minuto, toda la descarga se pausa un minuto, sigue más despacio
+      // y el partido vuelve a la cola (hasta MAX_PAUSES pausas, para no quedar trabada para siempre).
+      const MAX_PAUSES = 15, PAUSE_MS = 65000;
+      const queue = batch.slice(), tries = new Map();
+      let got = 0, none = 0, failed = 0, pauses = 0, inFlight = 0, pauseUntil = 0, workers = 4, lastError = '';
+      const progress = () => `${got + none + failed}/${batch.length} · con xG ${got} · sin xG ${none} · con error ${failed}`;
+      const isRateLimit = m => /limit|minuto|too many/i.test(m) && !/day|día/i.test(m);
+      valStatus(`Bajando xG… ${progress()}`);
+      const worker = async n => {
+        while ((queue.length || inFlight) && !state.cancel) {
+          if (n >= workers) return; // después de una pausa siguen menos pedidos en paralelo
+          const wait = pauseUntil - Date.now();
+          if (wait > 0) { await sleep(Math.min(wait, 1000)); continue; }
+          if (!queue.length) { await sleep(200); continue; } // otro pedido en curso puede devolver su partido a la cola
+          const g = queue.shift();
+          inFlight++;
           try {
             const j = await api('/fixtures/statistics', { fixture: g.i });
             const x = X.extractMatchXg(j.response, g.h, g.a);
             if (x.available) { xgStore[String(g.i)] = [x.home, x.away]; got++; } else { xgStore[String(g.i)] = null; none++; }
-          } catch (e) { failed++; if (/token|requests|access|plan/i.test(e.message)) state.cancel = true; }
+          } catch (e) {
+            lastError = e.message;
+            if (e.fatal || (/token|requests|access|plan/i.test(e.message) && !isRateLimit(e.message))) { state.cancel = true; failed++; continue; }
+            const t = (tries.get(g.i) || 0) + 1;
+            if (isRateLimit(e.message) && pauses < MAX_PAUSES && t <= 3) {
+              tries.set(g.i, t);
+              queue.push(g);
+              if (pauseUntil <= Date.now()) {
+                pauses++;
+                pauseUntil = Date.now() + PAUSE_MS;
+                workers = Math.max(1, workers - 1);
+                saveXgStore();
+                valStatus(`La API pidió frenar (límite por minuto). Pausa de 1 minuto y sigo sola, más despacio… ${progress()}`);
+              }
+              continue;
+            }
+            failed++;
+          } finally { inFlight--; }
           const done = got + none + failed;
           if (done % 20 === 0) saveXgStore();
-          if (done % 5 === 0) valStatus(`Bajando xG… ${done}/${batch.length} · con xG ${got} · sin xG ${none} · con error ${failed}`);
+          if (done % 5 === 0 && pauseUntil <= Date.now()) valStatus(`Bajando xG… ${progress()}`);
         }
       };
-      await Promise.all(Array.from({ length: 4 }, worker));
+      await Promise.all(Array.from({ length: 4 }, (_, n) => worker(n)));
       saveXgStore();
       leagueHistoryMemo.clear(); // para que el modelo vuelva a armar los partidos con el xG nuevo
-      const retry = failed > 0 ? ' Tocá «Bajar xG» otra vez para reintentar los que dieron error.' : ' Ahora corré «Validar» para ver si mejora el modelo.';
-      valStatus(`xG: ${got} partidos con xG, ${none} sin xG, ${failed} con error.${retry}${badNote}`, (failed > 0 && got === 0) || badLeagues.length > 0);
+      const left = batch.length - got - none - failed;
+      const errNote = lastError && (failed > 0 || left > 0) ? ` Último error de la API: «${lastError}».` : '';
+      const leftNote = left > 0 ? ` Quedaron ${left} sin intentar.` : '';
+      const retry = failed > 0 || left > 0 ? ' Tocá «Bajar xG» otra vez para seguir con los que faltan.' : ' Ahora corré «Validar» para ver si mejora el modelo.';
+      valStatus(`xG: ${got} partidos con xG, ${none} sin xG, ${failed} con error.${leftNote}${retry}${errNote}${badNote}`, (failed > 0 && got === 0) || badLeagues.length > 0);
     } catch (e) {
       valStatus('No se pudo bajar xG: ' + e.message, true);
     } finally { btn.disabled = false; }
