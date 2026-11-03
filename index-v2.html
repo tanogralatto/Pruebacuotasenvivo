@@ -711,32 +711,69 @@ body.no-hints .poisson-metric .hint{display:none}
 
     <details class="routine">
       <summary>De vez en cuando: validar las ligas</summary>
-      <p>El cálculo de la app no funciona igual de bien en todas las ligas. Validar sirve para saber en cuáles se puede confiar:</p>
+      <p>El cálculo de la app no funciona igual de bien en todas las ligas. Validar sirve para saber en cuáles <b>el cálculo funciona</b>:</p>
       <ol>
-        <li>Marcá las ligas en el <b>Escáner</b>, con el mercado que quieras probar (cada mercado se valida por separado).</li>
-        <li>En la pestaña <b>Validación</b>, tocá <b>«Validar con las ligas marcadas»</b>.</li>
-        <li>Mirá la tabla:
-          <ul>
-            <li>✅ <b>Aprobada</b>: el cálculo funciona bien en esa liga.</li>
-            <li>❌ <b>No aprobada</b>: no le gana a adivinar con el promedio de la liga. Guiate solo por «EV vs mercado».</li>
-            <li>⏳ <b>Faltan datos</b>: todavía hay pocos partidos para saber.</li>
-            <li>🔄 <b>Volver a validar</b>: se aprobó con un método anterior. Validala de nuevo.</li>
-          </ul>
-        </li>
+        <li>En el <b>Escáner</b>, elegí el mercado y marcá las ligas (cada mercado se valida por separado).</li>
+        <li>En la pestaña <b>Validación</b>, tocá <b>«Validar con las ligas marcadas»</b>. Solo se actualizan las ligas marcadas; las demás quedan como estaban.</li>
+        <li>Mirá la tabla <b>«Ligas validadas»</b>. Arriba dice para qué mercado es: para ver otro, cambiá el mercado en el Escáner.</li>
       </ol>
+      <p><b>Qué significa cada columna:</b></p>
+      <ul>
+        <li><b>Estado</b>: ✅ Aprobada (el cálculo funciona en esa liga) · ❌ No aprobada (no le gana a adivinar con el promedio de la liga) · ⏳ Faltan datos (menos de 100 partidos) · 🔄 Volver a validar (se aprobó con un método anterior más generoso; mientras tanto cuenta como no aprobada).</li>
+        <li><b>Partidos</b>: con cuántos partidos se probó. Más partidos, resultado más confiable.</li>
+        <li><b>Mejora</b>: <b>la columna más importante</b>. Cuánto mejor acierta el cálculo que decir siempre el promedio de la liga. Negativa o cerca de 0 = en esa liga no sirve.</li>
+        <li><b>Confianza</b>: si la mejora es real o puede ser suerte. 🟢 Alta = casi seguro que es real · 🟡 Media = puede ser · 🔴 Baja = puede ser pura casualidad. Para aprobar hace falta 🟢.</li>
+        <li><b>Dice / pasa</b>: el promedio que predijo y el que pasó. Que coincidan está bien, pero <b>no alcanza</b>: un cálculo que dice siempre lo mismo también coincide y no sirve para elegir partidos.</li>
+        <li><b>Desvío</b>: el mayor error en algún grupo de partidos. Más bajo = mejor.</li>
+      </ul>
       <p>Con validar una vez por mes alcanza.</p>
     </details>
 
     <details class="routine">
-      <summary>¿La app gana plata?</summary>
-      <p>En la pestaña <b>Validación</b>, abajo, está el <b>registro</b> con todas las predicciones guardadas. Lo más importante es el cuadro <b>«¿Le gana el modelo a las casas?»</b>:</p>
-      <ul>
-        <li>✅ <b>El modelo acierta mejor que las casas</b>: buena señal, sobre todo con más de 300 predicciones.</li>
-        <li>❌ <b>El mercado acierta mejor que el modelo</b>: seguí solo las señales de «EV vs mercado».</li>
-      </ul>
-      <p>Debajo está la tabla <b>«¿En qué ligas le gana a las casas?»</b>: lo mismo, pero liga por liga. Las que dicen <b>✅ Le gana</b> son las mejores para apostar. En el Escáner, la casilla <b>«Solo ligas donde le gana a las casas»</b> muestra solo los partidos de esas ligas.</p>
-      <p><b>Para que una liga sume datos, analizá sus partidos antes de que empiecen</b> (con el partido empezado o terminado no se guarda nada). Conviene analizar muchas ligas todos los días, aunque no apuestes en ellas: así la tabla se llena más rápido.</p>
+      <summary>¿La app gana plata? (el registro)</summary>
+      <p>En la pestaña <b>Validación</b>, abajo, está el <b>registro</b>: cada predicción que la app guardó antes del partido, con su cuota y su resultado. Hay un bloque por mercado. Lo que vas a ver, de arriba hacia abajo:</p>
+      <ol>
+        <li><b>Brier y calibración</b>: qué tan bien acertaron las probabilidades (Brier más bajo = mejor).</li>
+        <li><b>Apuestas y ROI</b>: cuánto habrías ganado apostando 1 unidad en todas, en las EV+ y en las EV+ sólidas. Si el modelo «prometía» mucho más EV del que salió, está siendo optimista.</li>
+        <li><b>«¿Le gana el modelo a las casas?»</b>: <b>el cuadro más importante</b>. Compara, con las mismas predicciones, qué tan bien aciertan el modelo y las casas sin margen. ✅ = el modelo acierta mejor (buena señal con más de 300 predicciones) · ❌ = las casas aciertan mejor (seguí solo «EV vs mercado»).</li>
+        <li><b>«¿En qué ligas le gana a las casas?»</b>: lo mismo, liga por liga (se explica en la parte siguiente).</li>
+        <li><b>«¿Dónde se gana y dónde se pierde?»</b> (tocalo para abrirlo): el ROI separado por rango de EV, por EV vs mercado y por liga. Sirve para ver si hay un rango o una liga donde la ganancia se repite. Con grupos de menos de ~50 apuestas, los números saltan mucho por azar.</li>
+        <li><b>Simulación de la banca</b>: qué le habría pasado a tu banca apostando todas las señales EV+ con el stake sugerido (¼ Kelly) y con un stake fijo del 1%. «Peor caída» es lo máximo que bajó la banca desde su punto más alto. Si Kelly sale peor que el stake fijo, el modelo todavía no tiene ventaja real.</li>
+      </ol>
       <p><b>Paciencia:</b> con pocas decenas de apuestas los resultados son pura suerte. Hacen falta <b>cientos</b> para saber si el sistema funciona.</p>
+    </details>
+
+    <details class="routine">
+      <summary>Cómo elegir en qué ligas apostar</summary>
+      <p>La ventaja no está en todas las ligas: está en saber <b>en cuáles el modelo le gana a las casas</b>. Para eso está la tabla <b>«¿En qué ligas le gana a las casas?»</b> (pestaña Validación, dentro del registro).</p>
+      <p><b>Cómo leerla:</b></p>
+      <ul>
+        <li>✅ <b>Le gana</b>: en esa liga el modelo acierta mejor que las casas, con confianza alta y al menos 50 predicciones. <b>Son las ligas para apostar.</b></li>
+        <li>🟡 <b>Puede ser</b>: da positivo, pero todavía puede ser suerte. Seguí sumando datos.</li>
+        <li>❌ <b>No le gana</b>: las casas aciertan igual o mejor. No apuestes ahí por el cálculo propio.</li>
+        <li>⏳ <b>Faltan datos</b>: menos de 50 predicciones liquidadas.</li>
+        <li><b>Habilidad vs mercado</b>: cuánto mejor (positivo) o peor (negativo) acierta el modelo que las casas en esa liga.</li>
+      </ul>
+      <p><b>No es lo mismo que «Ligas validadas»:</b> esa tabla dice si el cálculo funciona mejor que el promedio de la liga; esta dice si le gana <b>a las casas</b>, que es mucho más difícil y es lo que hace falta para ganar plata.</p>
+      <p><b>Cómo usarla todos los días:</b></p>
+      <ol>
+        <li>Analizá en el Escáner <b>muchas ligas, antes de que empiecen los partidos</b>, aunque no apuestes en ellas. Cada partido analizado con cuota suma una predicción a su liga. Con el partido empezado o terminado no se guarda nada.</li>
+        <li>Al día siguiente tocá <b>«Liquidar registro»</b>.</li>
+        <li>Cuando ya tengas ligas con ✅, en el Escáner marcá <b>«Solo ligas donde le gana a las casas»</b>: te muestra solo los partidos de esas ligas. La app sigue guardando las predicciones de todos los partidos analizados, así las demás ligas siguen sumando.</li>
+      </ol>
+      <p>Al principio la tabla va a estar casi toda en ⏳. Lleva semanas o meses llenarla.</p>
+    </details>
+
+    <details class="routine">
+      <summary>Cuánto apostar: el stake sugerido (Kelly)</summary>
+      <p>Kelly es una fórmula que dice <b>qué parte de tu banca apostar según cuánta ventaja hay</b>: mucha ventaja, más plata; poca, menos; ninguna, nada.</p>
+      <p>Como la probabilidad es una estimación, la app usa Kelly con frenos:</p>
+      <ul>
+        <li><b>En ligas aprobadas</b> usa un promedio entre el cálculo de la app y las casas, y apuesta <b>¼</b> de lo que diría Kelly completo.</li>
+        <li><b>En ligas no aprobadas</b> usa <b>solo las chances de las casas</b> (el cálculo propio todavía no se ganó la confianza) y apuesta <b>⅛</b>. Si no hay precio de las casas, dice «No apostar».</li>
+        <li><b>Nunca más del 3%</b> de la banca en un partido.</li>
+      </ul>
+      <p>Para verlo en pesos, cargá tu banca en la pestaña Validación («Tu banca para apostar»). Se guarda solo en ese dispositivo: en la compu y en el teléfono se carga por separado.</p>
     </details>
 
     <details class="routine">
