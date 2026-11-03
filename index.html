@@ -832,7 +832,7 @@ function loadCriteria(){
   return defaults;
 }
 const state={key:LS.get('o05:key',''),market:'ht05',fixtures:[],selected:new Set(LS.get('o05:leagues',[])),criteria:loadCriteria(),cancel:false,running:false,results:[],strategyHistory:new Map(),errors:[],calls:0};
-const teamMemo=new Map(), h2hMemo=new Map();
+const teamMemo=new Map(), h2hMemo=new Map(), leagueMemo=new Map();
 
 function setStatus(el,txt,err){el.textContent=txt;el.classList.toggle('err',!!err)}
 
@@ -976,6 +976,35 @@ function h2hGames(a,b){
   return p;
 }
 
+/* Historial completo de una competición/temporada para el modelo Poisson.
+   Se descarga paginado una sola vez y se reutiliza durante 12 horas. */
+function leagueSeasonGames(leagueId,season){
+  const key=String(leagueId)+':'+String(season),cacheKey='o05:v1:league:'+key;
+  const cachedGames=cached(cacheKey);
+  if(cachedGames!==null)return Promise.resolve(cachedGames);
+  if(leagueMemo.has(key))return leagueMemo.get(key);
+  const p=(async()=>{
+    const all=new Map();let page=1,totalPages=1;
+    do{
+      if(state.cancel)throw new Error('Carga de historial de liga cancelada.');
+      const j=await api('/fixtures',{league:leagueId,season,page,timezone:TZ});
+      const rows=fixtureResponse(j,'/fixtures liga '+leagueId+' temporada '+season);
+      for(const g of compact(rows))all.set(String(g.i),g);
+      const reported=Number(j.paging?.total);
+      totalPages=Number.isFinite(reported)&&reported>0?reported:page;
+      if(totalPages>100)throw new Error('La liga requiere más de 100 páginas. Se detuvo la descarga para evitar un consumo descontrolado; Poisson no calculará con una muestra parcial.');
+      page++;
+    }while(page<=totalPages);
+    const games=[...all.values()].sort((a,b)=>b.d-a.d);
+    if(!games.length)throw new Error('API-Football no devolvió partidos finalizados para esta liga y temporada.');
+    LS.set(cacheKey,{ts:Date.now(),g:games,cacheSchema:1,source:'api-football-league-season',count:games.length});
+    return games;
+  })();
+  leagueMemo.set(key,p);
+  p.then(()=>{if(leagueMemo.get(key)===p)leagueMemo.delete(key)},()=>{if(leagueMemo.get(key)===p)leagueMemo.delete(key)});
+  return p;
+}
+
 /* ---- ligas ---- */
 function isFutureFixture(f,now=Date.now()){
   const kickoff=new Date(f.iso).getTime();
@@ -1082,11 +1111,25 @@ async function analizar(){
       state.errors.push('Cuotas prepartido no disponibles: '+e.message);
     }
   }
+  const leagueDataByKey=new Map();
+  if(state.market==='ht05'){
+    const competitions=new Map();
+    for(const f of fxs)competitions.set(String(f.lid)+':'+String(f.season),{lid:f.lid,season:f.season});
+    let leagueIndex=0;
+    for(const [leagueKey,competition] of competitions){
+      if(state.cancel)break;
+      try{leagueDataByKey.set(leagueKey,await leagueSeasonGames(competition.lid,competition.season));}
+      catch(e){state.errors.push('Historial Poisson '+leagueKey+': '+e.message);leagueDataByKey.set(leagueKey,{error:e.message});}
+      leagueIndex++;
+      prog(total+leagueIndex,total+competitions.size,state.calls+' llamadas a la API · historiales de liga '+leagueIndex+'/'+competitions.size);
+    }
+  }
   const out=[];
   for(const f of fxs){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
     const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
-    let poisson=state.market==='ht05'?poissonInputForFixture(f,tg):null;
+    const leagueKey=String(f.lid)+':'+String(f.season);
+    let poisson=state.market==='ht05'?poissonInputForFixture(f,leagueDataByKey.get(leagueKey)):null;
     if(poisson){
       const marketOdds=prematchOddsByFixture.get(String(f.id))||null;
       poisson={...poisson,marketOdds};
@@ -1109,51 +1152,24 @@ async function analizar(){
 }
 
 
-/* ---- modelo Poisson propio: solo HT explícito y validado; cero llamadas extra ---- */
-function poissonInputForFixture(f,tg){
-  if(state.market!=='ht05'||!window.TanoPoissonModel) return null;
+/* ---- modelo Poisson propio: historial completo y verificado de liga/temporada ---- */
+function poissonInputForFixture(f,leagueGames){
+  if(state.market!=='ht05'||!window.TanoPoissonModel)return null;
+  if(!Array.isArray(leagueGames))return {ok:false,reason:leagueGames&&leagueGames.error?'No se pudo obtener el historial completo de la competición: '+leagueGames.error:'No se obtuvo el historial de la competición. No se calcula Poisson.'};
   const cutoff=Math.floor(new Date(f.iso).getTime()/1000);
-  const unique=new Map();
-  // Poisson reutiliza exclusivamente datos ya cargados de la misma liga y temporada.
-  // No dispara consultas nuevas ni intenta descargar temporadas anteriores.
-  for(const games of tg.values()){
-    for(const g of games||[]){
-      if(g.l!==f.lid||g.s!==f.season||g.d>=cutoff||unique.has(g.i)) continue;
-      const validation=g.htValidation||validateHtRecord(g);
-      if(validation.status!=='valid_api'||!Array.isArray(g.ht)||g.ht.length!==2) continue;
-      if(!g.ht.every(n=>Number.isInteger(n)&&n>=0)) continue;
-      unique.set(g.i,g);
-    }
-  }
-  const league=[...unique.values()].sort((a,b)=>b.d-a.d);
+  const league=leagueGames.filter(g=>String(g.l)===String(f.lid)&&String(g.s)===String(f.season)&&Number.isFinite(g.d)&&g.d<cutoff&&(g.htValidation||validateHtRecord(g)).status==='valid_api'&&Array.isArray(g.ht)&&g.ht.length===2&&g.ht.every(n=>Number.isInteger(n)&&n>=0)).sort((a,b)=>b.d-a.d);
   const MIN_LEAGUE_HT_MATCHES=20;
-  if(league.length<MIN_LEAGUE_HT_MATCHES) return {ok:false,reason:`Muestra insuficiente con los datos ya cargados: hay ${league.length} partidos HT válidos de esta liga y temporada; se requieren al menos ${MIN_LEAGUE_HT_MATCHES}. No se harán consultas adicionales para completar la muestra.`};
+  if(league.length<MIN_LEAGUE_HT_MATCHES)return {ok:false,reason:`Muestra insuficiente: API-Football devolvió ${league.length} partidos anteriores con HT explícito y validado de esta liga/temporada; se requieren al menos ${MIN_LEAGUE_HT_MATCHES}. No se completa ni se inventa información.`,leagueMatches:league.length};
   const leagueHomeGoalsHT=league.reduce((sum,g)=>sum+g.ht[0],0)/league.length;
   const leagueAwayGoalsHT=league.reduce((sum,g)=>sum+g.ht[1],0)/league.length;
-  if(!(leagueHomeGoalsHT>0&&leagueAwayGoalsHT>0)) return {ok:false,reason:'No hay promedios HT local/visitante válidos para estimar la referencia de liga.'};
-  function historyFor(teamId){
-    const seen=new Set();
-    const games=[];
-    for(const list of tg.values()) for(const g of list||[]){
-      if(seen.has(g.i)||g.l!==f.lid||g.s!==f.season||g.d>=cutoff) continue;
-      if(g.h!==teamId&&g.a!==teamId) continue;
-      const validation=g.htValidation||validateHtRecord(g);
-      if(validation.status!=='valid_api'||!Array.isArray(g.ht)||g.ht.length!==2) continue;
-      if(!g.ht.every(n=>Number.isInteger(n)&&n>=0)) continue;
-      seen.add(g.i);
-      const home=g.h===teamId;
-      games.push({d:g.d,scoredHT:home?g.ht[0]:g.ht[1],concededHT:home?g.ht[1]:g.ht[0]});
-    }
-    return games.sort((a,b)=>b.d-a.d).slice(0,30).map(({scoredHT,concededHT})=>({scoredHT,concededHT}));
-  }
-  const homeHistory=historyFor(f.hid),awayHistory=historyFor(f.aid);
-  const MIN_TEAM_HT_MATCHES=5;
-  if(homeHistory.length<MIN_TEAM_HT_MATCHES||awayHistory.length<MIN_TEAM_HT_MATCHES){
-    return {ok:false,reason:`Muestra insuficiente con los datos ya cargados: se requieren al menos ${MIN_TEAM_HT_MATCHES} partidos HT previos de esta liga y temporada por equipo (local: ${homeHistory.length}, visitante: ${awayHistory.length}). No se harán consultas adicionales para completar la muestra.`};
-  }
-  return window.TanoPoissonModel.calculate({
-    homeHistory,awayHistory,leagueHomeGoalsHT,leagueAwayGoalsHT
-  });
+  if(!(leagueHomeGoalsHT>0&&leagueAwayGoalsHT>0))return {ok:false,reason:'Los promedios de goles HT local/visitante de la liga no son válidos. No se calcula Poisson.',leagueMatches:league.length};
+  function historyFor(teamId){return league.filter(g=>g.h===teamId||g.a===teamId).slice(0,30).map(g=>g.h===teamId?{scoredHT:g.ht[0],concededHT:g.ht[1]}:{scoredHT:g.ht[1],concededHT:g.ht[0]});}
+  const homeHistory=historyFor(f.hid),awayHistory=historyFor(f.aid),MIN_TEAM_HT_MATCHES=5;
+  if(homeHistory.length<MIN_TEAM_HT_MATCHES||awayHistory.length<MIN_TEAM_HT_MATCHES)return {ok:false,reason:`Muestra insuficiente: partidos HT válidos de esta competición/temporada — local ${homeHistory.length}/${MIN_TEAM_HT_MATCHES}, visitante ${awayHistory.length}/${MIN_TEAM_HT_MATCHES}. No se inventan ni se mezclan datos.`,leagueMatches:league.length};
+  const result=window.TanoPoissonModel.calculate({homeHistory,awayHistory,leagueHomeGoalsHT,leagueAwayGoalsHT});
+  if(!result.ok)return result;
+  const dates=league.map(g=>g.d).filter(Number.isFinite);
+  return {...result,sample:{...result.sample,leagueMatches:league.length},dataSource:'API-Football · fixtures de la misma liga y temporada · HT explícito validado',dataRange:{from:Math.min(...dates),to:Math.max(...dates)}};
 }
 function poissonHtml(model){
   if(state.market!=='ht05') return '';
@@ -1162,7 +1178,8 @@ function poissonHtml(model){
     const oddsStatus=odds
       ? '<div class="poisson-metric"><span class="label">Cuota prepartido · '+esc(odds.bookmaker||'Casa no informada')+'</span><span class="value">'+Number(odds.price).toFixed(2)+'</span></div>'
       : '<div class="poisson-metric"><span class="label">Cuota prepartido +0,5 1T</span><span class="value">No disponible</span></div>';
-    return '<section class="poisson-panel"><div class="poisson-title">Modelo propio · Poisson 1T</div><div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div><div class="poisson-grid">'+oddsStatus+'<div class="poisson-metric"><span class="label">EV estimado</span><span class="value">Sin calcular: falta una probabilidad Poisson válida</span></div></div><div class="poisson-note">La cuota se consulta independientemente de la muestra Poisson. El EV solo se calcula cuando hay probabilidad válida y precio verificado. No altera los siete criterios ni las alertas.</div></section>';
+    const leagueSample=model&&Number.isFinite(model.leagueMatches)?'<div class="poisson-status">Partidos HT explícitos y validados de liga anteriores al encuentro: '+model.leagueMatches+'</div>':'';
+    return '<section class="poisson-panel"><div class="poisson-title">Modelo propio · Poisson 1T</div><div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div>'+leagueSample+'<div class="poisson-grid">'+oddsStatus+'<div class="poisson-metric"><span class="label">EV estimado</span><span class="value">Sin calcular: falta una probabilidad Poisson válida</span></div></div><div class="poisson-note">La cuota se consulta independientemente de la muestra Poisson. El EV solo se calcula cuando hay probabilidad válida y precio verificado. No altera los siete criterios ni las alertas.</div></section>';
   }
   const p=model.probabilityPercent.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
   const fair=model.fairOdds.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1179,7 +1196,8 @@ function poissonHtml(model){
     '<div class="poisson-metric"><span class="label">Probabilidad estimada +0,5 1T</span><span class="value">'+p+'</span></div>'+
     '<div class="poisson-metric"><span class="label">Cuota justa estimada</span><span class="value">'+fair+'</span></div>'+
     '<div class="poisson-metric"><span class="label">Goles esperados 1T (λ)</span><span class="value">'+lam+'</span></div>'+oddsText+evText+'</div>'+
-    '<div class="poisson-status">Muestra HT validada: '+model.sample.homeMatches+' partidos del local · '+model.sample.awayMatches+' del visitante.</div>'+implied+
+    '<div class="poisson-status">Muestra HT validada: '+model.sample.homeMatches+' partidos del local · '+model.sample.awayMatches+' del visitante · '+model.sample.leagueMatches+' de la liga.</div>'+
+     '<div class="poisson-status">'+esc(model.dataSource||'Fuente no especificada')+'</div>'+implied+
     '<div class="poisson-note">EV = (probabilidad Poisson × cuota) − 1. Estimación exploratoria, aún no calibrada ni validada fuera de muestra; no es una recomendación de apuesta.</div></section>';
 }
 
