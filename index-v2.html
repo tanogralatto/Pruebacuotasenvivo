@@ -1378,8 +1378,9 @@ function poissonHtml(model){
   const TK=window.TanoPoissonModel, kel=TK&&TK.kellyStake&&odds?TK.kellyStake({p:model.probability,odds:Number(odds.price),marketProb:Number.isFinite(model.marketProb)?model.marketProb:undefined,validated:!!model.validated}):null;
   const bank=bankrollValue();
   const kelText=!kel||!kel.ok?'—':kel.stake>0?fmtNum(kel.stake*100,1)+'% de la banca'+(bank?' ≈ $'+Math.round(bank*kel.stake).toLocaleString('es-AR'):''):'No apostar';
-  const kelHint=!kel||!kel.ok?'Falta la cuota para calcularlo.':'Cuánto apostar según Kelly, usando una probabilidad intermedia entre el modelo y las casas'+
-    ' y apostando solo '+(kel.fraction===0.25?'¼':'⅛ (la liga no está aprobada)')+' de lo que diría Kelly completo'+(kel.capped?'; quedó en el tope del 3%':'')+'.'+(bank?'':' Cargá tu banca en la sección 5 para verlo en pesos.');
+  const kelSrc=kel&&kel.source==='mercado'?'usando solo las chances de las casas (la liga no está aprobada, así que el cálculo propio todavía no cuenta)':kel&&kel.source==='mezcla'?'usando una probabilidad intermedia entre el modelo y las casas':'usando la probabilidad del modelo';
+  const kelHint=!kel||!kel.ok?'Falta la cuota para calcularlo.':kel.full==null?'La liga no está aprobada y no hay precio de las casas para comparar: no se sugiere apostar.':!(kel.stake>0)?'Calculado '+kelSrc+': con esas chances la cuota no da ventaja, así que Kelly dice no apostar.':'Cuánto apostar según Kelly, '+kelSrc+
+    ', apostando solo '+(kel.fraction===0.25?'¼':'⅛')+' de lo que diría Kelly completo'+(kel.capped?'; quedó en el tope del 3%':'')+'.'+(kel.stake>0&&!bank?' Cargá tu banca en la sección 5 para verlo en pesos.':'');
   const grid=
     metric('Probabilidad '+M.name+(model.calibrated?' (calibrada)':''),fmtPct(model.probability),'',M.probHint)+
     metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0),'','Entre qué valores podría estar la chance real. Si el rango es ancho, el cálculo es menos seguro.')+

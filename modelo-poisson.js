@@ -419,21 +419,26 @@
   // Stake sugerido por Kelly fraccional, como parte de la banca (0,02 = 2%).
   // Kelly completo = (p·(cuota−1) − (1−p)) / (cuota−1): la parte de la banca que maximiza el
   // crecimiento SI p fuera exacta. Como p es una estimación, se usa con cuidado:
-  //  - si hay probabilidad del mercado sin margen, p se promedia con ella (achica el exceso de confianza);
-  //  - se apuesta solo una fracción (¼ por defecto; ⅛ si la liga no está validada);
+  //  - liga aprobada: p = promedio entre el modelo y el mercado sin margen (o el modelo si no hay mercado);
+  //  - liga sin aprobar: el modelo todavía no demostró nada, así que p = SOLO el mercado sin margen
+  //    (sin mercado, no se apuesta);
+  //  - se apuesta solo una fracción (¼ por defecto; ⅛ si la liga no está aprobada);
   //  - nunca más del tope (3% por defecto).
   function kellyStake(inp) {
     const o = Object.assign({ fraction: 0.25, cap: 0.03, validated: true }, inp || {});
     const odds = Number(o.odds);
     if (!isNum(o.p) || !(odds > 1)) return { ok: false, stake: 0, reason: 'Falta una probabilidad válida o una cuota.' };
     const b = odds - 1;
-    const pUsed = clamp(isNum(o.marketProb) ? (o.p + o.marketProb) / 2 : o.p, 0, 1);
-    const full = (pUsed * b - (1 - pUsed)) / b;
+    const hasMkt = isNum(o.marketProb);
     const fraction = o.validated ? o.fraction : o.fraction / 2;
-    if (!(full > 0)) return { ok: true, stake: 0, full, pUsed, fraction, capped: false, reason: 'Sin ventaja con la probabilidad usada: Kelly dice no apostar.' };
+    const source = o.validated ? (hasMkt ? 'mezcla' : 'modelo') : 'mercado';
+    if (!o.validated && !hasMkt) return { ok: true, stake: 0, full: null, pUsed: null, fraction, source, capped: false, reason: 'Liga sin aprobar y sin precio del mercado: no apostar.' };
+    const pUsed = clamp(source === 'mezcla' ? (o.p + o.marketProb) / 2 : source === 'mercado' ? o.marketProb : o.p, 0, 1);
+    const full = (pUsed * b - (1 - pUsed)) / b;
+    if (!(full > 0)) return { ok: true, stake: 0, full, pUsed, fraction, source, capped: false, reason: 'Sin ventaja con la probabilidad usada: Kelly dice no apostar.' };
     const raw = full * fraction;
     const capped = raw > o.cap;
-    return { ok: true, stake: capped ? o.cap : raw, full, pUsed, fraction, capped, reason: null };
+    return { ok: true, stake: capped ? o.cap : raw, full, pUsed, fraction, source, capped, reason: null };
   }
 
   /* ------------------------------------------------------------------ */

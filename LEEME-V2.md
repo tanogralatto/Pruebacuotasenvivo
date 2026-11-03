@@ -24,5 +24,5 @@
 
 ## Stake sugerido (Kelly) y desglose del registro
 - En la sección 5 cargá «Tu banca para apostar». Cada partido muestra «Stake sugerido (Kelly)»: % de la banca y monto en pesos.
-- Cómo se calcula: Kelly completo = (p·(cuota−1) − (1−p)) / (cuota−1), con p = promedio entre el modelo y el mercado sin margen. Se apuesta ¼ de eso (⅛ si la liga no está aprobada), con tope del 3% de la banca.
+- Cómo se calcula: Kelly completo = (p·(cuota−1) − (1−p)) / (cuota−1). En ligas aprobadas p = promedio entre el modelo y el mercado sin margen, y se apuesta ¼ de eso. En ligas sin aprobar p = solo el mercado sin margen (sin mercado no se apuesta), y se apuesta ⅛. Tope: 3% de la banca.
 - El registro ahora muestra: Brier del modelo contra el del mercado sin margen (sobre las mismas predicciones), ROI por rango de EV, por EV vs mercado y por liga, y una simulación de la banca con ¼ Kelly contra stake plano del 1%.

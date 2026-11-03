@@ -96,8 +96,13 @@ test('Kelly: fórmula, mezcla con el mercado, fracción y tope', () => {
   assert.ok(Math.abs(k.stake - 0.025) < 1e-12);
   // Con mercado 0,51 se usa 0,53 → completo 0,06 → ¼ = 1,5%.
   assert.ok(Math.abs(T.kellyStake({ p: 0.55, odds: 2.0, marketProb: 0.51 }).stake - 0.015) < 1e-12);
-  // Liga sin validar: ⅛.
-  assert.ok(Math.abs(T.kellyStake({ p: 0.55, odds: 2.0, validated: false }).stake - 0.0125) < 1e-12);
+  // Liga sin validar: solo cuenta el mercado, y se apuesta ⅛. Mercado 0,55 a 2,0 → completo 0,10 → 1,25%.
+  assert.ok(Math.abs(T.kellyStake({ p: 0.70, odds: 2.0, marketProb: 0.55, validated: false }).stake - 0.0125) < 1e-12);
+  // Liga sin validar y sin mercado: no apostar.
+  assert.equal(T.kellyStake({ p: 0.70, odds: 2.0, validated: false }).stake, 0);
+  // Caso real (Mushuc Runa vs Manta): modelo 74,5%, mercado 66,4%, cuota 1,50, liga sin aprobar.
+  // El mercado dice que no hay ventaja, así que Kelly no debe sugerir apostar.
+  assert.equal(T.kellyStake({ p: 0.745, odds: 1.5, marketProb: 0.664, validated: false }).stake, 0);
   // Ventaja enorme: tope 3%.
   const big = T.kellyStake({ p: 0.9, odds: 2.0 });
   assert.equal(big.stake, 0.03); assert.equal(big.capped, true);
