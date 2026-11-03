@@ -1087,10 +1087,10 @@ async function analizar(){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
     const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
     let poisson=state.market==='ht05'?poissonInputForFixture(f,tg):null;
-    if(poisson&&poisson.ok){
+    if(poisson){
       const marketOdds=prematchOddsByFixture.get(String(f.id))||null;
       poisson={...poisson,marketOdds};
-      if(marketOdds&&Number.isFinite(marketOdds.price)&&marketOdds.price>1){
+      if(poisson.ok&&marketOdds&&Number.isFinite(marketOdds.price)&&marketOdds.price>1){
         const p=poisson.probability;
         poisson.impliedProbability=1/marketOdds.price;
         poisson.evPercent=(p*marketOdds.price-1)*100;
@@ -1155,7 +1155,11 @@ function poissonInputForFixture(f,tg){
 function poissonHtml(model){
   if(state.market!=='ht05') return '';
   if(!model||!model.ok){
-    return '<section class="poisson-panel"><div class="poisson-title">Modelo propio · Poisson 1T</div><div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div><div class="poisson-note">Usa únicamente marcadores HT explícitos y validados ya cargados. No realiza consultas adicionales y no altera los siete criterios ni las alertas.</div></section>';
+    const odds=model&&model.marketOdds;
+    const oddsStatus=odds
+      ? '<div class="poisson-metric"><span class="label">Cuota prepartido · '+esc(odds.bookmaker||'Casa no informada')+'</span><span class="value">'+Number(odds.price).toFixed(2)+'</span></div>'
+      : '<div class="poisson-metric"><span class="label">Cuota prepartido +0,5 1T</span><span class="value">No disponible</span></div>';
+    return '<section class="poisson-panel"><div class="poisson-title">Modelo propio · Poisson 1T</div><div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div><div class="poisson-grid">'+oddsStatus+'<div class="poisson-metric"><span class="label">EV estimado</span><span class="value">Sin calcular: falta una probabilidad Poisson válida</span></div></div><div class="poisson-note">La cuota se consulta independientemente de la muestra Poisson. El EV solo se calcula cuando hay probabilidad válida y precio verificado. No altera los siete criterios ni las alertas.</div></section>';
   }
   const p=model.probabilityPercent.toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
   const fair=model.fairOdds.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
