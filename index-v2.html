@@ -1158,7 +1158,8 @@ const lvKey=market=>!market||market==='ht05'?'o05:leagueval:v1':'o05:leagueval:'
 function leagueValOf(lid,market){const m=LS.get(lvKey(market),null);return m&&typeof m==='object'&&lid!=null?m[String(lid)]||null:null}
 function modelCfg(lid,market){
   const lv=leagueValOf(lid,market);
-  if(lv&&lv.cfg)return Object.assign({},lv.cfg,{validated:lv.status==='aprobada'||lv.status==='conjunta'});
+  // Solo cuenta como aprobada si pasó la validación actual (las del método anterior no tienen «confidence»).
+  if(lv&&lv.cfg)return Object.assign({},lv.cfg,{validated:(lv.status==='aprobada'||lv.status==='conjunta')&&!!lv.confidence});
   const c=!market||market==='ht05'?(LS.get('o05:model:v1',null)||{}):{};
   return {halfLifeDays:c.halfLifeDays,priorMatches:c.priorMatches,xgWeight:c.xgWeight,calibration:c.calibration||null,validated:false};
 }

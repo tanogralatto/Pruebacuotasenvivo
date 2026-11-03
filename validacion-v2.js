@@ -215,6 +215,15 @@
   // Confianza en que la mejora sea real y no suerte: z = mejora / error estándar.
   const confidenceOf = (skill, se) => !isNum(skill) || !isNum(se) || !(se > 0) ? null : skill / se >= 1.64 ? 'alta' : skill / se >= 1 ? 'media' : 'baja';
 
+  // Nombres de país en castellano (la API los da en inglés). Los que no están se muestran como vienen.
+  const COUNTRY_ES = { Spain: 'España', England: 'Inglaterra', Italy: 'Italia', Germany: 'Alemania', France: 'Francia', Netherlands: 'Países Bajos',
+    Portugal: 'Portugal', Belgium: 'Bélgica', Scotland: 'Escocia', Wales: 'Gales', Turkey: 'Turquía', Greece: 'Grecia', Switzerland: 'Suiza', Austria: 'Austria',
+    Denmark: 'Dinamarca', Sweden: 'Suecia', Norway: 'Noruega', Finland: 'Finlandia', Poland: 'Polonia', 'Czech-Republic': 'Chequia', Croatia: 'Croacia',
+    Serbia: 'Serbia', Russia: 'Rusia', Ukraine: 'Ucrania', Romania: 'Rumania', Ireland: 'Irlanda', Argentina: 'Argentina', Brazil: 'Brasil', Uruguay: 'Uruguay',
+    Paraguay: 'Paraguay', Chile: 'Chile', Peru: 'Perú', Bolivia: 'Bolivia', Ecuador: 'Ecuador', Colombia: 'Colombia', Venezuela: 'Venezuela', Mexico: 'México',
+    USA: 'Estados Unidos', 'Costa-Rica': 'Costa Rica', Japan: 'Japón', 'South-Korea': 'Corea del Sur', China: 'China', Australia: 'Australia',
+    'Saudi-Arabia': 'Arabia Saudita', Egypt: 'Egipto', Morocco: 'Marruecos', World: 'Internacional', Mundo: 'Internacional' };
+  const countryEs = c => COUNTRY_ES[c] || String(c || '').replace(/-/g, ' ');
   const CONF_LABEL = { alta: '🟢 Alta', media: '🟡 Media', baja: '🔴 Baja' };
   const LEAGUE_RULES = { minN: 100, minSkill: 0.01, maxBandGap: 0.07, minBand: 30, seFactor: 2, minZ: 1.64 };
   function leagueVerdicts(rows, T, pick) {
@@ -628,11 +637,12 @@
       // Se suma a la lista de ligas validadas: las ligas de esta prueba se actualizan, las demás quedan como estaban.
       const per = leagueVerdicts(honest.rows, T);
       const names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
+      const countries = new Map((state.fixtures || []).map(f => [String(f.lid), f.lc]));
       const lv = readLv(market), stamp = Date.now();
       const cfgSaved = { halfLifeDays: saved.halfLifeDays, priorMatches: saved.priorMatches, xgWeight: saved.xgWeight, calibration: saved.calibration };
       for (const c of comps) {
         const k = String(c.lid), r = per[k] || { lid: k, status: 'faltan', n: 0, skill: null, brier: null, meanP: null, observed: null, gap: null };
-        lv[k] = Object.assign({}, r, { name: names.get(k) || (lv[k] && lv[k].name) || 'Liga ' + k, cfg: cfgSaved, validatedAt: stamp });
+        lv[k] = Object.assign({}, r, { name: names.get(k) || (lv[k] && lv[k].name) || 'Liga ' + k, country: countries.get(k) || (lv[k] && lv[k].country) || '', cfg: cfgSaved, validatedAt: stamp });
       }
       LS.set(lvKeyOf(market), lv);
       renderLeagueVal();
@@ -660,27 +670,32 @@
     }
     LS.set(LV_KEY, lv);
   }
-  const ST_LABEL = { aprobada: '✅ Aprobada', conjunta: '✅ Aprobada (prueba conjunta)', no: '❌ No aprobada', faltan: '⏳ Faltan datos' };
-  const ST_ORDER = { aprobada: 0, conjunta: 1, faltan: 2, no: 3 };
+  const ST_LABEL = { aprobada: '✅ Aprobada', revalidar: '🔄 Volver a validar', no: '❌ No aprobada', faltan: '⏳ Faltan datos' };
+  const ST_ORDER = { aprobada: 0, revalidar: 1, faltan: 2, no: 3 };
   function renderLeagueVal() {
     migrateLv();
     const market = curMarket(), key = lvKeyOf(market);
     const lv0 = readLv(market), names = new Map((state.fixtures || []).map(f => [String(f.lid), f.ln]));
     let renamed = false;
     for (const e of Object.values(lv0)) if (/^Liga \d+$/.test(e.name || '') && names.has(String(e.lid))) { e.name = names.get(String(e.lid)); renamed = true; }
+    const countries = new Map((state.fixtures || []).map(f => [String(f.lid), f.lc]));
+    for (const e of Object.values(lv0)) if (!e.country && countries.get(String(e.lid))) { e.country = countries.get(String(e.lid)); renamed = true; }
     if (renamed) LS.set(key, lv0);
-    const lv = readLv(market), box = q('#leagueValOut'), list = Object.values(lv);
-    const ok = list.filter(e => e.status === 'aprobada' || e.status === 'conjunta').length;
+    const lv = readLv(market), box = q('#leagueValOut');
+    // Aprobadas con el método anterior (sin «Confianza»): no cuentan como aprobadas hasta volver a validarlas.
+    const list = Object.values(lv).map(e => Object.assign({}, e, { status: (e.status === 'aprobada' || e.status === 'conjunta') && !e.confidence ? 'revalidar' : e.status }));
+    const ok = list.filter(e => e.status === 'aprobada').length;
+    const toRedo = list.filter(e => e.status === 'revalidar').length;
     const badge = q('#valBadge');
     if (badge) badge.textContent = list.length ? `· ${MKT_NAME[market]}: ${ok} liga(s) aprobada(s)` : `· ${MKT_NAME[market]}: sin validar`;
     if (!box) return;
     if (!list.length) { box.innerHTML = `<div class="val-box"><b>Ligas validadas para ${MKT_NAME[market]}: ninguna todavía.</b> Marcá ligas en la sección 2 y tocá «Validar». Cada mercado se valida por separado (arriba elegís el mercado).</div>`; return; }
     // Mejor calibrada primero: aprobadas arriba, y dentro de cada grupo la que más mejora sobre la tasa base.
     list.sort((a, b) => (ST_ORDER[a.status] - ST_ORDER[b.status]) || ((b.skill ?? -9) - (a.skill ?? -9)));
-    const rows = list.map(e => `<tr><td>${esc(e.name || 'Liga ' + e.lid)}</td><td>${ST_LABEL[e.status] || esc(e.status)}</td>` +
+    const rows = list.map(e => `<tr><td>${e.country ? esc(countryEs(e.country)) : '—'}</td><td>${esc(e.name || 'Liga ' + e.lid)}</td><td>${ST_LABEL[e.status] || esc(e.status)}</td>` +
       `<td>${e.n == null ? '—' : e.n}</td>` +
       `<td>${isNum(e.skill) ? (e.skill >= 0 ? '+' : '') + num(e.skill * 100, 1) + '%' : '—'}</td>` +
-      `<td>${CONF_LABEL[e.confidence] || (e.status === 'faltan' ? '—' : '<span title="Validada con el método anterior">¿?</span>')}</td>` +
+      `<td>${CONF_LABEL[e.confidence] || '—'}</td>` +
       `<td>${isNum(e.meanP) && isNum(e.observed) ? pct(e.meanP, 0) + ' / ' + pct(e.observed, 0) : '—'}</td>` +
       `<td>${isNum(e.gap) ? num(e.gap * 100, 1) + ' pts' : '—'}</td>` +
       `<td>${e.validatedAt ? new Date(e.validatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '—'}</td></tr>`).join('');
@@ -688,12 +703,12 @@
     box.innerHTML = `<div class="val-box"><b>Ligas validadas para ${MKT_NAME[market]}: ${ok} aprobada(s) de ${list.length}</b><br>` +
       'Cada vez que tocás «Validar», las ligas marcadas se suman o se actualizan acá, solo para el mercado elegido arriba. Las demás no se tocan. ' +
       'En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
-      '<table class="val-table"><tr><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Confianza</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
+      '<table class="val-table"><tr><th>País</th><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Confianza</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
       '<div class="small"><b>Mejora</b>: cuánto acierta mejor que adivinar con el promedio de goles (más alto = mejor). ' +
       '<b>Confianza</b>: si la mejora es real o puede ser suerte, según cuántos partidos hay (alta = casi seguro que es real; media = puede ser; baja = puede ser pura casualidad). ' +
       '<b>Dice / pasa</b>: lo que la app predijo en promedio y lo que pasó. <b>Desvío</b>: la mayor diferencia en algún grupo de partidos (más bajo = mejor calibrada). ' +
       `Para aprobar, una liga necesita al menos ${LEAGUE_RULES.minN} partidos evaluados, mejora de 1% o más con confianza alta y un desvío chico (hasta ${Math.round(LEAGUE_RULES.maxBandGap * 100)} pts, un poco más si el grupo tiene pocos partidos, porque ahí la suerte pesa más).` +
-      (list.some(e => e.status !== 'faltan' && !e.confidence) ? ' <b>Las ligas con «¿?» se validaron con el método anterior, que era más generoso: volvé a validarlas.</b>' : '') +
+      (toRedo ? ` <b>${toRedo} liga(s) dicen «Volver a validar»: se aprobaron con el método anterior, que era más generoso, y mientras tanto se tratan como no aprobadas. Marcalas en el Escáner y tocá «Validar».</b>` : '') +
       (hasJoint ? ' Las de «prueba conjunta» se aprobaron todas juntas el ' + new Date(list.find(e => e.status === 'conjunta').validatedAt).toLocaleDateString('es-AR') + ': si las volvés a validar, vas a ver el detalle de cada una.' : '') + '</div>';
   }
   root.tanoRenderLeagueVal = renderLeagueVal;
