@@ -1254,7 +1254,7 @@ async function analizar(){
 /* ---- modelo Poisson v2: ajuste de la liga completa, calibración y regla de EV ---- */
 const fmtPct=(x,d=1)=>Number.isFinite(x)?(x*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%':'—';
 const fmtNum=(x,d=2)=>Number.isFinite(x)?Number(x).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
-function evMinEdge(){return Math.max(0,Number($('#evMinEdge')&&$('#evMinEdge').value)||5)/100}
+function evMinEdge(){const el=$('#evMinEdge');const v=el?parseFloat(String(el.value).replace(',','.')):NaN;return Math.max(0,Number.isFinite(v)?v:5)/100}
 function poissonForFixture(f,hist,fitCache,cutoff,oddsInfo){
   const T=window.TanoPoissonModel;
   if(state.market!=='ht05'||!T)return null;
@@ -1493,6 +1493,19 @@ $('#btnFetch').addEventListener('click',buscar);
 $('#onlyNS').addEventListener('change',()=>{renderLeagues();if(state.results.length)renderResults();});
 $('#applyCriteria').addEventListener('change',()=>{if(state.results.length)renderResults();});
 $('#onlyEv').addEventListener('change',()=>{if(state.results.length)renderResults();});
+// Al cambiar la ventaja mínima se recalcula la señal de los partidos ya analizados, sin volver a consultar la API.
+$('#evMinEdge').addEventListener('input',()=>{
+  const T=window.TanoPoissonModel;
+  if(!T||!state.results.length)return;
+  for(const r of state.results){
+    const m=r.poisson;
+    if(!m||!m.ok)continue;
+    const odds=m.marketOdds;
+    m.decision=T.evDecision({p:m.probability,pLow:m.pLow,odds:odds?odds.price:null,marketProb:m.marketProb,minEdge:evMinEdge(),validated:!!m.validated});
+    m.evPercent=m.decision.ev==null?null:m.decision.ev*100;
+  }
+  renderResults();
+});
 (function(){const c=$('#showHints');if(!c)return;const on=LS.get('o05:hints',true)!==false;c.checked=on;document.body.classList.toggle('no-hints',!on);c.addEventListener('change',()=>{document.body.classList.toggle('no-hints',!c.checked);LS.set('o05:hints',c.checked);});})();
 $('#lfilter').addEventListener('input',renderLeagues);
 $('#leagues').addEventListener('change',e=>{
