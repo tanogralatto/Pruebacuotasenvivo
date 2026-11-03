@@ -416,6 +416,26 @@
     return { signal, label, ev, evLow, breakEven, gap, validated: !!o.validated, reasons };
   }
 
+  // Stake sugerido por Kelly fraccional, como parte de la banca (0,02 = 2%).
+  // Kelly completo = (p·(cuota−1) − (1−p)) / (cuota−1): la parte de la banca que maximiza el
+  // crecimiento SI p fuera exacta. Como p es una estimación, se usa con cuidado:
+  //  - si hay probabilidad del mercado sin margen, p se promedia con ella (achica el exceso de confianza);
+  //  - se apuesta solo una fracción (¼ por defecto; ⅛ si la liga no está validada);
+  //  - nunca más del tope (3% por defecto).
+  function kellyStake(inp) {
+    const o = Object.assign({ fraction: 0.25, cap: 0.03, validated: true }, inp || {});
+    const odds = Number(o.odds);
+    if (!isNum(o.p) || !(odds > 1)) return { ok: false, stake: 0, reason: 'Falta una probabilidad válida o una cuota.' };
+    const b = odds - 1;
+    const pUsed = clamp(isNum(o.marketProb) ? (o.p + o.marketProb) / 2 : o.p, 0, 1);
+    const full = (pUsed * b - (1 - pUsed)) / b;
+    const fraction = o.validated ? o.fraction : o.fraction / 2;
+    if (!(full > 0)) return { ok: true, stake: 0, full, pUsed, fraction, capped: false, reason: 'Sin ventaja con la probabilidad usada: Kelly dice no apostar.' };
+    const raw = full * fraction;
+    const capped = raw > o.cap;
+    return { ok: true, stake: capped ? o.cap : raw, full, pUsed, fraction, capped, reason: null };
+  }
+
   /* ------------------------------------------------------------------ */
   /* 7. En vivo                                                          */
   /* ------------------------------------------------------------------ */
@@ -512,7 +532,7 @@
 
   const api = {
     DEFAULTS, buildFitMatches, fitLeague, predictMatch, fitCalibration, applyCalibration,
-    scoreRows, rollingBacktest, tuneParams, validateCalibration, evDecision,
+    scoreRows, rollingBacktest, tuneParams, validateCalibration, evDecision, kellyStake,
     MARKETS, marketProbs, marketOutcome, ftGames,
     liveRemainingLambda, liveMarket, elapsedShare, poissonPmf,
     calculate, summarizeTeam, DEFAULT_PRIOR_MATCHES: 8

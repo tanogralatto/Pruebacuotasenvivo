@@ -572,6 +572,7 @@ body.no-hints .poisson-metric .hint{display:none}
       <div class="row">
         <div class="field" style="width:170px"><label for="evMinEdge">Ventaja mínima para EV+ (%)</label><input id="evMinEdge" type="number" min="0" max="50" step="0.5" value="5"></div>
         <div class="field" style="width:190px"><label for="xgBudget">Consultas para bajar xG</label><input id="xgBudget" type="number" min="10" max="2000" step="10" value="200"></div>
+        <div class="field" style="width:170px"><label for="bankroll">Tu banca para apostar ($)</label><input id="bankroll" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000"></div>
       </div>
       <div class="row">
         <button id="btnValidate" type="button" class="primary">Validar con las ligas marcadas</button>
@@ -1315,6 +1316,7 @@ async function analizar(){
 /* ---- modelo Poisson v2: ajuste de la liga completa, calibración y regla de EV ---- */
 const fmtPct=(x,d=1)=>Number.isFinite(x)?(x*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%':'—';
 const fmtNum=(x,d=2)=>Number.isFinite(x)?Number(x).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+function bankrollValue(){const v=Number(LS.get('o05:bankroll',0));return Number.isFinite(v)&&v>0?v:0}
 function evMinEdge(){const el=$('#evMinEdge');const v=el?parseFloat(String(el.value).replace(',','.')):NaN;return Math.max(0,Number.isFinite(v)?v:5)/100}
 function poissonForFixture(f,hist,fitCache,cutoff,oddsInfo){
   const T=window.TanoPoissonModel;
@@ -1373,6 +1375,11 @@ function poissonHtml(model){
   const evMkt=hasMkt?model.marketProb*Number(odds.price)-1:null;
   const evMktText=hasMkt?(evMkt>=0?'+':'')+fmtNum(evMkt*100,1)+'%':'—';
   const evMktColor=hasMkt?'color:'+(evMkt>=0?'var(--c4)':'var(--c1)'):'';
+  const TK=window.TanoPoissonModel, kel=TK&&TK.kellyStake&&odds?TK.kellyStake({p:model.probability,odds:Number(odds.price),marketProb:Number.isFinite(model.marketProb)?model.marketProb:undefined,validated:!!model.validated}):null;
+  const bank=bankrollValue();
+  const kelText=!kel||!kel.ok?'—':kel.stake>0?fmtNum(kel.stake*100,1)+'% de la banca'+(bank?' ≈ $'+Math.round(bank*kel.stake).toLocaleString('es-AR'):''):'No apostar';
+  const kelHint=!kel||!kel.ok?'Falta la cuota para calcularlo.':'Cuánto apostar según Kelly, usando una probabilidad intermedia entre el modelo y las casas'+
+    ' y apostando solo '+(kel.fraction===0.25?'¼':'⅛ (la liga no está aprobada)')+' de lo que diría Kelly completo'+(kel.capped?'; quedó en el tope del 3%':'')+'.'+(bank?'':' Cargá tu banca en la sección 5 para verlo en pesos.');
   const grid=
     metric('Probabilidad '+M.name+(model.calibrated?' (calibrada)':''),fmtPct(model.probability),'',M.probHint)+
     metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0),'','Entre qué valores podría estar la chance real. Si el rango es ancho, el cálculo es menos seguro.')+
@@ -1382,7 +1389,8 @@ function poissonHtml(model){
     metric('EV estimado',evText,evColor,'Ganancia promedio por cada 100 apostados si el cálculo de la app fuera exacto. Verde = a favor. '+(model.validated?'✅ Esta liga está aprobada para '+M.name+'.':'⚠️ Esta liga no está aprobada para '+M.name+': tomalo como provisorio.'))+
     metric('EV conservador',evLowText,'','Lo mismo, pero suponiendo que el cálculo fue demasiado optimista. Si da negativo, la ventaja no es segura.')+
     metric('Mercado sin margen',Number.isFinite(model.marketProb)?fmtPct(model.marketProb,1):'—','','Chances que dan las casas de apuestas juntas, sacándoles su ganancia. Es la referencia más confiable.')+
-    metric('EV vs mercado (sin margen)',evMktText,evMktColor,'Igual que el EV, pero usando las chances de las casas. Verde = tu cuota paga más de lo justo. Es la señal más confiable.');
+    metric('EV vs mercado (sin margen)',evMktText,evMktColor,'Igual que el EV, pero usando las chances de las casas. Verde = tu cuota paga más de lo justo. Es la señal más confiable.')+
+    metric('Stake sugerido (Kelly)',kelText,'',kelHint);
   // Resumen en palabras simples (semáforo). Se guía por "EV vs mercado", no por el cálculo propio.
   let verdict;
   if(!odds||!(Number(odds.price)>1)){
@@ -1563,6 +1571,9 @@ $('#btnFetch').addEventListener('click',buscar);
 $('#onlyNS').addEventListener('change',()=>{renderLeagues();if(state.results.length)renderResults();});
 $('#applyCriteria').addEventListener('change',()=>{if(state.results.length)renderResults();});
 $('#onlyEv').addEventListener('change',()=>{if(state.results.length)renderResults();});
+// Banca para el stake sugerido (Kelly). Solo se guarda en este dispositivo.
+(function(){const el=$('#bankroll');if(!el)return;const v=bankrollValue();if(v)el.value=v;
+  el.addEventListener('change',()=>{const n=Number(el.value);LS.set('o05:bankroll',Number.isFinite(n)&&n>0?n:0);if(state.results.length)renderResults();});})();
 // Al cambiar la ventaja mínima se recalcula la señal de los partidos ya analizados, sin volver a consultar la API.
 $('#evMinEdge').addEventListener('input',()=>{
   const T=window.TanoPoissonModel;

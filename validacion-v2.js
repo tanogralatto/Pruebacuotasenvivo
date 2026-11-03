@@ -74,8 +74,66 @@
       all: roiOf(priced),
       evPlus: roiOf(evPlus),
       evSolid: roiOf(solid),
-      promisedEv: promised
+      promisedEv: promised,
+      vsMarket: brierVsMarket(settled, T),
+      breakdown: roiBreakdown(priced),
+      replay: T.kellyStake ? stakeReplay(evPlus, T) : null
     };
+  }
+
+  // Brier del modelo y del mercado sin margen, sobre LAS MISMAS predicciones (las que tienen las dos).
+  // Si el modelo no queda por debajo del mercado, no le está ganando a las casas.
+  function brierVsMarket(settled, T) {
+    const both = (settled || []).filter(e => isNum(e.p) && isNum(e.marketProb) && (e.y === 0 || e.y === 1));
+    if (!both.length) return { n: 0, model: null, market: null, diff: null };
+    const rows = both.map(e => ({ ts: e.ts, p: e.p, mp: e.marketProb, y: e.y }));
+    const model = T.scoreRows(rows).brier, market = T.scoreRows(rows, r => r.mp).brier;
+    return { n: both.length, model, market, diff: model - market };
+  }
+
+  // ROI plano (1u) por rango de EV del modelo, por rango de EV vs mercado y por liga.
+  const EV_RANGES = [[-Infinity, 0, 'Negativo'], [0, 0.05, '0–5%'], [0.05, 0.10, '5–10%'], [0.10, 0.15, '10–15%'], [0.15, Infinity, '15% o más']];
+  function roiGroup(list) {
+    const profit = list.reduce((s, e) => s + (e.y === 1 ? e.odds - 1 : -1), 0);
+    return { n: list.length, profit, roi: list.length ? profit / list.length : null, hit: list.length ? list.filter(e => e.y === 1).length / list.length : null };
+  }
+  function byRange(list, key) {
+    return EV_RANGES.map(([lo, hi, label]) => Object.assign({ label }, roiGroup(list.filter(e => isNum(e[key]) && e[key] >= lo && e[key] < hi)))).filter(r => r.n > 0);
+  }
+  function roiBreakdown(priced) {
+    const list = (priced || []).filter(e => isNum(e.odds) && e.odds > 1 && (e.y === 0 || e.y === 1));
+    const leagues = new Map();
+    for (const e of list) {
+      const k = String(e.lid != null ? e.lid : e.ln || '?');
+      if (!leagues.has(k)) leagues.set(k, { label: e.ln || ('Liga ' + k), items: [] });
+      leagues.get(k).items.push(e);
+    }
+    const byLeague = [...leagues.values()].map(g => Object.assign({ label: g.label }, roiGroup(g.items))).sort((a, b) => b.n - a.n || b.profit - a.profit);
+    return { byEv: byRange(list, 'ev'), byEvMkt: byRange(list, 'evMkt'), byLeague };
+  }
+
+  // Qué habría pasado con la banca si se apostaba en cada señal EV+ en orden cronológico:
+  // ¼ Kelly (sobre la banca de ese momento) contra stake plano del 1% de la banca inicial.
+  // La banca arranca en 1 (= 100%). Partidos del mismo horario se toman uno después del otro (aproximación).
+  function stakeReplay(entries, T, opts) {
+    const o = Object.assign({ flat: 0.01 }, opts || {});
+    const list = (entries || []).filter(e => isNum(e.p) && isNum(e.odds) && e.odds > 1 && (e.y === 0 || e.y === 1))
+      .slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    const run = stakeOf => {
+      let bank = 1, peak = 1, maxDd = 0, bets = 0;
+      for (const e of list) {
+        const s = stakeOf(e, bank);
+        if (!(s > 0)) continue;
+        bets++;
+        bank += e.y === 1 ? s * (e.odds - 1) : -s;
+        peak = Math.max(peak, bank);
+        maxDd = Math.max(maxDd, (peak - bank) / peak);
+      }
+      return { bets, final: bank, maxDrawdown: maxDd };
+    };
+    const kelly = run((e, bank) => bank * T.kellyStake({ p: e.p, odds: e.odds, marketProb: isNum(e.marketProb) ? e.marketProb : undefined, validated: e.validated !== false }).stake);
+    const flat = run(() => o.flat);
+    return { n: list.length, kelly, flat };
   }
 
   // Decide si el modelo "pasó" la validación. Criterios fijos y explícitos.
@@ -153,7 +211,7 @@
   }
 
   const LV_KEY = 'o05:leagueval:v1';
-  const pure = { settleFromFixture, chunk, summarizeLog, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
+  const pure = { settleFromFixture, chunk, summarizeLog, brierVsMarket, roiBreakdown, stakeReplay, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
   if (typeof module !== 'undefined' && module.exports) module.exports = pure;
   root.TanoVal = pure;
 
@@ -273,7 +331,36 @@
       '<table class="val-table"><tr><th>Apuestas (1u, cuota guardada)</th><th>N</th><th>Aciertos</th><th>ROI</th></tr>' +
       roiLine('Todas con cuota', s.all) + roiLine('EV+ posible o sólido', s.evPlus) + roiLine('EV+ sólido', s.evSolid) + '</table>' +
       (s.promisedEv != null ? `<div class="small">El modelo prometía un EV promedio de ${(s.promisedEv >= 0 ? '+' : '') + num(s.promisedEv * 100, 1)}% en las señales EV+. Si el ROI real queda muy por debajo, el modelo está sobreestimando.</div>` : '') +
+      vsMarketHtml(s.vsMarket) + breakdownHtml(s.breakdown) + replayHtml(s.replay) +
       '<div class="small">Con pocas decenas de apuestas el ROI es puro ruido: hacen falta cientos para sacar conclusiones.</div>';
+  }
+  function vsMarketHtml(v) {
+    if (!v || !v.n) return '<div class="val-box"><b>¿Le gana el modelo a las casas?</b><br>Todavía no hay predicciones liquidadas con probabilidad del mercado guardada.</div>';
+    const better = v.diff < 0;
+    return '<div class="val-box"><b>¿Le gana el modelo a las casas?</b> (Brier: más bajo = mejor)<br>' +
+      `Sobre las mismas ${v.n} predicciones: modelo <b>${num(v.model, 4)}</b> · mercado sin margen <b>${num(v.market, 4)}</b><br>` +
+      `<span style="color:${better ? 'var(--c4)' : 'var(--c1)'}">${better ? '✅ El modelo acierta mejor que el mercado.' : '❌ El mercado acierta mejor que el modelo: las señales que solo ve el modelo no son confiables.'}</span>` +
+      (v.n < 300 ? '<br><span class="small">Con menos de 300 casos la diferencia todavía puede ser casualidad.</span>' : '') + '</div>';
+  }
+  function groupTable(title, rows) {
+    if (!rows || !rows.length) return '';
+    return `<table class="val-table"><tr><th>${esc(title)}</th><th>N</th><th>Aciertos</th><th>ROI</th></tr>` +
+      rows.map(r => roiLine(esc(r.label), r)).join('') + '</table>';
+  }
+  function breakdownHtml(b) {
+    if (!b || !(b.byEv.length || b.byEvMkt.length)) return '';
+    return '<details class="val-box"><summary><b>¿Dónde se gana y dónde se pierde?</b> (desglose del ROI)</summary>' +
+      groupTable('Por EV del modelo', b.byEv) + groupTable('Por EV vs mercado (sin margen)', b.byEvMkt) + groupTable('Por liga', b.byLeague) +
+      '<div class="small">Sirve para ver si hay un rango de EV o una liga donde la ganancia se repite. Ojo: con grupos chicos (menos de ~50) los números saltan mucho por azar.</div></details>';
+  }
+  function replayHtml(r) {
+    if (!r || !r.n) return '';
+    const fmt = x => (x.final >= 1 ? '+' : '') + num((x.final - 1) * 100, 1) + '%';
+    const row = (label, x) => `<tr><td>${label}</td><td>${x.bets}</td><td style="color:${x.final >= 1 ? 'var(--c4)' : 'var(--c1)'}">${fmt(x)}</td><td>−${num(x.maxDrawdown * 100, 1)}%</td></tr>`;
+    return '<div class="val-box"><b>Simulación de la banca con tus señales EV+</b><br>' +
+      '<table class="val-table"><tr><th>Método</th><th>Apuestas</th><th>Resultado banca</th><th>Peor caída</th></tr>' +
+      row('¼ Kelly (stake sugerido)', r.kelly) + row('Plano 1% de la banca', r.flat) + '</table>' +
+      '<div class="small">Se repasan en orden las predicciones EV+ ya liquidadas, como si hubieras apostado en todas. «Peor caída» es lo máximo que bajó la banca desde su punto más alto. Kelly apuesta más cuando la ventaja es más grande y menos cuando es chica.</div></div>';
   }
 
   async function copyLog() {
