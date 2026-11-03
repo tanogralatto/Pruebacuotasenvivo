@@ -976,28 +976,20 @@ function h2hGames(a,b){
   return p;
 }
 
-/* Historial completo de una competición/temporada para el modelo Poisson.
-   Se descarga paginado una sola vez y se reutiliza durante 12 horas. */
+/* Historial reciente de una competición/temporada para Poisson.
+   Se limita a los últimos 99 partidos y evita el parámetro page,
+   que API-Football rechazó en la consulta anterior. Caché de 12 horas. */
 function leagueSeasonGames(leagueId,season){
-  const key=String(leagueId)+':'+String(season),cacheKey='o05:v1:league:'+key;
+  const key=String(leagueId)+':'+String(season),cacheKey='o05:v2:league:'+key;
   const cachedGames=cached(cacheKey);
   if(cachedGames!==null)return Promise.resolve(cachedGames);
   if(leagueMemo.has(key))return leagueMemo.get(key);
   const p=(async()=>{
-    const all=new Map();let page=1,totalPages=1;
-    do{
-      if(state.cancel)throw new Error('Carga de historial de liga cancelada.');
-      const j=await api('/fixtures',{league:leagueId,season,page,timezone:TZ});
-      const rows=fixtureResponse(j,'/fixtures liga '+leagueId+' temporada '+season);
-      for(const g of compact(rows))all.set(String(g.i),g);
-      const reported=Number(j.paging?.total);
-      totalPages=Number.isFinite(reported)&&reported>0?reported:page;
-      if(totalPages>100)throw new Error('La liga requiere más de 100 páginas. Se detuvo la descarga para evitar un consumo descontrolado; Poisson no calculará con una muestra parcial.');
-      page++;
-    }while(page<=totalPages);
-    const games=[...all.values()].sort((a,b)=>b.d-a.d);
+    if(state.cancel)throw new Error('Carga de historial de liga cancelada.');
+    const j=await api('/fixtures',{league:leagueId,season,last:99,timezone:TZ});
+    const games=compact(fixtureResponse(j,'/fixtures liga '+leagueId+' temporada '+season));
     if(!games.length)throw new Error('API-Football no devolvió partidos finalizados para esta liga y temporada.');
-    LS.set(cacheKey,{ts:Date.now(),g:games,cacheSchema:1,source:'api-football-league-season',count:games.length});
+    LS.set(cacheKey,{ts:Date.now(),g:games,cacheSchema:2,source:'api-football-league-season-last99',count:games.length});
     return games;
   })();
   leagueMemo.set(key,p);
