@@ -32,3 +32,8 @@
 - Cada partido se juzga con parámetros y calibración elegidos solo con partidos anteriores (antes se elegían con todos, lo que inflaba un poco la «Mejora»).
 - Nueva columna «Confianza»: si la mejora puede explicarse por suerte según la cantidad de partidos. Para aprobar hace falta confianza alta (mejora ≥ 1,64 errores estándar).
 - Las ligas validadas antes muestran «¿?» hasta que se vuelvan a validar.
+
+## Hándicap asiático (etapa 1, en prueba)
+- `asiaticos.js` (puro, con tests en `tests/asiaticos.test.js`): distribución de la diferencia de goles con los goles esperados del partido completo, probabilidades por línea (ganar, ganar la mitad, devolver, perder la mitad, perder), lectura de las cuotas «Asian Handicap» de API-Football (detecta los dos formatos de línea del visitante) y precio sin margen por línea (Pinnacle o mediana).
+- Cada tarjeta muestra la línea principal (la de cuotas más parejas), EV contra el mercado, stake (solo precio de las casas, ⅛ Kelly) y la escalera de líneas.
+- Pendiente: etapa 2 (registro y liquidación) y etapa 3 (validación por liga).

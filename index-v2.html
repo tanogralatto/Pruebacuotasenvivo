@@ -408,6 +408,11 @@ body.no-hints .poisson-metric .hint{display:none}
 .routine p{margin:0 0 8px}
 .routine p:last-child{margin-bottom:0}
 .help .routine{margin:0}
+.ah-side{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+.ah-side-title{margin-bottom:6px}
+.ah-side .poisson-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ah-ladder td,.ah-ladder th{white-space:nowrap}
+.ah-main td{font-weight:700}
 .help .routine ul{margin:6px 0 10px;padding-left:22px}
 .help .routine li{margin-bottom:6px}
 .help .help-rule{padding:6px 10px;border-left:4px solid var(--accent)}
@@ -720,6 +725,7 @@ body.no-hints .poisson-metric .hint{display:none}
         <li><b>«Stake sugerido (Kelly)»</b>: cuánto apostar, en % de tu banca y en pesos. Si dice <b>«No apostar»</b>, hacele caso.</li>
         <li><b>«EV estimado»</b>: sale solo del cálculo de la app. Si dice «provisorio» (liga no aprobada), no te fíes de ese número solo.</li>
       </ul>
+      <p><b>Hándicap asiático</b> (debajo del recuadro del modelo, <b>en prueba</b>): muestra la línea principal del partido (la de cuotas más parejas) con un bloque por equipo: mejor cuota, <b>EV vs mercado</b>, stake sugerido, precio de las casas sin margen y lo que calcula el modelo. En «Ver otras líneas» está la escalera completa. La línea es la del local: <b>−0,5</b> = el local tiene que ganar; el visitante juega <b>+0,5</b>. En las de ,25 y ,75 la apuesta se divide en dos mitades, así que se puede ganar o perder la mitad. Si aparece <b>«⚠️ muy lejos del mercado»</b>, no uses el cálculo propio en ese partido. Todavía no se guarda en el registro ni está validado por liga: guiate por «EV vs mercado».</p>
       <p class="help-rule"><b>Regla simple:</b> apostá solo si la frase de arriba está en <b>verde</b> y el stake <b>no</b> dice «No apostar». Antes de apostar, fijate que la cuota de tu casa siga igual.</p>
     </details>
 
@@ -965,6 +971,7 @@ body.no-hints .poisson-metric .hint{display:none}
 </div>
 
 <script src="./modelo-poisson.js"></script>
+<script src="./asiaticos.js"></script>
 <script src="./modelo-xg.js"></script>
 <script>
 /*PURE*/
@@ -1432,7 +1439,7 @@ async function analizar(){
   // no un barrido de todo el día. Se corta apenas todos los partidos de esa liga tienen cuota.
   // Se leen las cuotas de los tres mercados de la misma respuesta (no cuesta consultas extra):
   // el mercado elegido se muestra, y los otros dos se guardan igual en el registro.
-  const oddsByMarket={ht05:new Map(),btts:new Map(),over25:new Map()}, seenFixtures=new Set();
+  const oddsByMarket={ht05:new Map(),btts:new Map(),over25:new Map()}, seenFixtures=new Set(), oddsAh=new Map();
   const prematchOddsByFixture=oddsByMarket[state.market]||oddsByMarket.ht05;
   if(fxs.length){
     const oddsDate=$('#date').value||fxs[0].iso.slice(0,10);
@@ -1449,6 +1456,7 @@ async function analizar(){
             const fixtureId=String(item.fixture?.id||item.fixture||item.fixture_id||'');
             if(!fixtureId) continue;
             seenFixtures.add(fixtureId);
+            if(window.TanoAsian){const ah=window.TanoAsian.parseOdds([item]);if(ah.books.size||ah.raw.length)oddsAh.set(fixtureId,ah);}
             for(const mk of Object.keys(oddsByMarket)){
               const parsed=mk==='ht05'?findFirstHalfOdds([item],{pick:'best'}):findMarketOdds([item],mk);
               if(parsed.over05||parsed.best) oddsByMarket[mk].set(fixtureId,parsed);
@@ -1493,6 +1501,9 @@ async function analizar(){
     out.push({fx:f,tr,poisson,...resumen(tr)});
   }
   try{logPredictions(out,state.market);if(state.market==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
+  // Goles esperados del partido completo de cada equipo (los del mercado +2,5): los usa el hándicap asiático.
+  const ftLam=new Map();
+  if(state.market==='over25')for(const r of out)if(r.poisson&&r.poisson.ok)ftLam.set(String(r.fx.id),r.poisson.lambdas);
   // Los otros dos mercados: mismo historial y mismas cuotas, solo para el registro (y el λ del 1T para En Vivo).
   for(const mk of Object.keys(oddsByMarket)){
     if(mk===state.market||state.cancel)continue;
@@ -1505,7 +1516,14 @@ async function analizar(){
       });
       logPredictions(extra,mk);
       if(mk==='ht05')saveLambdas(extra);
+      if(mk==='over25')for(const x of extra)if(x.poisson&&x.poisson.ok)ftLam.set(String(x.fx.id),x.poisson.lambdas);
     }catch(e){state.errors.push('Registro de '+mk+': '+e.message);}
+  }
+  // Hándicap asiático (etapa 1: solo se muestra; todavía no se registra ni se valida).
+  if(window.TanoAsian)for(const r of out){
+    const lam=ftLam.get(String(r.fx.id));
+    try{r.ah=lam?window.TanoAsian.view({lambdaHome:lam.home,lambdaAway:lam.away,odds:oddsAh.get(String(r.fx.id))||null},window.TanoPoissonModel):{ok:false,reason:'Sin goles esperados del partido completo para este partido (falta historial de la liga).'};}
+    catch(e){r.ah={ok:false,reason:'Error al calcular el hándicap: '+e.message};}
   }
   state.strategyHistory=new Map(tg);
   state.results=out;
@@ -1560,6 +1578,45 @@ function evBadge(dec){
   const cls=dec.signal==='ev_solido'?'solid':dec.signal==='ev_posible'?'possible':'none';
   const prov=(dec.signal==='ev_solido'||dec.signal==='ev_posible')&&!dec.validated?' · provisorio':'';
   return '<span class="ev-badge '+cls+'">'+esc(dec.label)+prov+'</span>';
+}
+// Hándicap asiático en la tarjeta del partido (partido completo).
+function fmtAhLine(l){if(Math.abs(l)<1e-9)return '0';return (l>0?'+':'−')+Math.abs(l).toLocaleString('es-AR',{maximumFractionDigits:2});}
+function ahHtml(v,fx){
+  const hn=esc(fx&&fx.hn||'Local'), an=esc(fx&&fx.an||'Visitante');
+  if(!v||!v.ok)return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span><span class="ev-badge none">No evaluable</span></div><div class="poisson-status">'+esc(v&&v.reason||'Sin datos.')+'</div></section>';
+  const pct=x=>Number.isFinite(x)?fmtPct(x,1):'—';
+  const ev=x=>Number.isFinite(x)?'<span style="color:'+(x>=0?'var(--c4)':'var(--c1)')+'">'+(x>=0?'+':'')+fmtNum(x*100,1)+'%</span>':'—';
+  const stake=s=>{const k=s.kelly;if(!k||!k.ok)return '—';if(!(k.stake>0))return 'No apostar';const b=bankrollValue();return fmtNum(k.stake*100,1)+'% de la banca'+(b?' ≈ $'+Math.round(b*k.stake).toLocaleString('es-AR'):'');};
+  const metric=(label,value)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value">'+value+'</span></div>';
+  const m=v.main, L=m.line;
+  const block=(name,lineTxt,s)=>'<div class="ah-side"><div class="ah-side-title"><b>'+name+' '+lineTxt+'</b>'+(s.suspicious?' <span class="ev-badge none">⚠️ muy lejos del mercado</span>':'')+'</div><div class="poisson-grid">'+
+    metric('Mejor cuota',s.best?Number(s.best.price).toFixed(2)+' · '+esc(s.best.bookmaker):'Sin cuota')+
+    metric('EV vs mercado',ev(s.evMkt))+
+    metric('Stake sugerido',stake(s))+
+    metric('Casas sin margen',pct(s.mkt))+
+    metric('Modelo',pct(s.pCond)+' · justa '+(s.fair?fmtNum(s.fair,2):'—'))+
+    metric('EV modelo',ev(s.ev))+'</div></div>';
+  const both=[m.home,m.away], priced=both.filter(s=>Number.isFinite(s.evMkt));
+  const ok=priced.filter(s=>!s.suspicious).sort((a,b)=>b.evMkt-a.evMkt), bestSide=ok[0];
+  const nameOf=s=>s===m.home?hn+' '+fmtAhLine(L):an+' '+fmtAhLine(-L);
+  let verdict;
+  if(!m.home.best&&!m.away.best)verdict={cls:'none',t:'Sin cuotas de hándicap',x:'La API no trajo cuotas de hándicap asiático para este partido. Se muestran solo las cuotas justas del modelo.'};
+  else if(!priced.length)verdict={cls:'mid',t:'Sin referencia de las casas',x:'Hay cuota, pero no el precio sin margen de las casas para esta línea: no se puede saber si conviene.'};
+  else if(!bestSide)verdict={cls:'bad',t:'El modelo está muy lejos de las casas',x:'El cálculo propio se aleja más de 12 puntos de las casas en los dos lados. Casi siempre falla el modelo (por ejemplo, con equipos muy desparejos o con pocos datos): no lo uses en este partido.'};
+  else if(bestSide.evMkt>=0.03)verdict={cls:'good',t:'Mirar con atención',x:nameOf(bestSide)+' paga más de lo justo según las casas ('+'+'+fmtNum(bestSide.evMkt*100,1)+'%). Confirmá la cuota antes de decidir.'};
+  else verdict={cls:bestSide.evMkt>=-0.01?'mid':'bad',t:bestSide.evMkt>=-0.01?'Sin ventaja clara':'No se ve ventaja',x:'En la línea principal, la mejor cuota paga '+(bestSide.evMkt>=-0.01?'casi lo justo':'menos de lo justo')+' según las casas.'};
+  // Escalera: líneas con cuota y las cercanas a la principal (±1 gol).
+  const near=v.lines.filter(x=>x.hasOdds||Math.abs(x.line-L)<=1+1e-9);
+  const cell=s=>(s.best?Number(s.best.price).toFixed(2)+' '+ev(s.evMkt):'<span class="small">justa '+(s.fair?fmtNum(s.fair,2):'—')+'</span>');
+  const ladder=near.map(x=>'<tr'+(Math.abs(x.line-L)<1e-9?' class="ah-main"':'')+'><td>'+fmtAhLine(x.line)+'</td><td>'+cell(x.home)+'</td><td>'+cell(x.away)+'</td></tr>').join('');
+  return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span><span class="ev-badge none">en prueba</span></div>'+
+    '<div class="poisson-verdict '+verdict.cls+'"><b>'+esc(verdict.t)+'.</b> '+verdict.x+'</div>'+
+    '<div class="small">Línea principal'+(v.mainFromOdds?' (la de cuotas más parejas)':' según el modelo (sin cuotas)')+'. Goles esperados: '+hn+' '+fmtNum(v.lambdaHome,2)+' · '+an+' '+fmtNum(v.lambdaAway,2)+'.</div>'+
+    block(hn,fmtAhLine(L),m.home)+block(an,fmtAhLine(-L),m.away)+
+    '<details class="val-box"><summary>Ver otras líneas ('+v.lines.filter(x=>x.hasOdds).length+' con cuota)</summary><table class="val-table ah-ladder"><tr><th>Línea '+hn+'</th><th>'+hn+'</th><th>'+an+'</th></tr>'+ladder+'</table>'+
+    '<div class="small">Cada celda: mejor cuota y EV contra el mercado; sin cuota, la cuota justa del modelo. La línea es la del local: '+hn+' −0,5 = tiene que ganar, y '+an+' juega +0,5. En las de ,25 y ,75 la apuesta se divide en dos mitades (se puede ganar o perder la mitad). La probabilidad del modelo no cuenta las devoluciones.</div></details>'+
+    (v.raw&&v.raw.length?'<details class="val-box"><summary>Datos crudos de la API (para revisar)</summary><div class="small">'+v.raw.map(esc).join('<br>')+'</div></details>':'')+
+    '<div class="poisson-note">En prueba: todavía no se guarda en el registro ni está validado por liga. Guiate por «EV vs mercado» (Pinnacle o mediana de casas, sin margen). El stake usa solo el precio de las casas y ⅛ de Kelly.</div></section>';
 }
 function poissonHtml(model){
   const mk=(model&&model.market)||state.market, M=MKT_TXT[mk];
@@ -1646,6 +1703,7 @@ function cardHtml(r,i){
         <div class="result-actions"><span class="small">Promedio descriptivo · ${r.n} de 7 indicadores</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
         <div class="cells">${r.tr.map(cellHtml).join('')}</div>
         ${r.poisson!==undefined?poissonHtml(r.poisson):''}
+        ${r.ah?ahHtml(r.ah,r.fx):''}
         <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
       </div>
     </details>
@@ -1813,8 +1871,8 @@ $('#btnCopy').addEventListener('click',copyList);
 $('#results').addEventListener('toggle',e=>{
   const d=e.target;
   if(d.tagName!=='DETAILS'||!d.open) return;
-  const box=d.querySelector('.detail');
-  if(box.dataset.ready) return;
+  const box=d.querySelector(':scope > .detail');
+  if(!box||box.dataset.ready) return; // otros desplegables dentro de la tarjeta (p. ej. el hándicap) no cargan el detalle
   const r=state.results[parseInt(d.closest('.card').dataset.i,10)];
   box.innerHTML=detailHtml(r);box.dataset.ready='1';
 },true);
