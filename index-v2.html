@@ -1590,16 +1590,9 @@ function evBadge(dec){
 }
 // Hándicap asiático en la tarjeta del partido (partido completo).
 function fmtAhLine(l){if(Math.abs(l)<1e-9)return '0';return (l>0?'+':'−')+Math.abs(l).toLocaleString('es-AR',{maximumFractionDigits:2});}
-function ahDiagHtml(v){
-  const d=v&&v.diag;
-  if(!d)return '';
-  const txt=!d.oddsReceived?'La consulta de cuotas de la liga no trajo este partido (ninguna casa, ningún mercado).':
-    'La API trajo '+d.bookCount+' casa(s) para este partido. Mercados recibidos (cantidad de casas): '+(d.allBets.length?d.allBets.map(esc).join(' · '):'ninguno')+'.';
-  return '<details class="val-box"><summary>Diagnóstico de cuotas (para revisar)</summary><div class="small">'+txt+'</div></details>';
-}
 function ahHtml(v,fx){
   const hn=esc(fx&&fx.hn||'Local'), an=esc(fx&&fx.an||'Visitante');
-  if(!v||!v.ok)return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span><span class="ev-badge none">No evaluable</span></div><div class="poisson-status">'+esc(v&&v.reason||'Sin datos.')+'</div>'+ahDiagHtml(v)+'</section>';
+  if(!v||!v.ok)return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span><span class="ev-badge none">No evaluable</span></div><div class="poisson-status">'+esc(v&&v.reason||'Sin datos.')+'</div></section>';
   const pct=x=>Number.isFinite(x)?fmtPct(x,1):'—';
   const ev=x=>Number.isFinite(x)?'<span style="color:'+(x>=0?'var(--c4)':'var(--c1)')+'">'+(x>=0?'+':'')+fmtNum(x*100,1)+'%</span>':'—';
   const stake=s=>{const k=s.kelly;if(!k||!k.ok)return '—';if(!(k.stake>0))return 'No';const b=bankrollValue();return fmtNum(k.stake*100,1)+'%'+(b?'<br><span class="small">$'+Math.round(b*k.stake).toLocaleString('es-AR')+'</span>':'');};
@@ -1627,7 +1620,7 @@ function ahHtml(v,fx){
     '<div class="small"><b>Cómo leerla:</b> <b>Cuota</b> = la mejor que encontró entre las casas · <b>Justa</b> = la cuota sin la ganancia de las casas (Pinnacle o mediana) · <b>EV</b> = cuánto paga de más (verde) o de menos (rojo) frente a la justa · <b>Stake</b> = parte de tu banca. '+
     '<b>'+hn+' −1,5</b> = tiene que ganar por 2 o más; <b>'+an+' +1,5</b> = no puede perder por más de 1. En las de ,25 y ,75 la apuesta se divide en dos mitades y se puede ganar o perder la mitad; en las enteras (−1, +2…) el empate en la línea devuelve la plata.</div>'+
     model+
-    (v.raw&&v.raw.length?'<details class="val-box"><summary>Datos crudos de la API (para revisar)</summary><div class="small">'+v.raw.map(esc).join('<br>')+'</div></details>':'')+ahDiagHtml(v)+
+
     '<div class="poisson-note">La mejor apuesta se guarda en el registro y se liquida con «Liquidar registro». '+(v.validated?'Liga aprobada: el stake usa el modelo y las casas, con ¼ de Kelly.':'Liga sin aprobar: el stake usa solo las casas, con ⅛ de Kelly.')+'</div></section>';
 }
 function poissonHtml(model){
