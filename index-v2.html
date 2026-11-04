@@ -1956,6 +1956,11 @@ function refreshFavoriteViews(){
   renderFavorites();renderVipFavorites();renderResults();renderLive();
   if(Array.isArray(ghLastCandidates))ghRenderCandidates(ghLastCandidates);
 }
+function favoriteMarketKey(f){
+  if(favoriteSources(f).includes('golht')&&!favoriteSources(f).includes('scanner'))return 'ht05';
+  const k=Object.keys(marketDefs).find(k=>marketDefs[k].short===f.market)||'ht05';
+  return k==='ah'?'over25':k; // guardado desde Hándicap: sus indicadores son los de +2,5 goles
+}
 function renderSavedFavoriteCard(f,group){
   const fx=f.fixture||{id:f.id,hn:f.home,an:f.away,iso:f.kickoff,lc:'',ln:f.league||'',st:'NS'};
   const dateIso=fx.iso||f.kickoff;
@@ -1972,7 +1977,10 @@ function renderSavedFavoriteCard(f,group){
   const savedPoisson=f.poisson||(currentResult&&currentResult.poisson&&(!f.market||f.market===marketDefs[state.market].short)?currentResult.poisson:undefined);
   if(a&&Array.isArray(a.tr)){
     const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson};
-    let html=cardHtml(r,-1);
+    // La tarjeta se dibuja con el mercado con el que se guardó el favorito, no con el que está elegido ahora en el Escáner
+    // (si no, con «Hándicap asiático» elegido todos los favoritos salían vacíos, con «—»).
+    let html,prevMarket=state.market;
+    try{state.market=favoriteMarketKey(f);html=cardHtml(r,-1);}finally{state.market=prevMarket;}
     html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
     html=html.replace(/<button class="fav-btn"[^>]*>.*?<\/button>/,actions);
     html=html.replace('<p class="league">',origin+'<p class="league">');
