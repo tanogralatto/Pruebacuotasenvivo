@@ -726,7 +726,7 @@ body.no-hints .poisson-metric .hint{display:none}
         <li><b>«Stake sugerido (Kelly)»</b>: cuánto apostar, en % de tu banca y en pesos. Si dice <b>«No apostar»</b>, hacele caso.</li>
         <li><b>«EV estimado»</b>: sale solo del cálculo de la app. Si dice «provisorio» (liga no aprobada), no te fíes de ese número solo.</li>
       </ul>
-      <p><b>Hándicap asiático</b> (<b>en prueba</b>): elegí <b>«Hándicap asiático»</b> como mercado en el Escáner. Cada tarjeta muestra a la derecha el mejor EV contra el mercado y, al abrirla, la línea principal del partido (la de cuotas más parejas) con un bloque por equipo: mejor cuota, <b>EV vs mercado</b>, stake sugerido, precio de las casas sin margen y lo que calcula el modelo. En «Ver otras líneas» está la escalera completa. La línea es la del local: <b>−0,5</b> = el local tiene que ganar; el visitante juega <b>+0,5</b>. En las de ,25 y ,75 la apuesta se divide en dos mitades, así que se puede ganar o perder la mitad. Si aparece <b>«⚠️ muy lejos del mercado»</b>, no uses el cálculo propio en ese partido. Todavía no se guarda en el registro ni está validado por liga: guiate por «EV vs mercado».</p>
+      <p><b>Hándicap asiático</b> (<b>en prueba</b>): elegí <b>«Hándicap asiático»</b> como mercado en el Escáner. Cada tarjeta muestra a la derecha el mejor EV contra el mercado y, al abrirla, la línea principal del partido (la de cuotas más parejas) con un bloque por equipo: mejor cuota, <b>EV vs mercado</b>, stake sugerido, precio de las casas sin margen y lo que calcula el modelo. En «Ver otras líneas» está la escalera completa. La línea es la del local: <b>−0,5</b> = el local tiene que ganar; el visitante juega <b>+0,5</b>. En las de ,25 y ,75 la apuesta se divide en dos mitades, así que se puede ganar o perder la mitad. Si aparece <b>«⚠️ muy lejos del mercado»</b>, no uses el cálculo propio en ese partido. Cada partido analizado antes de empezar se guarda en el registro (la línea principal, del lado con mejor precio) y se liquida con «Liquidar registro»: ganada, media ganada, devuelta, media perdida o perdida. Tiene su propio bloque en el registro y en «¿En qué ligas le gana a las casas?». Todavía no está validado por liga: guiate por «EV vs mercado».</p>
       <p class="help-rule"><b>Regla simple:</b> apostá solo si la frase de arriba está en <b>verde</b> y el stake <b>no</b> dice «No apostar». Antes de apostar, fijate que la cuota de tu casa siga igual.</p>
     </details>
 
@@ -1529,6 +1529,7 @@ async function analizar(){
     try{r.ah=window.TanoAsian.view({lambdaHome:lam?lam.home:null,lambdaAway:lam?lam.away:null,odds:oddsAh.get(String(r.fx.id))||null,modelReason:'Sin cálculo propio: '+(why||'el modelo no pudo calcular los goles esperados de este partido.')},window.TanoPoissonModel);}
     catch(e){r.ah={ok:false,reason:'Error al calcular el hándicap: '+e.message};}
   }
+  try{if(window.logAh)window.logAh(out);}catch(e){state.errors.push('Registro de hándicap: '+e.message);}
   state.strategyHistory=new Map(tg);
   state.results=out;
   state.running=false;
@@ -1626,7 +1627,7 @@ function ahHtml(v,fx){
     '<details class="val-box"><summary>Ver otras líneas ('+v.lines.filter(x=>x.hasOdds).length+' con cuota)</summary><table class="val-table ah-ladder"><tr><th>Línea '+hn+'</th><th>'+hn+'</th><th>'+an+'</th></tr>'+ladder+'</table>'+
     '<div class="small">Cada celda: mejor cuota y EV contra el mercado; sin cuota, la cuota justa del modelo. La línea es la del local: '+hn+' −0,5 = tiene que ganar, y '+an+' juega +0,5. En las de ,25 y ,75 la apuesta se divide en dos mitades (se puede ganar o perder la mitad). La probabilidad del modelo no cuenta las devoluciones.</div></details>'+
     (v.raw&&v.raw.length?'<details class="val-box"><summary>Datos crudos de la API (para revisar)</summary><div class="small">'+v.raw.map(esc).join('<br>')+'</div></details>':'')+ahDiagHtml(v)+
-    '<div class="poisson-note">En prueba: todavía no se guarda en el registro ni está validado por liga. Guiate por «EV vs mercado» (Pinnacle o mediana de casas, sin margen). El stake usa solo el precio de las casas y ⅛ de Kelly.</div></section>';
+    '<div class="poisson-note">En prueba: se guarda en el registro (la línea principal, del lado con mejor precio) y se liquida con «Liquidar registro», pero todavía no está validado por liga. Guiate por «EV vs mercado» (Pinnacle o mediana de casas, sin margen). El stake usa solo el precio de las casas y ⅛ de Kelly.</div></section>';
 }
 function poissonHtml(model){
   const mk=(model&&model.market)||state.market, M=MKT_TXT[mk];
@@ -1726,7 +1727,7 @@ function isEvPlus(r){if(state.market==='ah'){const b=ahBest(r);return !!b&&b.ev>
 function sorted(){
   const m=parseInt($('#minAvg').value,10)||0, s=$('#sort').value;
   const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, onlyEv=!!($('#onlyEv')&&$('#onlyEv').checked), now=Date.now();
-  const beat=state.market!=='ah'&&$('#onlyBeatMkt')&&$('#onlyBeatMkt').checked&&window.tanoBeatsMarketLeagues?window.tanoBeatsMarketLeagues(bm()):null;
+  const beat=$('#onlyBeatMkt')&&$('#onlyBeatMkt').checked&&window.tanoBeatsMarketLeagues?window.tanoBeatsMarketLeagues(state.market):null;
   const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(!onlyEv||isEvPlus(r))&&(!beat||beat.has(String(r.fx.lid)))&&(m===0||state.market==='ah'||(r.avg!==null&&r.avg>=m)));
   const nv=x=>x===null?-1:x;
   if(s==='ev') list.sort((a,b)=>(evOf(b)===null?-9:evOf(b))-(evOf(a)===null?-9:evOf(a))||nv(b.avg)-nv(a.avg));

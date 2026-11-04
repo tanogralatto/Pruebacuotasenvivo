@@ -36,4 +36,5 @@
 ## Hándicap asiático (etapa 1, en prueba)
 - `asiaticos.js` (puro, con tests en `tests/asiaticos.test.js`): distribución de la diferencia de goles con los goles esperados del partido completo, probabilidades por línea (ganar, ganar la mitad, devolver, perder la mitad, perder), lectura de las cuotas «Asian Handicap» de API-Football (detecta los dos formatos de línea del visitante) y precio sin margen por línea (Pinnacle o mediana).
 - Cada tarjeta muestra la línea principal (la de cuotas más parejas), EV contra el mercado, stake (solo precio de las casas, ⅛ Kelly) y la escalera de líneas.
-- Pendiente: etapa 2 (registro y liquidación) y etapa 3 (validación por liga).
+- Etapa 2 (hecha): al analizar se guarda la línea principal del lado con mejor precio; «Liquidar registro» la resuelve con el marcador de 90 minutos (ganada, media ganada, devuelta, media perdida, perdida) y el ROI usa esa ganancia real.
+- Pendiente: etapa 3 (validación por liga). Al hacerla, corregir la tasa base de `scoreRows`, que arranca en 70% (pensada para +0,5 1T) y en los primeros partidos favorece un poco a Ambos marcan, +2,5 y hándicap.

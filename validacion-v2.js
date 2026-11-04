@@ -46,6 +46,24 @@
     return { status: 'unverified', reason: 'La API no informó el marcador al descanso.' };
   }
 
+  // Hándicap asiático: resultado por unidad desde el lado apostado (1, 0,5, 0, −0,5 o −1).
+  // sideLine = línea del lado apostado (p. ej. −0,25 para el local que da 0,25). Usa el marcador de 90 minutos.
+  function ahResult(d, sideLine) {
+    const q = Math.abs(sideLine * 4) % 2, parts = Math.abs(q - 1) < 1e-9 ? [sideLine - 0.25, sideLine + 0.25] : [sideLine];
+    let r = 0;
+    for (const x of parts) { const a = d + x; r += a > 1e-9 ? 1 : a < -1e-9 ? -1 : 0; }
+    return r / parts.length;
+  }
+  function settleAhFromFixture(f, sideLine, side) {
+    const base = settleFromFixture(f, 'over25');
+    if (base.status !== 'settled') return base;
+    const [h, a] = base.ft, d = side === 'away' ? a - h : h - a, r = ahResult(d, sideLine);
+    if (Math.abs(r) < 1e-9) return { status: 'push', r: 0, ft: base.ft, source: 'api' };
+    return { status: 'settled', y: r > 0 ? 1 : 0, r, ft: base.ft, source: 'api' };
+  }
+  // Ganancia por unidad apostada: con hándicap usa el resultado guardado (medias y devoluciones).
+  const profitOf = e => isNum(e.ret) ? e.ret : (e.y === 1 ? e.odds - 1 : -1);
+
   function chunk(list, size) {
     const out = [];
     for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
@@ -54,19 +72,20 @@
 
   // Métricas del registro propio. T = modelo (scoreRows). Solo partidos liquidados.
   function summarizeLog(entries, T) {
-    const settled = (entries || []).filter(e => e && (e.y === 0 || e.y === 1) && isNum(e.p));
+    const settled = (entries || []).filter(e => e && (e.y === 0 || e.y === 1) && (isNum(e.p) || isNum(e.marketProb)));
     const rows = settled.map(e => ({ ts: e.ts, p: e.p, y: e.y }));
     const m = T.scoreRows(rows);
     const priced = settled.filter(e => isNum(e.odds) && e.odds > 1);
     const roiOf = list => {
       if (!list.length) return { n: 0, profit: null, roi: null, hit: null };
-      const profit = list.reduce((s, e) => s + (e.y === 1 ? e.odds - 1 : -1), 0);
+      const profit = list.reduce((s, e) => s + profitOf(e), 0);
       return { n: list.length, profit, roi: profit / list.length, hit: list.filter(e => e.y === 1).length / list.length };
     };
     const evPlus = priced.filter(e => e.signal === 'ev_solido' || e.signal === 'ev_posible');
     const solid = priced.filter(e => e.signal === 'ev_solido');
     // Valor esperado que el modelo prometía vs lo que pasó (si el modelo es bueno, se parecen).
-    const promised = evPlus.length ? evPlus.reduce((s, e) => s + (e.p * e.odds - 1), 0) / evPlus.length : null;
+    const promisedList = evPlus.map(e => isNum(e.ev) ? e.ev : isNum(e.p) ? e.p * e.odds - 1 : null).filter(isNum);
+    const promised = promisedList.length ? promisedList.reduce((s, x) => s + x, 0) / promisedList.length : null;
     return {
       settled: settled.length,
       pending: (entries || []).filter(e => e && e.y == null && !e.void).length,
@@ -136,7 +155,7 @@
   // ROI plano (1u) por rango de EV del modelo, por rango de EV vs mercado y por liga.
   const EV_RANGES = [[-Infinity, 0, 'Negativo'], [0, 0.05, '0–5%'], [0.05, 0.10, '5–10%'], [0.10, 0.15, '10–15%'], [0.15, Infinity, '15% o más']];
   function roiGroup(list) {
-    const profit = list.reduce((s, e) => s + (e.y === 1 ? e.odds - 1 : -1), 0);
+    const profit = list.reduce((s, e) => s + profitOf(e), 0);
     return { n: list.length, profit, roi: list.length ? profit / list.length : null, hit: list.length ? list.filter(e => e.y === 1).length / list.length : null };
   }
   function byRange(list, key) {
@@ -159,7 +178,7 @@
   // La banca arranca en 1 (= 100%). Partidos del mismo horario se toman uno después del otro (aproximación).
   function stakeReplay(entries, T, opts) {
     const o = Object.assign({ flat: 0.01 }, opts || {});
-    const list = (entries || []).filter(e => isNum(e.p) && isNum(e.odds) && e.odds > 1 && (e.y === 0 || e.y === 1))
+    const list = (entries || []).filter(e => (isNum(e.p) || isNum(e.marketProb)) && isNum(e.odds) && e.odds > 1 && (e.y === 0 || e.y === 1))
       .slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
     const run = stakeOf => {
       let bank = 1, peak = 1, maxDd = 0, bets = 0;
@@ -167,13 +186,13 @@
         const s = stakeOf(e, bank);
         if (!(s > 0)) continue;
         bets++;
-        bank += e.y === 1 ? s * (e.odds - 1) : -s;
+        bank += s * profitOf(e);
         peak = Math.max(peak, bank);
         maxDd = Math.max(maxDd, (peak - bank) / peak);
       }
       return { bets, final: bank, maxDrawdown: maxDd };
     };
-    const kelly = run((e, bank) => bank * T.kellyStake({ p: e.p, odds: e.odds, marketProb: isNum(e.marketProb) ? e.marketProb : undefined, validated: e.validated !== false }).stake);
+    const kelly = run((e, bank) => bank * T.kellyStake({ p: isNum(e.p) ? e.p : e.marketProb, odds: e.odds, marketProb: isNum(e.marketProb) ? e.marketProb : undefined, validated: e.validated !== false }).stake);
     const flat = run(() => o.flat);
     return { n: list.length, kelly, flat };
   }
@@ -320,7 +339,7 @@
   }
 
   const LV_KEY = 'o05:leagueval:v1';
-  const pure = { settleFromFixture, chunk, summarizeLog, brierVsMarket, leagueVsMarket, roiBreakdown, stakeReplay, honestRows, confidenceOf, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
+  const pure = { settleFromFixture, settleAhFromFixture, ahResult, profitOf, chunk, summarizeLog, brierVsMarket, leagueVsMarket, roiBreakdown, stakeReplay, honestRows, confidenceOf, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
   if (typeof module !== 'undefined' && module.exports) module.exports = pure;
   root.TanoVal = pure;
 
@@ -339,6 +358,7 @@
 
   /* ---- registro de predicciones (antes del partido) ---- */
   const MKT_NAME = { ht05: '+0,5 1T', btts: 'Ambos marcan', over25: '+2,5 goles' };
+  const LOG_MKT_NAME = Object.assign({}, MKT_NAME, { ah: 'Hándicap asiático' }); // el registro también guarda el hándicap
   const mktOf = e => (e && e.market) || 'ht05';
   // Clave del registro: +0,5 1T usa el id del partido (como siempre); los otros mercados, "id:mercado".
   const logId = (fid, market) => !market || market === 'ht05' ? String(fid) : String(fid) + ':' + market;
@@ -370,6 +390,37 @@
     return added;
   };
 
+  // Hándicap asiático: se guarda la línea principal, del lado con mejor precio contra el mercado
+  // (o el local si ninguno tiene precio de referencia). Solo antes del partido y con cuota.
+  root.logAh = function (results) {
+    const log = readLog(), now = nowSec();
+    let added = 0;
+    for (const r of results || []) {
+      const v = r && r.ah;
+      if (!v || !v.ok || !v.main || !r.fx) continue;
+      const ts = Math.floor(Date.parse(r.fx.iso) / 1000);
+      if (!Number.isFinite(ts) || now >= ts) continue;
+      const id = String(r.fx.id) + ':ah', prev = log[id];
+      if (prev && (prev.y === 0 || prev.y === 1 || prev.push)) continue;
+      const m = v.main, sides = [['home', m.home], ['away', m.away]].filter(([, x]) => x.odds > 1);
+      if (!sides.length) continue;
+      const priced = sides.filter(([, x]) => isNum(x.evMkt) && !x.suspicious).sort((a, b) => b[1].evMkt - a[1].evMkt);
+      const [side, x] = priced[0] || sides[0];
+      const sideLine = side === 'home' ? m.line : -m.line;
+      log[id] = {
+        id, fid: String(r.fx.id), market: 'ah', ts, lid: r.fx.lid, season: r.fx.season, hid: r.fx.hid, aid: r.fx.aid, hn: r.fx.hn, an: r.fx.an, ln: r.fx.ln, lc: r.fx.lc || '',
+        line: m.line, side, sideLine, p: isNum(x.pCond) ? x.pCond : null, marketProb: isNum(x.mkt) ? x.mkt : null,
+        odds: x.odds, bk: x.best ? x.best.bookmaker : null, ev: isNum(x.ev) ? x.ev : null, evMkt: isNum(x.evMkt) ? x.evMkt : null,
+        signal: isNum(x.evMkt) && x.evMkt >= 0.03 && !x.suspicious ? 'ev_posible' : 'sin_ev', suspicious: !!x.suspicious,
+        hasModel: !!v.hasModel, lam: v.hasModel ? [v.lambdaHome, v.lambdaAway] : null, validated: false, loggedAt: now
+      };
+      added++;
+    }
+    if (added) writeLog(log);
+    try { if (added) renderLogOut(); } catch (e) {}
+    return added;
+  };
+
   // λ del partido para la pestaña En Vivo (se guarda aunque el partido ya haya empezado).
   root.saveLambdas = function (results) {
     const map = LS.get(LAM_KEY, {}) || {}, now = nowSec();
@@ -398,6 +449,14 @@
         for (const e of pending.filter(x => ids.includes(fidOf(x)))) {
           const id = e.id, f = byId.get(fidOf(e));
           if (!f) { left++; continue; }
+          if (mktOf(e) === 'ah') {
+            const s = settleAhFromFixture(f, e.sideLine, e.side);
+            if (s.status === 'settled') { log[id].y = s.y; log[id].r = s.r; log[id].ret = s.r > 0 ? s.r * (e.odds - 1) : s.r; log[id].ft = s.ft; log[id].settledAt = now; settled++; }
+            else if (s.status === 'push') { log[id].push = true; log[id].void = true; log[id].r = 0; log[id].ret = 0; log[id].ft = s.ft; log[id].settledAt = now; settled++; }
+            else if (s.status === 'void') { log[id].void = true; voided++; }
+            else left++;
+            continue;
+          }
           const s = settleFromFixture(f, mktOf(e));
           if (s.status === 'settled') { log[id].y = s.y; if (s.ht) log[id].ht = s.ht; if (s.ft) log[id].ft = s.ft; log[id].htSource = s.source; log[id].settledAt = now; settled++; }
           else if (s.status === 'void') { log[id].void = true; voided++; }
@@ -426,9 +485,9 @@
       return;
     }
     // Un bloque por mercado, porque cada uno gana o pierde por su lado.
-    box.innerHTML = Object.keys(MKT_NAME).map(mk => {
+    box.innerHTML = Object.keys(LOG_MKT_NAME).map(mk => {
       const list = all.filter(e => mktOf(e) === mk);
-      return list.length ? logBlock(summarizeLog(list, T), MKT_NAME[mk]) : '';
+      return list.length ? logBlock(summarizeLog(list, T), LOG_MKT_NAME[mk]) : '';
     }).join('');
   }
   function logBlock(s, title) {

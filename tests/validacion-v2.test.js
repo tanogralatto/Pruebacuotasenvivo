@@ -225,3 +225,36 @@ test('por liga contra el mercado: separa la liga donde el modelo sabe más que l
   assert.equal(by['3'].status, 'faltan');
   assert.equal(list[0].lid, '1'); // las que le ganan, primero
 });
+
+test('hándicap: liquidación con medias, devoluciones y marcador de 90 minutos', () => {
+  const ftFx = (h, a, st = 'FT') => ({ fixture: { status: { short: st } }, score: { halftime: {}, fulltime: { home: h, away: a } } });
+  // Local −0,25 con empate: pierde la mitad.
+  assert.deepEqual(V.settleAhFromFixture(ftFx(1, 1), -0.25, 'home'), { status: 'settled', y: 0, r: -0.5, ft: [1, 1], source: 'api' });
+  // Visitante +0,25 con empate: gana la mitad.
+  assert.equal(V.settleAhFromFixture(ftFx(1, 1), 0.25, 'away').r, 0.5);
+  // Local −1 ganando por 1: devuelve.
+  assert.equal(V.settleAhFromFixture(ftFx(2, 1), -1, 'home').status, 'push');
+  // Visitante +1,5 perdiendo por 1: gana. Perdiendo por 2: pierde.
+  assert.equal(V.settleAhFromFixture(ftFx(2, 1), 1.5, 'away').r, 1);
+  assert.equal(V.settleAhFromFixture(ftFx(3, 1), 1.5, 'away').r, -1);
+  // Local −0,75 ganando por 1: gana la mitad.
+  assert.equal(V.settleAhFromFixture(ftFx(1, 0), -0.75, 'home').r, 0.5);
+  // Suspendido: anulado. Sin terminar: pendiente.
+  assert.equal(V.settleAhFromFixture(ftFx(0, 0, 'PST'), -0.5, 'home').status, 'void');
+  assert.equal(V.settleAhFromFixture(ftFx(0, 0, '2H'), -0.5, 'home').status, 'pending');
+});
+
+test('hándicap en el registro: ROI con medias y sin modelo', () => {
+  const entries = [
+    { market: 'ah', ts: 1, p: null, marketProb: 0.5, odds: 2.0, y: 1, r: 0.5, ret: 0.5, signal: 'ev_posible', evMkt: 0.04 },  // ganó la mitad: +0,5
+    { market: 'ah', ts: 2, p: 0.55, marketProb: 0.5, odds: 1.9, y: 0, r: -0.5, ret: -0.5, signal: 'ev_posible', evMkt: 0.03, ev: 0.045 }, // perdió la mitad
+    { market: 'ah', ts: 3, p: 0.6, marketProb: 0.52, odds: 1.95, y: 1, r: 1, ret: 0.95, signal: 'sin_ev', ev: 0.17 },
+    { market: 'ah', ts: 4, push: true, void: true, r: 0, ret: 0, p: 0.5, marketProb: 0.5, odds: 2 } // devuelta: no cuenta
+  ];
+  const s = V.summarizeLog(entries, T);
+  assert.equal(s.settled, 3); assert.equal(s.pending, 0);
+  assert.equal(s.all.n, 3); assert.ok(Math.abs(s.all.profit - (0.5 - 0.5 + 0.95)) < 1e-12);
+  assert.equal(s.evPlus.n, 2); assert.ok(Math.abs(s.evPlus.profit) < 1e-12);
+  assert.equal(s.metrics.count, 2); // el Brier solo con las que tienen cálculo propio
+  assert.equal(s.replay.n, 2);      // la simulación de banca usa el precio de las casas si falta el modelo
+});
