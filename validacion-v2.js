@@ -492,6 +492,33 @@
       '<div class="small">Se repasan en orden las predicciones EV+ ya liquidadas, como si hubieras apostado en todas. «Peor caída» es lo máximo que bajó la banca desde su punto más alto. Kelly apuesta más cuando la ventaja es más grande y menos cuando es chica.</div></div>';
   }
 
+  // Las tres tablas de ligas validadas en un CSV (para abrir en Excel o pasárselo a Claude subido al repo).
+  function lvCsv() {
+    const cell = v => { const t = v == null ? '' : String(v); return /[",;\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+    const r3 = x => isNum(x) ? Math.round(x * 1000) / 10 : '';
+    const lines = ['mercado,pais,liga,id_liga,estado,partidos,mejora_pct,confianza,dice_pct,pasa_pct,desvio_pts,validada'];
+    for (const mk of Object.keys(MKT_NAME)) {
+      for (const e of Object.values(readLv(mk))) {
+        const st = (e.status === 'aprobada' || e.status === 'conjunta') && !e.confidence ? 'revalidar' : e.status;
+        lines.push([mk, e.country ? countryEs(e.country) : '', e.name || '', e.lid, st, e.n ?? '', r3(e.skill), e.confidence || '',
+          r3(e.meanP), r3(e.observed), r3(e.gap), e.validatedAt ? new Date(e.validatedAt).toISOString().slice(0, 10) : ''].map(cell).join(','));
+      }
+    }
+    return lines.join('\n');
+  }
+  function downloadLvCsv() {
+    const csv = lvCsv(), rows = csv.split('\n').length - 1;
+    if (!rows) { valStatus('Todavía no hay ligas validadas para descargar.', true); return; }
+    try {
+      const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ligas-validadas-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      valStatus(`Archivo descargado: ${rows} filas (las tres tablas). Lo encontrás en Descargas (o en Archivos, en el iPhone).`);
+    } catch (e) { valStatus('No se pudo descargar el archivo: ' + e.message, true); }
+  }
+
   async function copyLog() {
     const txt = JSON.stringify(Object.values(readLog()), null, 1);
     try { await navigator.clipboard.writeText(txt); valStatus('Registro copiado (' + Object.keys(readLog()).length + ' predicciones).'); }
@@ -864,6 +891,7 @@
   q('#btnXgDownload').addEventListener('click', downloadXg);
   q('#btnSettle').addEventListener('click', settleLog);
   q('#btnLogCopy').addEventListener('click', copyLog);
+  if (q('#btnLvCsv')) q('#btnLvCsv').addEventListener('click', downloadLvCsv);
   renderLeagueVal();
   root.tanoRenderLog = renderLogOut;
   renderLogOut();
