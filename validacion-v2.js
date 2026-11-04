@@ -450,11 +450,10 @@
       if (!Number.isFinite(ts) || now >= ts) continue;
       const id = String(r.fx.id) + ':ah', prev = log[id];
       if (prev && (prev.y === 0 || prev.y === 1 || prev.push)) continue;
-      const m = v.main, sides = [['home', m.home], ['away', m.away]].filter(([, x]) => x.odds > 1);
-      if (!sides.length) continue;
-      const priced = sides.filter(([, x]) => isNum(x.evMkt) && !x.suspicious).sort((a, b) => b[1].evMkt - a[1].evMkt);
-      const [side, x] = priced[0] || sides[0];
-      const sideLine = side === 'home' ? m.line : -m.line;
+      // La apuesta que se guarda es la mejor de la lista (mayor EV contra el mercado, en cualquier línea).
+      const rows = root.TanoAsian ? root.TanoAsian.betRows(v) : [];
+      if (!rows.length) continue;
+      const x = rows.find(z => isNum(z.evMkt)) || rows[0], side = x.side, sideLine = x.sideLine, m = { line: x.line };
       log[id] = {
         id, fid: String(r.fx.id), market: 'ah', ts, lid: r.fx.lid, season: r.fx.season, hid: r.fx.hid, aid: r.fx.aid, hn: r.fx.hn, an: r.fx.an, ln: r.fx.ln, lc: r.fx.lc || '',
         line: m.line, side, sideLine, p: isNum(x.pCond) ? x.pCond : null, marketProb: isNum(x.mkt) ? x.mkt : null,

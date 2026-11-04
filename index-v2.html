@@ -409,6 +409,8 @@ body.no-hints .poisson-metric .hint{display:none}
 .routine p:last-child{margin-bottom:0}
 .help .routine{margin:0}
 .ah-side{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px}
+.ah-table td,.ah-table th{padding:6px 5px;vertical-align:top}
+.ah-value td{background:color-mix(in srgb,var(--c4) 14%,transparent)}
 .ah-side-title{margin-bottom:6px}
 .ah-side .poisson-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .ah-ladder td,.ah-ladder th{white-space:nowrap}
@@ -727,7 +729,7 @@ body.no-hints .poisson-metric .hint{display:none}
         <li><b>«Stake sugerido (Kelly)»</b>: cuánto apostar, en % de tu banca y en pesos. Si dice <b>«No apostar»</b>, hacele caso.</li>
         <li><b>«EV estimado»</b>: sale solo del cálculo de la app. Si dice «provisorio» (liga no aprobada), no te fíes de ese número solo.</li>
       </ul>
-      <p><b>Hándicap asiático</b> (<b>en prueba</b>): elegí <b>«Hándicap asiático»</b> como mercado en el Escáner. Cada tarjeta muestra a la derecha el mejor EV contra el mercado y, al abrirla, la línea principal del partido (la de cuotas más parejas) con un bloque por equipo: mejor cuota, <b>EV vs mercado</b>, stake sugerido, precio de las casas sin margen y lo que calcula el modelo. En «Ver otras líneas» está la escalera completa. La línea es la del local: <b>−0,5</b> = el local tiene que ganar; el visitante juega <b>+0,5</b>. En las de ,25 y ,75 la apuesta se divide en dos mitades, así que se puede ganar o perder la mitad. Si aparece <b>«⚠️ muy lejos del mercado»</b>, no uses el cálculo propio en ese partido. Cada partido analizado antes de empezar se guarda en el registro (la línea principal, del lado con mejor precio) y se liquida con «Liquidar registro»: ganada, media ganada, devuelta, media perdida o perdida. Tiene su propio bloque en el registro y en «¿En qué ligas le gana a las casas?». Se valida por liga junto con los demás mercados: la tabla «Hándicap asiático» mide si el modelo sabe la <b>diferencia de goles</b> (¿gana el local?, ¿no pierde?, ¿gana por 2 o más?, ¿pierde por 1 como mucho?) mejor que lo que viene pasando en la liga. En las ligas aprobadas el stake usa el modelo y las casas con ¼ de Kelly; en las demás, solo las casas con ⅛. La señal más confiable sigue siendo «EV vs mercado».</p>
+      <p><b>Hándicap asiático</b> (<b>en prueba</b>): elegí <b>«Hándicap asiático»</b> como mercado en el Escáner. Cada tarjeta muestra a la derecha el mejor EV contra el mercado. Al abrirla ves <b>una tabla con todas las apuestas de hándicap</b> del partido, ordenadas de mejor a peor: <b>Apuesta</b> (p. ej. «Real Madrid −1,5») · <b>Cuota</b> (la mejor y en qué casa) · <b>Justa</b> (la cuota sin la ganancia de las casas) · <b>EV</b> (cuánto paga de más, en verde, o de menos, en rojo) · <b>Stake</b>. La fila resaltada en verde es la que conviene mirar. −1,5 = tiene que ganar por 2 o más; +1,5 = no puede perder por más de 1. En las de ,25 y ,75 se puede ganar o perder la mitad; en las enteras el empate en la línea devuelve la plata. El cálculo propio está en «Qué dice el cálculo propio»: si la liga no está aprobada para hándicap, tomalo solo como referencia. La mejor apuesta se guarda en el registro y se liquida con «Liquidar registro». Se valida por liga junto con los demás mercados (tabla «Hándicap asiático»); en las ligas aprobadas el stake usa el modelo y las casas con ¼ de Kelly, y en las demás solo las casas con ⅛.</p>
       <p class="help-rule"><b>Regla simple:</b> apostá solo si la frase de arriba está en <b>verde</b> y el stake <b>no</b> dice «No apostar». Antes de apostar, fijate que la cuota de tu casa siga igual.</p>
     </details>
 
@@ -1600,37 +1602,33 @@ function ahHtml(v,fx){
   if(!v||!v.ok)return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span><span class="ev-badge none">No evaluable</span></div><div class="poisson-status">'+esc(v&&v.reason||'Sin datos.')+'</div>'+ahDiagHtml(v)+'</section>';
   const pct=x=>Number.isFinite(x)?fmtPct(x,1):'—';
   const ev=x=>Number.isFinite(x)?'<span style="color:'+(x>=0?'var(--c4)':'var(--c1)')+'">'+(x>=0?'+':'')+fmtNum(x*100,1)+'%</span>':'—';
-  const stake=s=>{const k=s.kelly;if(!k||!k.ok)return '—';if(!(k.stake>0))return 'No apostar';const b=bankrollValue();return fmtNum(k.stake*100,1)+'% de la banca'+(b?' ≈ $'+Math.round(b*k.stake).toLocaleString('es-AR'):'');};
-  const metric=(label,value)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value">'+value+'</span></div>';
-  const m=v.main, L=m.line;
-  const block=(name,lineTxt,s)=>'<div class="ah-side"><div class="ah-side-title"><b>'+name+' '+lineTxt+'</b>'+(s.suspicious?' <span class="ev-badge none">⚠️ muy lejos del mercado</span>':'')+'</div><div class="poisson-grid">'+
-    metric('Mejor cuota',s.best?Number(s.best.price).toFixed(2)+' · '+esc(s.best.bookmaker):'Sin cuota')+
-    metric('EV vs mercado',ev(s.evMkt))+
-    metric('Stake sugerido',stake(s))+
-    metric('Casas sin margen',pct(s.mkt))+
-    (v.hasModel?metric('Modelo',pct(s.pCond)+' · justa '+(s.fair?fmtNum(s.fair,2):'—'))+metric('EV modelo',ev(s.ev)):metric('Cuota justa de las casas',Number.isFinite(s.mkt)&&s.mkt>0?fmtNum(1/s.mkt,2):'—'))+'</div></div>';
-  const both=[m.home,m.away], priced=both.filter(s=>Number.isFinite(s.evMkt));
-  const ok=priced.filter(s=>!s.suspicious).sort((a,b)=>b.evMkt-a.evMkt), bestSide=ok[0];
-  const nameOf=s=>s===m.home?hn+' '+fmtAhLine(L):an+' '+fmtAhLine(-L);
+  const stake=s=>{const k=s.kelly;if(!k||!k.ok)return '—';if(!(k.stake>0))return 'No';const b=bankrollValue();return fmtNum(k.stake*100,1)+'%'+(b?'<br><span class="small">$'+Math.round(b*k.stake).toLocaleString('es-AR')+'</span>':'');};
+  const name=r=>(r.side==='home'?hn:an)+' '+fmtAhLine(r.sideLine);
+  const rows=window.TanoAsian.betRows(v), top=rows.slice(0,8), rest=rows.slice(8);
+  const best=rows.find(r=>Number.isFinite(r.evMkt));
   let verdict;
-  if(!m.home.best&&!m.away.best)verdict={cls:'none',t:'Sin cuotas de hándicap',x:'La API no trajo cuotas de hándicap asiático para este partido. Se muestran solo las cuotas justas del modelo.'};
-  else if(!priced.length)verdict={cls:'mid',t:'Sin referencia de las casas',x:'Hay cuota, pero no el precio sin margen de las casas para esta línea: no se puede saber si conviene.'};
-  else if(!bestSide)verdict={cls:'bad',t:'El modelo está muy lejos de las casas',x:'El cálculo propio se aleja más de 12 puntos de las casas en los dos lados. Casi siempre falla el modelo (por ejemplo, con equipos muy desparejos o con pocos datos): no lo uses en este partido.'};
-  else if(bestSide.evMkt>=0.03)verdict={cls:'good',t:'Mirar con atención',x:nameOf(bestSide)+' paga más de lo justo según las casas ('+'+'+fmtNum(bestSide.evMkt*100,1)+'%). Confirmá la cuota antes de decidir.'};
-  else verdict={cls:bestSide.evMkt>=-0.01?'mid':'bad',t:bestSide.evMkt>=-0.01?'Sin ventaja clara':'No se ve ventaja',x:'En la línea principal, la mejor cuota paga '+(bestSide.evMkt>=-0.01?'casi lo justo':'menos de lo justo')+' según las casas.'};
-  // Escalera: líneas con cuota y las cercanas a la principal (±1 gol).
-  const near=v.lines.filter(x=>x.hasOdds||(v.hasModel&&Math.abs(x.line-L)<=1+1e-9));
-  const cell=s=>(s.best?Number(s.best.price).toFixed(2)+' '+ev(s.evMkt):'<span class="small">justa '+(s.fair?fmtNum(s.fair,2):'—')+'</span>');
-  const ladder=near.map(x=>'<tr'+(Math.abs(x.line-L)<1e-9?' class="ah-main"':'')+'><td>'+fmtAhLine(x.line)+'</td><td>'+cell(x.home)+'</td><td>'+cell(x.away)+'</td></tr>').join('');
+  if(!rows.length)verdict={cls:'none',t:'Sin cuotas de hándicap',x:'La API no trajo cuotas de hándicap asiático para este partido.'};
+  else if(!best)verdict={cls:'mid',t:'Sin referencia de las casas',x:'Hay cuotas, pero no el precio sin margen de las casas para comparar: no se puede saber si conviene.'};
+  else if(best.evMkt>=0.03)verdict={cls:'good',t:'Mirar con atención',x:'<b>'+name(best)+'</b> a '+Number(best.odds).toFixed(2)+' ('+esc(best.best.bookmaker)+') paga '+fmtNum(best.evMkt*100,1)+'% más que la cuota justa de las casas. Confirmá la cuota antes de decidir.'};
+  else verdict={cls:best.evMkt>=-0.01?'mid':'bad',t:best.evMkt>=-0.01?'Sin ventaja clara':'No se ve ventaja',x:'La mejor apuesta ('+name(best)+') paga '+(best.evMkt>=-0.01?'casi lo justo':'menos de lo justo')+' según las casas.'};
+  const tr=r=>'<tr'+(Number.isFinite(r.evMkt)&&r.evMkt>=0.03?' class="ah-value"':'')+'><td><b>'+name(r)+'</b></td><td>'+Number(r.odds).toFixed(2)+'<br><span class="small">'+esc(r.best.bookmaker)+'</span></td><td>'+(r.fairMkt?fmtNum(r.fairMkt,2):'—')+'</td><td>'+ev(r.evMkt)+'</td><td>'+stake(r)+'</td></tr>';
+  const head='<tr><th>Apuesta</th><th>Cuota</th><th>Justa</th><th>EV</th><th>Stake</th></tr>';
+  const table='<table class="val-table ah-table">'+head+top.map(tr).join('')+'</table>'+
+    (rest.length?'<details class="val-box"><summary>Ver las otras '+rest.length+' apuestas</summary><table class="val-table ah-table">'+head+rest.map(tr).join('')+'</table></details>':'');
+  const model=v.hasModel?'<details class="val-box"><summary>Qué dice el cálculo propio</summary><div class="small">Goles esperados: '+hn+' '+fmtNum(v.lambdaHome,2)+' · '+an+' '+fmtNum(v.lambdaAway,2)+'. '+
+      (v.validated?'Esta liga está aprobada para hándicap.':'Esta liga no está aprobada para hándicap: tomalo como referencia, no para decidir.')+'</div>'+
+      '<table class="val-table ah-table"><tr><th>Apuesta</th><th>Prob.</th><th>Justa</th><th>EV</th></tr>'+top.map(r=>'<tr><td>'+name(r)+(r.suspicious?' ⚠️':'')+'</td><td>'+pct(r.pCond)+'</td><td>'+(r.fair?fmtNum(r.fair,2):'—')+'</td><td>'+ev(r.ev)+'</td></tr>').join('')+'</table>'+
+      (top.some(r=>r.suspicious)?'<div class="small">⚠️ = el cálculo propio se aleja más de 12 puntos de las casas: casi siempre falla el modelo.</div>':'')+'</details>'
+    :'<div class="small">Sin cálculo propio para este partido: '+esc(v.modelReason||'')+' La tabla compara solo con las casas.</div>';
   const badge=v.validated?'<span class="ev-badge solid">liga aprobada</span>':'<span class="ev-badge none">liga sin aprobar</span>';
   return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span>'+badge+'</div>'+
     '<div class="poisson-verdict '+verdict.cls+'"><b>'+esc(verdict.t)+'.</b> '+verdict.x+'</div>'+
-    '<div class="small">Línea principal'+(v.mainFromOdds?' (la de cuotas más parejas)':' según el modelo (sin cuotas)')+'. '+(v.hasModel?'Goles esperados: '+hn+' '+fmtNum(v.lambdaHome,2)+' · '+an+' '+fmtNum(v.lambdaAway,2)+'.':'<b>Solo comparación con el mercado.</b> '+esc(v.modelReason))+'</div>'+
-    block(hn,fmtAhLine(L),m.home)+block(an,fmtAhLine(-L),m.away)+
-    '<details class="val-box"><summary>Ver otras líneas ('+v.lines.filter(x=>x.hasOdds).length+' con cuota)</summary><table class="val-table ah-ladder"><tr><th>Línea '+hn+'</th><th>'+hn+'</th><th>'+an+'</th></tr>'+ladder+'</table>'+
-    '<div class="small">Cada celda: mejor cuota y EV contra el mercado; sin cuota, la cuota justa del modelo. La línea es la del local: '+hn+' −0,5 = tiene que ganar, y '+an+' juega +0,5. En las de ,25 y ,75 la apuesta se divide en dos mitades (se puede ganar o perder la mitad). La probabilidad del modelo no cuenta las devoluciones.</div></details>'+
+    (rows.length?table:'')+
+    '<div class="small"><b>Cómo leerla:</b> <b>Cuota</b> = la mejor que encontró entre las casas · <b>Justa</b> = la cuota sin la ganancia de las casas (Pinnacle o mediana) · <b>EV</b> = cuánto paga de más (verde) o de menos (rojo) frente a la justa · <b>Stake</b> = parte de tu banca. '+
+    '<b>'+hn+' −1,5</b> = tiene que ganar por 2 o más; <b>'+an+' +1,5</b> = no puede perder por más de 1. En las de ,25 y ,75 la apuesta se divide en dos mitades y se puede ganar o perder la mitad; en las enteras (−1, +2…) el empate en la línea devuelve la plata.</div>'+
+    model+
     (v.raw&&v.raw.length?'<details class="val-box"><summary>Datos crudos de la API (para revisar)</summary><div class="small">'+v.raw.map(esc).join('<br>')+'</div></details>':'')+ahDiagHtml(v)+
-    '<div class="poisson-note">Se guarda en el registro (la línea principal, del lado con mejor precio) y se liquida con «Liquidar registro». '+(v.validated?'Esta liga está aprobada para hándicap: el stake usa un promedio entre el modelo y las casas, con ¼ de Kelly.':'Esta liga no está aprobada para hándicap: el stake usa solo el precio de las casas, con ⅛ de Kelly.')+' La señal más confiable sigue siendo «EV vs mercado» (Pinnacle o mediana de casas, sin margen).</div></section>';
+    '<div class="poisson-note">La mejor apuesta se guarda en el registro y se liquida con «Liquidar registro». '+(v.validated?'Liga aprobada: el stake usa el modelo y las casas, con ¼ de Kelly.':'Liga sin aprobar: el stake usa solo las casas, con ⅛ de Kelly.')+'</div></section>';
 }
 function poissonHtml(model){
   const mk=(model&&model.market)||state.market, M=MKT_TXT[mk];
@@ -1723,7 +1721,7 @@ function cardHtml(r,i){
   </article>`;
 }
 // Hándicap: el mejor EV contra el mercado de la línea principal (sin contar lados «muy lejos del mercado»).
-function ahBest(r){const v=r&&r.ah;if(!v||!v.ok||!v.main)return null;const xs=[v.main.home,v.main.away].filter(s=>Number.isFinite(s.evMkt)&&!s.suspicious);if(!xs.length)return null;const s=xs.sort((a,b)=>b.evMkt-a.evMkt)[0];return {side:s===v.main.home?'home':'away',ev:s.evMkt,line:v.main.line};}
+function ahBest(r){const v=r&&r.ah;if(!v||!v.ok||!window.TanoAsian)return null;const x=window.TanoAsian.betRows(v).find(s=>Number.isFinite(s.evMkt));return x?{side:x.side,ev:x.evMkt,line:x.line}:null;}
 function ahSummaryBadge(r){const b=ahBest(r),v=r.ah;if(!b)return '<span class="fav-average h0" title="Sin precio de las casas para comparar">—</span>';const cls=b.ev>=0.03?'h4':b.ev>=-0.01?'h2':'h1';const name=b.side==='home'?r.fx.hn:r.fx.an,l=b.side==='home'?b.line:-b.line;return '<span class="fav-average '+cls+'" title="'+esc(name+' '+fmtAhLine(l))+'">'+(b.ev>=0?'+':'')+fmtNum(b.ev*100,1)+'%</span>';}
 function evOf(r){if(state.market==='ah'){const b=ahBest(r);return b?b.ev:null}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return d&&Number.isFinite(d.ev)?d.ev:null}
 function isEvPlus(r){if(state.market==='ah'){const b=ahBest(r);return !!b&&b.ev>=0.03}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return !!d&&(d.signal==='ev_solido'||d.signal==='ev_posible')}

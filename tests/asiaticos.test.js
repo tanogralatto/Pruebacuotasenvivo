@@ -106,3 +106,17 @@ test('sin goles esperados del modelo: igual compara con el mercado', () => {
   // Sin modelo y sin cuotas: no evaluable.
   assert.equal(A.view({ lambdaHome: null, lambdaAway: null, odds: null }, T).ok, false);
 });
+
+test('lista de apuestas: todas las líneas con cuota, ordenadas por EV contra el mercado', () => {
+  const resp = [{ bookmakers: [
+    { name: 'Pinnacle', bets: [{ name: 'Asian Handicap', values: [
+      { value: 'Home -0.5', odd: '1.95' }, { value: 'Away +0.5', odd: '1.95' }, { value: 'Home -1', odd: '2.60' }, { value: 'Away +1', odd: '1.52' }] }] },
+    { name: 'Otra', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home -0.5', odd: '2.10' }, { value: 'Away +0.5', odd: '1.80' }, { value: 'Home -1', odd: '2.55' }] }] }] }];
+  const v = A.view({ lambdaHome: 1.5, lambdaAway: 1.1, odds: A.parseOdds(resp) }, T);
+  const rows = A.betRows(v);
+  assert.equal(rows.length, 4); // −0,5 local y visitante, −1 local y visitante
+  assert.equal(rows[0].side, 'home'); assert.equal(rows[0].sideLine, -0.5); assert.equal(rows[0].odds, 2.1); // la de mejor EV primero
+  for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].evMkt >= rows[i].evMkt);
+  const away1 = rows.find(r => r.side === 'away' && r.line === -1);
+  assert.equal(away1.sideLine, 1); close(away1.fairMkt, 1 / away1.mkt);
+});

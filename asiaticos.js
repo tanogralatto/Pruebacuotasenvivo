@@ -201,7 +201,23 @@
     return { ok: true, diag, hasModel, modelReason: hasModel ? null : (inp && inp.modelReason) || 'Sin goles esperados del modelo.', lambdaHome: hasModel ? lh : null, lambdaAway: hasModel ? la : null, main: mainRow, mainFromOdds: main != null, lines, books: parsed ? parsed.books.size : 0, raw: parsed ? parsed.raw : [], betNames: parsed ? parsed.betNames : [] };
   }
 
-  const api = { diffDist, lineParts, outcome, lineProbs, parseOdds, marketByLine, mainLine, view };
+  // Lista simple de apuestas, como una tabla de mercados: cada lado de cada línea que tenga cuota,
+  // ordenada por EV contra el mercado (las que no tienen precio sin margen van al final).
+  function betRows(v) {
+    if (!v || !v.ok) return [];
+    const out = [];
+    for (const x of v.lines || []) {
+      for (const side of ['home', 'away']) {
+        const s = x[side];
+        if (!s || !(s.odds > 1)) continue;
+        out.push(Object.assign({}, s, { line: x.line, side, sideLine: side === 'home' ? x.line : -x.line, mktRef: x.mktRef,
+          fairMkt: isNum(s.mkt) && s.mkt > 0 ? 1 / s.mkt : null }));
+      }
+    }
+    return out.sort((a, b) => (isNum(b.evMkt) ? b.evMkt : -9) - (isNum(a.evMkt) ? a.evMkt : -9) || a.odds - b.odds);
+  }
+
+  const api = { betRows, diffDist, lineParts, outcome, lineProbs, parseOdds, marketByLine, mainLine, view };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoAsian = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
