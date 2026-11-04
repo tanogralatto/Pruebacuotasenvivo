@@ -712,7 +712,7 @@
         const k = String(c.lid), r = per[k] || { lid: k, status: 'faltan', n: 0, skill: null, brier: null, meanP: null, observed: null, gap: null };
         lv[k] = Object.assign({}, r, { name: names.get(k) || (lv[k] && lv[k].name) || 'Liga ' + k, country: countries.get(k) || (lv[k] && lv[k].country) || '', cfg: cfgSaved, validatedAt: stamp });
       }
-      LS.set(lvKeyOf(market), lv);
+      if (!LS.set(lvKeyOf(market), lv)) throw new Error('el navegador no tiene espacio para guardar la tabla de ligas de ' + MKT_NAME[market] + '. Probá con menos ligas.');
       renderLeagueVal();
       const html = renderValidation({ results, finalCfg, finalMetrics, rawMetrics: bt.metrics, cal, useCal, verdict, xgNote, skipped: bt.skipped, comps });
       const okNow = comps.filter(c => per[String(c.lid)] && per[String(c.lid)].status === 'aprobada').length;
@@ -734,7 +734,7 @@
         const r = await runValidationFor(mk, MKT_NAME[mk] + ' · ');
         if (r) { parts.push(`<details class="val-box"><summary><b>${esc(MKT_NAME[mk])}</b> · ${r.ok} de ${r.total} liga(s) aprobada(s)</summary>${r.html}</details>`); summary.push(`${MKT_NAME[mk]}: ${r.ok} de ${r.total}`); }
       }
-      q('#valOut').innerHTML = parts.length ? '<div class="val-box"><b>Detalle de la última validación</b> (tocá cada mercado para verlo)</div>' + parts.join('') : '';
+      q('#valOut').innerHTML = parts.length ? '<details class="val-box"><summary><b>Detalle técnico de la última validación</b> (opcional: parámetros, calibración y resultado de todas las ligas juntas)</summary>' + parts.join('') + '</details>' : '';
       const skipped = histFailed.size ? ` Se saltearon ${histFailed.size} liga(s) sin partidos terminados en esta temporada ni en la anterior.` : '';
       if (summary.length) valStatus(`Validación terminada en los 3 mercados. Ligas aprobadas: ${summary.join(' · ')}. Mirá las tablas «Ligas validadas».` + skipped);
     } catch (e) {

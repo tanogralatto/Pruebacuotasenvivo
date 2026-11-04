@@ -1045,7 +1045,24 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const LS={
   get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));if(window.tanoSyncHook)try{window.tanoSyncHook(k,v)}catch(e){}return true}catch(e){return false}}
+  // Si el almacenamiento está lleno, libera caché (historiales que se pueden volver a bajar) y reintenta.
+  // Así nunca se pierde en silencio un dato importante (registro, ligas validadas, ajuste del modelo).
+  set(k,v){
+    const json=JSON.stringify(v);
+    const write=()=>{localStorage.setItem(k,json);if(window.tanoSyncHook)try{window.tanoSyncHook(k,v)}catch(e){}return true};
+    try{return write()}catch(e){}
+    for(const share of [0.5,1]){
+      try{
+        const caches=[];
+        for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key&&key!==k&&/^o05:v\d+:(league|h|t):/.test(key))caches.push(key);}
+        if(!caches.length)break;
+        caches.sort((a,b)=>{const ta=(JSON.parse(localStorage.getItem(a)||'{}')||{}).ts||0,tb=(JSON.parse(localStorage.getItem(b)||'{}')||{}).ts||0;return ta-tb});
+        caches.slice(0,Math.max(1,Math.ceil(caches.length*share))).forEach(x=>localStorage.removeItem(x));
+      }catch(e){}
+      try{return write()}catch(e){}
+    }
+    return false;
+  }
 };
 const fmtDate=ts=>new Date(ts*1000).toLocaleDateString('es-AR',{timeZone:TZ,day:'2-digit',month:'2-digit',year:'2-digit'});
 const fmtTime=iso=>new Date(iso).toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false});
