@@ -1275,7 +1275,10 @@ async function loadLeagueHistory(lid,season){
   if(leagueHistoryMemo.has(key))return leagueHistoryMemo.get(key);
   const p=(async()=>{
     const out={games:[],gamesFT:[],current:0,previous:0,notes:[]};
-    const cur=await leagueSeasonGames(lid,season);
+    // Si la temporada actual todavía no tiene partidos terminados (pretemporada), se sigue con la anterior.
+    let cur=[];
+    try{cur=await leagueSeasonGames(lid,season);}
+    catch(e){if(e.message==='Cancelado'||state.cancel)throw e;out.notes.push('Temporada actual sin partidos terminados: '+e.message);}
     for(const g of cur){const m=toModelGame(g,lid,true);if(m)out.games.push(m);const n=toModelGameFT(g,lid,true);if(n)out.gamesFT.push(n);}
     out.current=out.games.length;
     const prevSeason=Number(season)-1;
@@ -1286,6 +1289,7 @@ async function loadLeagueHistory(lid,season){
         out.previous=out.games.length-out.current;
       }catch(e){if(e.message==='Cancelado')throw e;out.notes.push('Sin temporada anterior: '+e.message);}
     }
+    if(!out.games.length&&!out.gamesFT.length)throw new Error('API-Football no devolvió partidos terminados para la liga '+lid+' (temporadas '+season+' y '+(Number(season)-1)+').');
     return out;
   })();
   leagueHistoryMemo.set(key,p);

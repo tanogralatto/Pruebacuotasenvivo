@@ -639,8 +639,15 @@
     {
       const games = [], seen = new Set();
       for (let i = 0; i < comps.length; i++) {
-        valStatus(tag + `Bajando historial de la liga ${i + 1}/${comps.length}…`);
-        const h = await loadLeagueHistory(comps[i].lid, comps[i].season);
+        const lidKey = String(comps[i].lid);
+        if (histFailed.has(lidKey)) continue; // ya falló en otro mercado: no se vuelve a pedir
+        valStatus(tag + `Bajando historial de la liga ${i + 1}/${comps.length}…` + (histFailed.size ? ` (${histFailed.size} salteada(s) por no tener datos)` : ''));
+        let h;
+        try { h = await loadLeagueHistory(comps[i].lid, comps[i].season); }
+        catch (e) {
+          if (state.cancel || e.message === 'Cancelado') throw e;
+          histFailed.set(lidKey, e.message); continue; // una liga sin datos no corta la validación
+        }
         // También se evalúa la temporada pasada (cada partido se predice solo con partidos anteriores),
         // así las ligas europeas, que llevan pocas fechas, tienen muestra suficiente para decidir.
         for (const g of (ft ? h.gamesFT || [] : h.games)) { const k = g.id + ':' + g.leagueId; if (!seen.has(k)) { seen.add(k); games.push(Object.assign({}, g, { isTarget: true })); } }
@@ -701,6 +708,7 @@
       const lv = readLv(market), stamp = Date.now();
       const cfgSaved = { halfLifeDays: saved.halfLifeDays, priorMatches: saved.priorMatches, xgWeight: saved.xgWeight, calibration: saved.calibration };
       for (const c of comps) {
+        if (histFailed.has(String(c.lid))) continue; // sin datos: no se agrega a la tabla
         const k = String(c.lid), r = per[k] || { lid: k, status: 'faltan', n: 0, skill: null, brier: null, meanP: null, observed: null, gap: null };
         lv[k] = Object.assign({}, r, { name: names.get(k) || (lv[k] && lv[k].name) || 'Liga ' + k, country: countries.get(k) || (lv[k] && lv[k].country) || '', cfg: cfgSaved, validatedAt: stamp });
       }
@@ -708,9 +716,10 @@
       renderLeagueVal();
       const html = renderValidation({ results, finalCfg, finalMetrics, rawMetrics: bt.metrics, cal, useCal, verdict, xgNote, skipped: bt.skipped, comps });
       const okNow = comps.filter(c => per[String(c.lid)] && per[String(c.lid)].status === 'aprobada').length;
-      return { market, html, ok: okNow, total: comps.length };
+      return { market, html, ok: okNow, total: comps.filter(c => !histFailed.has(String(c.lid))).length };
     }
   }
+  const histFailed = new Map(); // ligas sin historial en esta validación (lid -> motivo)
   // «Validar» valida los tres mercados seguidos con las mismas ligas (el historial se baja una sola vez).
   async function runValidation() {
     if (!state.key) { valStatus('Primero guardá y probá tu clave de API-Football.', true); return; }
@@ -718,6 +727,7 @@
     state.cancel = false;
     q('#btnValidate').disabled = true;
     const parts = [], summary = [];
+    histFailed.clear();
     try {
       for (const mk of Object.keys(MKT_NAME)) {
         if (state.cancel) break;
@@ -725,7 +735,8 @@
         if (r) { parts.push(`<details class="val-box"><summary><b>${esc(MKT_NAME[mk])}</b> · ${r.ok} de ${r.total} liga(s) aprobada(s)</summary>${r.html}</details>`); summary.push(`${MKT_NAME[mk]}: ${r.ok} de ${r.total}`); }
       }
       q('#valOut').innerHTML = parts.length ? '<div class="val-box"><b>Detalle de la última validación</b> (tocá cada mercado para verlo)</div>' + parts.join('') : '';
-      if (summary.length) valStatus(`Validación terminada en los 3 mercados. Ligas aprobadas: ${summary.join(' · ')}. Mirá las tablas «Ligas validadas».`);
+      const skipped = histFailed.size ? ` Se saltearon ${histFailed.size} liga(s) sin partidos terminados en esta temporada ni en la anterior.` : '';
+      if (summary.length) valStatus(`Validación terminada en los 3 mercados. Ligas aprobadas: ${summary.join(' · ')}. Mirá las tablas «Ligas validadas».` + skipped);
     } catch (e) {
       valStatus('No se pudo validar: ' + e.message, true);
     } finally { q('#btnValidate').disabled = false; }
