@@ -1624,10 +1624,11 @@ function ahHtml(v,fx){
     (rest.length?'<details class="val-box"><summary>Ver los otros '+rest.length+' mercados</summary><table class="val-table ah-table">'+head+rest.map(tr).join('')+'</table></details>':'');
   const toggle='<div class="ah-toggle" role="group" aria-label="De dónde sale la cuota justa"><span class="small">Cuota justa:</span>'+
     '<button type="button" data-ah-src="mkt" aria-pressed="'+(src==='mkt')+'">De las casas</button>'+
-    '<button type="button" data-ah-src="model" aria-pressed="'+(src==='model')+'"'+(v.hasModel?'':' disabled title="Sin cálculo propio para este partido"')+'>De nuestro modelo</button></div>';
+    '<button type="button" data-ah-src="model" aria-pressed="'+(want==='model')+'">De nuestro modelo</button></div>'+
+    (want==='model'&&!v.hasModel?'<div class="poisson-verdict mid"><b>Nuestro modelo no tiene datos para este partido.</b> '+esc(v.modelReason||'')+' Pasa sobre todo en copas como la Champions, donde cada equipo juega pocos partidos. Se muestra la cuota justa de las casas.</div>':'');
   const srcNote=src==='model'
     ?'<b>Cuota justa del modelo:</b> la que calcula nuestro Poisson con los goles esperados ('+hn+' '+fmtNum(v.lambdaHome,2)+' · '+an+' '+fmtNum(v.lambdaAway,2)+'). Es como la ve Alphametri: los EV pueden salir grandes, pero si el modelo se equivoca con un equipo, todas sus apuestas fallan juntas. '+(v.validated?'Esta liga está aprobada para hándicap.':'Esta liga <b>no</b> está aprobada para hándicap.')
-    :'<b>Cuota justa de las casas:</b> el precio de Pinnacle (o la mediana) sin su ganancia. Es la referencia más confiable: un EV de +3% ya es mucho.'+(want==='model'&&!v.hasModel?' (Sin cálculo propio para este partido: '+esc(v.modelReason||'')+')':'');
+    :'<b>Cuota justa de las casas:</b> el precio de Pinnacle (o la mediana) sin su ganancia. Es la referencia más confiable: un EV de +3% ya es mucho.';
   const badge=v.validated?'<span class="ev-badge solid">liga aprobada</span>':'<span class="ev-badge none">liga sin aprobar</span>';
   return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span>'+badge+'</div>'+
     toggle+(sum?'<div class="ah-summary">'+sum+'</div>':'')+
