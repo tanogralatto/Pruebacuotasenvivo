@@ -368,6 +368,11 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .favorite-dialog form{display:flex;flex-direction:column;gap:12px}
 .favorite-dialog h2,.favorite-dialog p{margin:0}
 .favorite-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.favorite-dialog-actions .vip-choice{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.vip-strategy-badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid var(--accent);color:var(--accent);margin-left:6px;vertical-align:middle}
+.vip-strategy-badge.none{border-color:var(--muted);color:var(--muted)}
+.vip-group-title{margin:18px 0 8px;font-size:16px}
+.tg-strategy{margin:12px 0;padding:14px}
 .favorite-dialog-remove{color:var(--danger,#b83b3b)}
 .favorite-dialog-close{align-self:flex-end}
 
@@ -679,7 +684,7 @@ body.no-hints .poisson-metric .hint{display:none}
 <div id="vipFavoritesView" class="app-view hidden" role="tabpanel" aria-labelledby="tabVipFavorites">
   <section class="panel" aria-labelledby="vipFavoritesTitle">
     <h2 id="vipFavoritesTitle">★ Favoritos VIP <span id="vipFavoriteCount" class="small">· 0</span></h2>
-    <p class="small">Partidos destinados a las alertas VIP de Telegram. Podés devolverlos a Favoritos o quitarlos.</p>
+    <p class="small">Partidos destinados a las alertas VIP de Telegram, separados por estrategia (AEG y dataGol). Cada estrategia usa su propia configuración y tiene su propio historial. Podés cambiarlos de estrategia, devolverlos a Favoritos o quitarlos.</p>
     <div class="field" style="max-width:360px;margin-bottom:12px"><label for="vipFavoriteSort">Ordenar por</label><select id="vipFavoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
     <div id="vipFavorites" class="cards"><div class="empty">Todavía no agregaste partidos VIP. Guardá uno desde el Escáner y elegí Favoritos VIP.</div></div>
   </section>
@@ -825,8 +830,11 @@ body.no-hints .poisson-metric .hint{display:none}
     <p id="favoriteDialogMatch" class="small"></p>
     <p class="small">Elegí dónde querés guardarlo:</p>
     <div class="favorite-dialog-actions">
-      <button type="button" data-favorite-destination="common">Favoritos</button>
-      <button type="button" data-favorite-destination="vip" class="primary">Favoritos VIP</button>
+      <button type="button" data-favorite-destination="common" style="grid-column:1/-1">⭐ Favoritos</button>
+      <div class="vip-choice">
+        <button type="button" data-favorite-destination="vip" data-vip-strategy="aeg" class="primary">💎 VIP · AEG</button>
+        <button type="button" data-favorite-destination="vip" data-vip-strategy="datagol" class="primary">💎 VIP · dataGol</button>
+      </div>
     </div>
     <button id="favoriteDialogRemove" type="button" class="favorite-dialog-remove">Quitar de favoritos</button>
     <button type="submit" class="favorite-dialog-close">Cancelar</button>
@@ -916,23 +924,37 @@ body.no-hints .poisson-metric .hint{display:none}
       <div class="field" style="width:140px"><label for="tgMinuteStart">Desde minuto</label><input id="tgMinuteStart" type="number" min="1" max="45" step="1" value="1"></div>
       <div class="field" style="width:140px"><label for="tgMinuteEnd">Hasta minuto</label><input id="tgMinuteEnd" type="number" min="1" max="45" step="1" value="45"></div>
     </div>
-    <details class="panel" style="margin:12px 0;padding:14px">
-      <summary><strong>Parámetros independientes de Favoritos VIP</strong></summary>
-      <p class="small">Estos ajustes solo afectan las alertas enviadas al grupo VIP. No modifican los parámetros de Favoritos normales.</p>
+    <details class="panel tg-strategy" data-tg-strategy="aeg">
+      <summary><strong>💎 Favoritos VIP · AEG</strong></summary>
+      <p class="small">Estos ajustes solo afectan las alertas VIP de la estrategia AEG. No cambian la otra estrategia ni los Favoritos normales.</p>
       <div class="row">
-        <label class="check"><input id="tgVipOver05" type="checkbox" checked><span>Over 0,5 1T VIP</span></label>
-        <div class="field" style="width:150px"><label for="tgVipMin05">Cuota mínima O0,5 VIP</label><input id="tgVipMin05" type="number" min="1.01" step="0.01" value="1.50"></div>
-        <label class="check"><input id="tgVipOver10" type="checkbox" checked><span>Over 1,0 1T VIP</span></label>
-        <div class="field" style="width:150px"><label for="tgVipMin10">Cuota mínima O1,0 VIP</label><input id="tgVipMin10" type="number" min="1.01" step="0.01" value="1.65"></div>
+        <label class="check"><input id="tg_aeg_over05" type="checkbox" checked><span>Over 0,5 1T</span></label>
+        <div class="field" style="width:150px"><label for="tg_aeg_min05">Cuota mínima O0,5</label><input id="tg_aeg_min05" type="number" min="1.01" step="0.01" value="1.50"></div>
+        <label class="check"><input id="tg_aeg_over10" type="checkbox" checked><span>Over 1,0 1T</span></label>
+        <div class="field" style="width:150px"><label for="tg_aeg_min10">Cuota mínima O1,0</label><input id="tg_aeg_min10" type="number" min="1.01" step="0.01" value="1.65"></div>
       </div>
       <div class="row">
-        <div class="field" style="width:140px"><label for="tgVipMinuteStart">VIP desde minuto</label><input id="tgVipMinuteStart" type="number" min="1" max="45" step="1" value="1"></div>
-        <div class="field" style="width:140px"><label for="tgVipMinuteEnd">VIP hasta minuto</label><input id="tgVipMinuteEnd" type="number" min="1" max="45" step="1" value="45"></div>
+        <div class="field" style="width:140px"><label for="tg_aeg_start">Desde minuto</label><input id="tg_aeg_start" type="number" min="1" max="45" step="1" value="1"></div>
+        <div class="field" style="width:140px"><label for="tg_aeg_end">Hasta minuto</label><input id="tg_aeg_end" type="number" min="1" max="45" step="1" value="45"></div>
+      </div>
+    </details>
+    <details class="panel tg-strategy" data-tg-strategy="datagol">
+      <summary><strong>💎 Favoritos VIP · dataGol</strong></summary>
+      <p class="small">Estos ajustes solo afectan las alertas VIP de la estrategia dataGol. No cambian la otra estrategia ni los Favoritos normales.</p>
+      <div class="row">
+        <label class="check"><input id="tg_datagol_over05" type="checkbox" checked><span>Over 0,5 1T</span></label>
+        <div class="field" style="width:150px"><label for="tg_datagol_min05">Cuota mínima O0,5</label><input id="tg_datagol_min05" type="number" min="1.01" step="0.01" value="1.50"></div>
+        <label class="check"><input id="tg_datagol_over10" type="checkbox" checked><span>Over 1,0 1T</span></label>
+        <div class="field" style="width:150px"><label for="tg_datagol_min10">Cuota mínima O1,0</label><input id="tg_datagol_min10" type="number" min="1.01" step="0.01" value="1.65"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="width:140px"><label for="tg_datagol_start">Desde minuto</label><input id="tg_datagol_start" type="number" min="1" max="45" step="1" value="1"></div>
+        <div class="field" style="width:140px"><label for="tg_datagol_end">Hasta minuto</label><input id="tg_datagol_end" type="number" min="1" max="45" step="1" value="45"></div>
       </div>
     </details>
     <div class="row">
       <div class="field grow"><label for="tgVipChatId">Chat ID del grupo Telegram VIP</label><input id="tgVipChatId" type="text" autocomplete="off" placeholder="-1001234567890"></div>
-      <span class="small">Agregá el bot al grupo VIP y pegá aquí su chat ID. Las alertas VIP usan los parámetros VIP de arriba.</span>
+      <span class="small">Agregá el bot al grupo VIP y pegá aquí su chat ID. Las alertas de AEG y de dataGol van a este grupo, cada una con sus propios parámetros de arriba.</span>
     </div>
     <div class="row" style="align-items:center">
       <button id="tgSave" type="button" class="primary">Guardar configuración</button>
@@ -956,11 +978,13 @@ body.no-hints .poisson-metric .hint{display:none}
         <label for="alertHistoryMonth">Mes de las alertas</label>
         <input id="alertHistoryMonth" type="month" aria-describedby="alertHistoryMonthHelp">
       </div>
-      <span id="alertHistoryMonthHelp" class="small">Cada apuesta se asigna al mes en que se generó la alerta. Favoritos y VIP se calculan por separado.</span>
+      <span id="alertHistoryMonthHelp" class="small">Cada apuesta se asigna al mes en que se generó la alerta. Favoritos, AEG y dataGol se calculan por separado.</span>
     </div>
     <div class="alert-history-tabs" role="tablist" aria-label="Estrategia de alertas">
       <button type="button" class="alert-history-tab active" data-history-group="favorites" role="tab" aria-selected="true">⭐ Favoritos</button>
-      <button type="button" class="alert-history-tab" data-history-group="vip" role="tab" aria-selected="false">💎 Favoritos VIP</button>
+      <button type="button" class="alert-history-tab" data-history-group="aeg" role="tab" aria-selected="false">💎 AEG</button>
+      <button type="button" class="alert-history-tab" data-history-group="datagol" role="tab" aria-selected="false">💎 dataGol</button>
+      <button type="button" class="alert-history-tab hidden" data-history-group="vip_legacy" role="tab" aria-selected="false">💎 VIP anteriores</button>
     </div>
     <div id="alertHistorySummary" class="alert-history-summary"></div>
     <div id="alertHistoryList" class="cards"><div class="empty">Cargando historial…</div></div>
@@ -1930,6 +1954,9 @@ function saveLocalFavorites(){
   catch(e){console.warn('[TANOapp] No se pudieron guardar favoritos en este navegador.',e);}
 }
 function favoriteGroup(f){return f&&String(f.group||'common').toLowerCase()==='vip'?'vip':'common'}
+// Estrategias VIP: cada una con su configuración de Telegram y su historial.
+const VIP_STRATEGIES={aeg:'AEG',datagol:'dataGol'};
+function vipStrategyOf(f){const k=String(f&&f.vipStrategy||'').toLowerCase();return VIP_STRATEGIES[k]?k:''}
 function favoriteSources(f){
   if(!f)return [];
   const sources=Array.isArray(f.sources)?f.sources.filter(x=>x==='scanner'||x==='golht'):[];
@@ -1969,10 +1996,11 @@ function renderSavedFavoriteCard(f,group){
   const a=f.analysis||(currentResult?{avg:currentResult.avg,n:currentResult.n,tr:currentResult.tr}:null);
   const cardFx=currentResult?.fx?{...fx,...currentResult.fx}:fx;
   const action=group==='vip'
-    ? `<button type="button" data-move-favorite="${esc(f.id)}">Pasar a Favoritos</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`
-    : `<button type="button" class="primary" data-move-favorite="${esc(f.id)}">Enviar a Favoritos VIP</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`;
+    ? Object.keys(VIP_STRATEGIES).filter(k=>k!==vipStrategyOf(f)).map(k=>`<button type="button" data-vip-strategy-set="${k}" data-fav="${esc(f.id)}">Pasar a ${VIP_STRATEGIES[k]}</button>`).join('')+`<button type="button" data-move-favorite="${esc(f.id)}">Pasar a Favoritos</button><button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`
+    : Object.keys(VIP_STRATEGIES).map(k=>`<button type="button" class="primary" data-move-favorite="${esc(f.id)}" data-vip-strategy="${k}">💎 VIP ${VIP_STRATEGIES[k]}</button>`).join('')+`<button type="button" data-remove-favorite="${esc(f.id)}">Quitar</button>`;
   const actions=`<div class="saved-favorite-actions">${action}</div>`;
-  const origin='<p class="favorite-origin">Guardado desde: '+esc(favoriteOriginLabel(f))+'</p>';
+  const strat=group==='vip'?(vipStrategyOf(f)?'<span class="vip-strategy-badge">'+esc(VIP_STRATEGIES[vipStrategyOf(f)])+'</span>':'<span class="vip-strategy-badge none">Sin estrategia</span>'):'';
+  const origin='<p class="favorite-origin">Guardado desde: '+esc(favoriteOriginLabel(f))+strat+'</p>';
   // Modelo propio: el guardado con el favorito; si no tiene, el del análisis actual (si es el mismo mercado).
   const savedPoisson=f.poisson||(currentResult&&currentResult.poisson&&(!f.market||f.market===marketDefs[state.market].short)?currentResult.poisson:undefined);
   if(a&&Array.isArray(a.tr)){
@@ -2020,9 +2048,15 @@ function renderVipFavorites(){
   });
   $('#vipFavoriteCount').textContent='· '+items.length;
   if(!items.length){box.innerHTML='<div class="empty">Todavía no agregaste partidos VIP. Enviá uno desde Favoritos.</div>';return;}
-  box.innerHTML=items.map(f=>renderSavedFavoriteCard(f,'vip')).join('');
+  const sections=[...Object.keys(VIP_STRATEGIES).map(k=>[k,'💎 '+VIP_STRATEGIES[k]]),['','Sin estrategia (elegí AEG o dataGol; mientras tanto el bot usa la configuración VIP anterior)']];
+  box.innerHTML=sections.map(([k,title])=>{
+    const list=items.filter(f=>vipStrategyOf(f)===k);
+    if(!list.length&&!k)return '';
+    return '<h3 class="vip-group-title">'+esc(title)+' <span class="small">· '+list.length+'</span></h3>'+
+      (list.length?list.map(f=>renderSavedFavoriteCard(f,'vip')).join(''):'<div class="empty">Sin partidos en esta estrategia.</div>');
+  }).join('');
 }
-function saveFavoriteToGroup(id,group,origin){
+function saveFavoriteToGroup(id,group,origin,vipStrategy){
   const key=String(id),found=favoriteForView(key,origin);
   const current=favoriteState.items.get(key);
   if(!found&&!current){authMessage('No pude encontrar los datos de ese partido. Volvé a cargar la lista.',true);return}
@@ -2038,6 +2072,7 @@ function saveFavoriteToGroup(id,group,origin){
   };
   const record={
     ...(current||{}),id:key,group:group==='vip'?'vip':'common',sources:[...sources],
+    vipStrategy:group==='vip'?(VIP_STRATEGIES[vipStrategy]?vipStrategy:vipStrategyOf(current)||null):null,
     home:fixture.hn,away:fixture.an,league:(fixture.lc?fixture.lc+' · ':'')+fixture.ln,
     kickoff:fixture.iso,dateText:fixture.iso?fmtDate(Math.floor(new Date(fixture.iso).getTime()/1000))+' · '+fmtTime(fixture.iso):'Fecha no disponible',
     market:origin==='golht'?'Over 0,5 HT':(current?.market||marketDefs[state.market].short),
@@ -2072,9 +2107,10 @@ function toggleGolHtFavorite(fixtureId){
   if(current&&favoriteSources(current).includes('golht'))removeFavoriteSource(id,'golht');
   else saveFavoriteToGroup(id,'common','golht');
 }
-function moveFavoriteToGroup(fixtureId,group){
+function moveFavoriteToGroup(fixtureId,group,vipStrategy){
   const id=String(fixtureId),current=favoriteState.items.get(id);if(!current)return;
-  favoriteState.items.set(id,{...current,group:group==='vip'?'vip':'common',updatedAt:Date.now()});
+  const vip=group==='vip';
+  favoriteState.items.set(id,{...current,group:vip?'vip':'common',vipStrategy:vip?(VIP_STRATEGIES[vipStrategy]?vipStrategy:vipStrategyOf(current)||null):null,updatedAt:Date.now()});
   syncFavoriteToCloud(id);refreshFavoriteViews();
 }
 function showFavoriteDestinationDialog(fixtureId){
@@ -2112,7 +2148,7 @@ $('#favoriteDestinationDialog').addEventListener('click',e=>{
   const destination=e.target.closest('[data-favorite-destination]');
   if(destination){
     const id=$('#favoriteDestinationDialog').dataset.fixtureId;
-    saveFavoriteToGroup(id,destination.dataset.favoriteDestination,'scanner');
+    saveFavoriteToGroup(id,destination.dataset.favoriteDestination,'scanner',destination.dataset.vipStrategy);
     $('#favoriteDestinationDialog').close();
     return;
   }
@@ -2123,13 +2159,15 @@ $('#favoriteDestinationDialog').addEventListener('click',e=>{
 });
 $('#favorites').addEventListener('click',e=>{
   const move=e.target.closest('[data-move-favorite]');
-  if(move){moveFavoriteToGroup(move.dataset.moveFavorite,'vip');return}
+  if(move){moveFavoriteToGroup(move.dataset.moveFavorite,'vip',move.dataset.vipStrategy);return}
   const remove=e.target.closest('[data-remove-favorite]');
   if(remove){removeFavorite(remove.dataset.removeFavorite);return}
 });
 $('#vipFavorites').addEventListener('click',e=>{
   const move=e.target.closest('[data-move-favorite]');
   if(move){moveFavoriteToGroup(move.dataset.moveFavorite,'common');return}
+  const strat=e.target.closest('[data-vip-strategy-set]');
+  if(strat){moveFavoriteToGroup(strat.dataset.fav,'vip',strat.dataset.vipStrategySet);return}
   const remove=e.target.closest('[data-remove-favorite]');
   if(remove)removeFavorite(remove.dataset.removeFavorite);
 });
@@ -2724,12 +2762,16 @@ function setTelegramForm(data={}) {
   q('#tgMin10').value = Number(data.over10?.minOdds ?? 1.65).toFixed(2);
   q('#tgMinuteStart').value = Number(data.minuteStart ?? 1);
   q('#tgMinuteEnd').value = Number(data.minuteEnd ?? 45);
-  q('#tgVipOver05').checked = data.vipOver05?.enabled !== false;
-  q('#tgVipMin05').value = Number(data.vipOver05?.minOdds ?? 1.50).toFixed(2);
-  q('#tgVipOver10').checked = data.vipOver10?.enabled !== false;
-  q('#tgVipMin10').value = Number(data.vipOver10?.minOdds ?? 1.65).toFixed(2);
-  q('#tgVipMinuteStart').value = Number(data.vipMinuteStart ?? 1);
-  q('#tgVipMinuteEnd').value = Number(data.vipMinuteEnd ?? 45);
+  // Cada estrategia VIP arranca con los valores VIP anteriores hasta que se guarde la suya.
+  for (const k of ['aeg', 'datagol']) {
+    const st = (data.vipStrategies && data.vipStrategies[k]) || {};
+    q('#tg_' + k + '_over05').checked = (st.over05 || data.vipOver05 || {}).enabled !== false;
+    q('#tg_' + k + '_min05').value = Number((st.over05 || {}).minOdds ?? data.vipOver05?.minOdds ?? 1.50).toFixed(2);
+    q('#tg_' + k + '_over10').checked = (st.over10 || data.vipOver10 || {}).enabled !== false;
+    q('#tg_' + k + '_min10').value = Number((st.over10 || {}).minOdds ?? data.vipOver10?.minOdds ?? 1.65).toFixed(2);
+    q('#tg_' + k + '_start').value = Number(st.minuteStart ?? data.vipMinuteStart ?? 1);
+    q('#tg_' + k + '_end').value = Number(st.minuteEnd ?? data.vipMinuteEnd ?? 45);
+  }
   q('#tgVipChatId').value = String(data.vipChatId || '');
 }
 function startTelegramSettings(user) {
@@ -2749,15 +2791,20 @@ function startTelegramSettings(user) {
     if (!telegramConfigLoaded) { telegramStatus('Esperá a que termine de cargar.', true); return; }
     const min05 = Number(q('#tgMin05').value), min10 = Number(q('#tgMin10').value);
     const start = Number(q('#tgMinuteStart').value), end = Number(q('#tgMinuteEnd').value);
-    const vipMin05 = Number(q('#tgVipMin05').value), vipMin10 = Number(q('#tgVipMin10').value);
-    const vipStart = Number(q('#tgVipMinuteStart').value), vipEnd = Number(q('#tgVipMinuteEnd').value);
-    if (![min05, min10, vipMin05, vipMin10].every(v => Number.isFinite(v) && v >= 1.01)) {
+    const vipStrategies = {};
+    for (const k of ['aeg', 'datagol']) {
+      vipStrategies[k] = {
+        over05: { enabled: q('#tg_' + k + '_over05').checked, minOdds: Number(q('#tg_' + k + '_min05').value) },
+        over10: { enabled: q('#tg_' + k + '_over10').checked, minOdds: Number(q('#tg_' + k + '_min10').value) },
+        minuteStart: Number(q('#tg_' + k + '_start').value), minuteEnd: Number(q('#tg_' + k + '_end').value)
+      };
+    }
+    const vs = Object.values(vipStrategies);
+    if (![min05, min10, ...vs.flatMap(v => [v.over05.minOdds, v.over10.minOdds])].every(v => Number.isFinite(v) && v >= 1.01)) {
       telegramStatus('Todas las cuotas mínimas deben ser iguales o mayores a 1,01.', true); return;
     }
-    if (![start, end, vipStart, vipEnd].every(Number.isInteger) ||
-        start < 1 || end > 45 || start > end ||
-        vipStart < 1 || vipEnd > 45 || vipStart > vipEnd) {
-      telegramStatus('Los rangos normal y VIP deben estar entre 1 y 45; el minuto inicial no puede superar al final.', true); return;
+    if (![[start, end], ...vs.map(v => [v.minuteStart, v.minuteEnd])].every(([a, b]) => Number.isInteger(a) && Number.isInteger(b) && a >= 1 && b <= 45 && a <= b)) {
+      telegramStatus('Los rangos de minutos (normal, AEG y dataGol) deben estar entre 1 y 45; el minuto inicial no puede superar al final.', true); return;
     }
     const btn = q('#tgSave'); btn.disabled = true;
     telegramStatus('Guardando…');
@@ -2768,13 +2815,11 @@ function startTelegramSettings(user) {
         over05: { enabled: q('#tgOver05').checked, minOdds: min05 },
         over10: { enabled: q('#tgOver10').checked, minOdds: min10 },
         minuteStart: start, minuteEnd: end,
-        vipOver05: { enabled: q('#tgVipOver05').checked, minOdds: vipMin05 },
-        vipOver10: { enabled: q('#tgVipOver10').checked, minOdds: vipMin10 },
-        vipMinuteStart: vipStart, vipMinuteEnd: vipEnd,
+        vipStrategies,
         vipChatId: q('#tgVipChatId').value.trim(),
         updatedBy: user.email || '', updatedAt: serverTimestamp()
       }, { merge: true });
-      telegramStatus('Configuración guardada. Favoritos normales y VIP tienen parámetros independientes.');
+      telegramStatus('Configuración guardada. Favoritos normales, VIP AEG y VIP dataGol tienen parámetros independientes.');
     } catch (e) {
       telegramStatus('No se pudo guardar: ' + friendly(e) + ' Revisá las reglas de Firestore.', true);
     } finally { btn.disabled = false; }
@@ -3020,7 +3065,11 @@ function startAlertHistory() {
     const alerts = allDocs
       .filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; })
       .map(d => ({ id: d.id, ...d.data() }));
-    const groupAlerts = alerts.filter(a => activeGroup === 'vip' ? a.favorite_group === 'vip' : a.favorite_group !== 'vip');
+    // VIP se divide por estrategia; las alertas VIP de antes de la división quedan en «VIP anteriores».
+    const stratOf = a => a.favorite_group !== 'vip' ? 'favorites' : (['aeg', 'datagol'].includes(String(a.vip_strategy || '').toLowerCase()) ? String(a.vip_strategy).toLowerCase() : 'vip_legacy');
+    const legacyTab = document.querySelector('[data-history-group="vip_legacy"]');
+    if (legacyTab) legacyTab.classList.toggle('hidden', !alerts.some(a => stratOf(a) === 'vip_legacy') && activeGroup !== 'vip_legacy');
+    const groupAlerts = alerts.filter(a => stratOf(a) === activeGroup);
     // El período depende de la fecha original de la alerta, no del momento en que se liquida.
     const monthAlerts = groupAlerts.filter(a => monthKey(a.created_at) === selectedMonth);
     const settled = monthAlerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
@@ -3073,7 +3122,7 @@ function startAlertHistory() {
       return '<article class="alert-history-card" data-alert-id="' + esc(a.id) + '">'
         + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong><div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
         + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
-        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 Favoritos VIP · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + balance + '</div>'
+        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 VIP ' + ({ aeg: 'AEG', datagol: 'dataGol' }[String(a.vip_strategy || '').toLowerCase()] || 'anterior') + ' · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + balance + '</div>'
         + '<div class="alert-bet-edit"><label>Cuota real de entrada<input type="number" min="1.01" step="0.01" inputmode="decimal" data-entry-odd="' + esc(a.id) + '" value="' + esc(entryOddLabel) + '" placeholder="' + esc(originalOddLabel) + '"></label>'
         + '<label>Stake<input type="text" value="1 unidad (' + esc(unitValue.toLocaleString('es-AR')) + ' ARS)" readonly></label>'
         + '<button type="button" data-save-bet="' + esc(a.id) + '">Guardar cuota real</button></div>'
