@@ -1,0 +1,1172 @@
+﻿mercado,pais,liga,id_liga,estado,partidos,mejora_pct,confianza,dice_pct,pasa_pct,desvio_pts,validada
+ht05,,UEFA Champions League,2,faltan,70,5,,76.2,77.1,3.3,2026-11-03
+ht05,,UEFA Youth League,14,faltan,10,64.3,,82.1,100,,2026-11-03
+ht05,Inglaterra,Premier League,39,no,392,-0.1,baja,69.4,70.4,4.4,2026-11-04
+ht05,Inglaterra,Championship,40,no,613,-0.4,baja,70.2,72.8,4.9,2026-11-04
+ht05,Inglaterra,League One,41,no,604,1,media,67.4,70.4,3.3,2026-11-04
+ht05,Inglaterra,League Two,42,no,613,-0.5,baja,68.3,68.2,4.6,2026-11-04
+ht05,Inglaterra,National League,43,aprobada,631,1.5,alta,70.9,72.1,2.8,2026-11-04
+ht05,Inglaterra,FA WSL,44,no,135,-2.2,baja,73.7,78.5,4,2026-11-04
+ht05,Inglaterra,National League - North,50,no,611,-0.9,baja,72.8,75.9,6.7,2026-11-04
+ht05,Inglaterra,National League - South,51,no,611,0.5,baja,70.8,73,2.9,2026-11-04
+ht05,Inglaterra,Non League Premier - Isthmian,58,no,513,0.1,baja,77.1,76.4,2.6,2026-11-04
+ht05,Inglaterra,Non League Premier - Northern,59,no,491,-0.7,baja,70.3,72.9,7.5,2026-11-04
+ht05,Inglaterra,Non League Premier - Southern South,60,no,516,0.4,baja,75.5,76.4,2.9,2026-11-04
+ht05,Francia,Ligue 1,61,no,320,-1,baja,70,70.3,5,2026-11-04
+ht05,Francia,Ligue 2,62,no,320,0.2,baja,68.5,66.9,5,2026-11-04
+ht05,Francia,Ligue 3,63,no,292,-1.8,baja,66.2,69.9,4.3,2026-11-04
+ht05,Francia,Feminine Division 1,64,no,119,0.1,baja,75.3,73.1,1.1,2026-11-04
+ht05,Francia,Coupe de France,66,faltan,0,,,,,,2026-11-04
+ht05,Francia,National 2 - Group A,67,no,206,1.4,baja,65.1,68,6,2026-11-04
+ht05,Francia,National 2 - Group B,68,no,208,-0.2,baja,66.1,67.3,3.5,2026-11-04
+ht05,Francia,National 2 - Group C,69,no,217,-0.6,baja,68.1,68.7,7.5,2026-11-04
+ht05,Brasil,Serie A,71,no,626,-1,baja,67.4,72.4,20.2,2026-11-04
+ht05,Brasil,Serie B,72,aprobada,640,1.1,alta,63.3,65.6,3.7,2026-11-04
+ht05,Alemania,Bundesliga,78,no,308,0.3,baja,76,75.6,7.6,2026-11-04
+ht05,Alemania,2. Bundesliga,79,no,316,0.8,baja,71.8,74.1,6.8,2026-11-04
+ht05,Alemania,3. Liga,80,no,407,-0.8,baja,74.4,77.6,12,2026-11-04
+ht05,Alemania,Regionalliga - Bayern,83,no,379,-0.4,baja,71,70.7,4.3,2026-11-04
+ht05,Alemania,Regionalliga - Nord,84,no,367,1.3,media,79,80.9,2.7,2026-11-04
+ht05,Alemania,Regionalliga - Nordost,85,no,368,0.1,baja,73.6,71.7,4.7,2026-11-04
+ht05,Alemania,Regionalliga - SudWest,86,aprobada,349,2.7,alta,78.5,79.1,1.1,2026-11-04
+ht05,Alemania,Regionalliga - West,87,no,364,0.6,baja,75.3,76.4,6.8,2026-11-04
+ht05,Países Bajos,Eredivisie,88,no,335,2.2,media,77,78.8,5.2,2026-11-04
+ht05,Países Bajos,Eerste Divisie,89,no,439,0.8,media,76.3,77,5.3,2026-11-04
+ht05,Países Bajos,Derde Divisie,92,no,299,-0.4,baja,73.2,72.9,9.5,2026-11-04
+ht05,Portugal,Primeira Liga,94,no,327,1.6,media,70.6,68.5,2.1,2026-11-04
+ht05,Portugal,Segunda Liga,95,no,310,0.1,baja,64.1,65.8,10,2026-11-04
+ht05,Japón,J1 League,98,no,262,-1.1,baja,68,68.7,4.4,2026-11-04
+ht05,Japón,J2 League,99,no,440,-0.6,baja,66.2,68,10,2026-11-04
+ht05,Japón,J3 League,100,no,444,0.3,baja,67.1,66.4,1.5,2026-11-04
+ht05,Noruega,Eliteserien,103,no,365,0.8,baja,75.8,80.8,11.9,2026-11-04
+ht05,Polonia,Ekstraklasa,106,no,346,1.2,baja,70.8,71.4,0.6,2026-11-04
+ht05,Polonia,I Liga,107,no,336,1.1,baja,74,70.5,3.8,2026-11-04
+ht05,Polonia,II Liga - East,109,no,333,-1.2,baja,72.6,76.6,12,2026-11-04
+ht05,Gales,Premier League,110,no,244,1.8,media,74.8,74.6,0.2,2026-11-04
+ht05,Gales,FAW Championship,111,no,528,0.8,baja,74.4,75,9.4,2026-11-04
+ht05,Suecia,Superettan,114,no,386,-1.5,baja,71.3,72.5,11,2026-11-04
+ht05,Belarus,Premier League,116,no,390,-0.1,baja,68.1,70.8,5.6,2026-11-04
+ht05,Belarus,1. Division,117,no,494,1.1,media,74.3,73.3,2.7,2026-11-04
+ht05,Dinamarca,1. Division,120,no,212,0.1,baja,72.1,74.5,9.3,2026-11-04
+ht05,Dinamarca,2. Division,122,no,219,-0.8,baja,73.1,76.7,19.1,2026-11-04
+ht05,Argentina,Liga Profesional Argentina,128,no,885,0.8,media,57.1,59.5,7.5,2026-11-04
+ht05,Argentina,Primera Nacional,129,no,1131,-0.4,baja,54.7,55.3,11.6,2026-11-04
+ht05,Argentina,Primera B Metropolitana,131,no,798,0.7,baja,57.7,57.8,3.4,2026-11-04
+ht05,Argentina,Primera C,132,no,753,-0.1,baja,57.5,56.3,14.7,2026-11-04
+ht05,Argentina,Torneo Federal A,134,no,906,0.9,media,60,59.8,14.6,2026-11-04
+ht05,Italia,Serie A,135,no,402,0,baja,65,66.4,3.9,2026-11-04
+ht05,Italia,Serie B,136,no,395,-1.2,baja,67.5,70.9,4.4,2026-11-04
+ht05,Italia,Serie C - Girone A,138,no,408,-0.1,baja,63.3,64.5,12.4,2026-11-04
+ht05,Italia,Serie A Women,139,no,121,1.8,media,68.5,67.8,4.7,2026-11-04
+ht05,España,La Liga,140,no,410,1.2,media,67.9,68.5,1.5,2026-11-04
+ht05,España,Segunda División,141,no,492,-0.7,baja,67.8,69.7,2.6,2026-11-04
+ht05,España,Primera División Femenina,142,no,253,1.5,media,73.1,71.5,2.4,2026-11-04
+ht05,Bélgica,Jupiler Pro League,144,no,337,1.4,media,69.8,72.7,4.3,2026-11-04
+ht05,Bélgica,Challenger Pro League,145,no,259,-1.4,baja,70.2,74.5,11.1,2026-11-04
+ht05,Bélgica,Second Amateur Division - ACFF,148,no,309,1.9,media,73.4,72.2,1.1,2026-11-04
+ht05,Bélgica,Second Amateur Division - VFV A,149,no,239,1,baja,75.2,76.6,2.6,2026-11-04
+ht05,Bélgica,Second Amateur Division - VFV B,150,no,244,0.2,baja,75.3,77.5,2.6,2026-11-04
+ht05,Costa Rica,Primera División,162,no,214,-1.2,baja,68.8,71,6.7,2026-11-04
+ht05,China,League One,170,no,397,-0.6,baja,69.7,66.8,6.4,2026-11-04
+ht05,Bulgaria,First League,172,no,324,1.1,media,63.6,63.6,5.9,2026-11-04
+ht05,Bulgaria,Second League,173,no,313,0.6,baja,69.4,68.4,5.6,2026-11-04
+ht05,Bulgaria,Third League - Northeast,175,no,183,2.2,media,75.8,71.6,6.4,2026-11-04
+ht05,Bulgaria,Third League - Northwest,176,no,118,-0.4,baja,74.5,79.7,4.2,2026-11-04
+ht05,Bulgaria,Third League - Southeast,177,aprobada,386,1.9,alta,74.6,72.3,12.3,2026-11-04
+ht05,Bulgaria,Third League - Southwest,178,no,330,0.7,baja,70.1,70,1.7,2026-11-04
+ht05,Escocia,Premiership,179,no,254,-5.5,baja,70.1,80.3,11.1,2026-11-04
+ht05,Escocia,Championship,180,no,194,0.4,baja,67.1,70.6,5.3,2026-11-04
+ht05,Escocia,FA Cup,181,faltan,0,,,,,,2026-11-04
+ht05,Escocia,League One,183,no,195,-0.4,baja,69.3,73.8,5.4,2026-11-04
+ht05,Escocia,League Two,184,aprobada,204,1.8,alta,76.9,76,5.1,2026-11-04
+ht05,Escocia,League Cup,185,faltan,4,-7.2,baja,74.1,50,,2026-11-04
+ht05,Algeria,Ligue 1,186,aprobada,227,2.3,alta,60.2,62.6,5.3,2026-11-04
+ht05,Algeria,Ligue 2,187,no,446,-0.5,baja,56.5,60.8,8.5,2026-11-04
+ht05,Australia,A-League,188,no,144,3,media,71,73.6,7.1,2026-11-04
+ht05,Australia,A-League Women,190,faltan,92,-0.9,baja,71.6,66.3,4.5,2026-11-04
+ht05,Grecia,Super League 1,197,no,243,1.8,baja,69.4,72,2.8,2026-11-04
+ht05,Marruecos,Botola Pro,200,no,213,0.5,baja,60.8,60.1,4.5,2026-11-04
+ht05,Marruecos,Botola 2,201,no,204,1.7,media,56.9,59.3,8.5,2026-11-04
+ht05,Turquía,Süper Lig,203,no,322,1.1,media,67.9,69.9,2.5,2026-11-04
+ht05,Turquía,1. Lig,204,no,406,1.1,media,71.7,70.2,2.3,2026-11-04
+ht05,Turquía,2. Lig,205,no,599,0.4,baja,73.1,72.5,9.8,2026-11-04
+ht05,Suiza,Super League,207,no,258,1,baja,76.6,76.4,3.6,2026-11-04
+ht05,Croacia,HNL,210,no,203,-0.6,baja,72.5,75.9,15.6,2026-11-04
+ht05,Croacia,First NL,211,no,217,-1,baja,64,68.2,8,2026-11-04
+ht05,Austria,Bundesliga,218,no,218,0,baja,72.7,72.9,7,2026-11-04
+ht05,Austria,2. Liga,219,no,247,0,baja,72.6,74.5,3.9,2026-11-04
+ht05,Austria,Regionalliga - Ost,221,no,313,0.9,baja,76.3,77.6,8.5,2026-11-04
+ht05,Austria,Regionalliga - West,223,no,292,1.3,baja,78.7,78.1,3.7,2026-11-04
+ht05,Egipto,Premier League,233,no,314,1,baja,55.7,60.2,9.8,2026-11-04
+ht05,Honduras,Liga Nacional,234,no,272,0.2,baja,72.1,71.7,3.8,2026-11-04
+ht05,Rusia,Premier League,235,no,282,0.1,baja,69.2,69.9,4.4,2026-11-04
+ht05,Rusia,First League,236,no,361,-0.1,baja,65.9,66.8,3.7,2026-11-04
+ht05,Colombia,Primera A,239,no,745,0.4,baja,67,66.2,7.3,2026-11-04
+ht05,,Primera B,240,no,511,0.1,,67.5,66.9,3.3,2026-11-03
+ht05,Ecuador,Liga Pro,242,no,531,-0.8,baja,66.1,67.2,8.2,2026-11-04
+ht05,Paraguay,Division Profesional - Clausura,252,no,185,-1.6,baja,65.4,65.9,1.6,2026-11-04
+ht05,Estados Unidos,Major League Soccer,253,no,937,0.3,baja,75.3,78.3,3.4,2026-11-04
+ht05,Luxembourg,National Division,261,no,263,2.1,media,70.2,73.8,6.8,2026-11-04
+ht05,México,Liga MX,262,no,407,0,baja,73.6,71.7,9.8,2026-11-04
+ht05,México,Liga de Expansión MX,263,no,296,-0.2,baja,73.5,75,10.1,2026-11-04
+ht05,Chile,Primera División,265,no,381,1.2,media,67.3,69,4.1,2026-11-04
+ht05,Chile,Primera B,266,no,417,-0.7,baja,66.6,66.4,5.7,2026-11-04
+ht05,Uruguay,Primera División,268,no,387,-0.6,baja,65,63.8,12.1,2026-11-04
+ht05,Uruguay,Segunda División,269,no,381,-1.2,baja,63.6,64.3,12.1,2026-11-04
+ht05,Hungary,NB I,271,no,219,-2.6,baja,73.7,68.5,5.1,2026-11-04
+ht05,Hungary,NB II,272,no,262,1.2,baja,68.2,67.9,6.4,2026-11-04
+ht05,Indonesia,Liga 1,274,no,301,-3.1,baja,64.9,73.4,15.6,2026-11-04
+ht05,Indonesia,Liga 2,275,no,258,1.2,baja,68,69.8,2.8,2026-11-04
+ht05,Malaysia,Super League,278,no,144,1.5,baja,77.4,78.5,0.7,2026-11-04
+ht05,Perú,Primera División,281,no,544,-0.2,baja,69.4,68.2,4.4,2026-11-04
+ht05,Perú,Segunda División,282,aprobada,271,2.9,alta,64.7,64.9,9.2,2026-11-04
+ht05,Rumania,Liga I,283,no,363,-1,baja,69,65.8,11.5,2026-11-04
+ht05,Rumania,Liga II,284,no,346,-0.1,baja,70.2,72.8,3.6,2026-11-04
+ht05,Serbia,Super Liga,286,no,330,0.6,baja,70.1,69.4,2.9,2026-11-04
+ht05,South Africa,Premier Soccer League,288,no,251,1.4,media,58.5,59,3.8,2026-11-04
+ht05,South Africa,1st Division,289,no,231,-0.7,baja,60.4,63.2,12.5,2026-11-04
+ht05,Iran,Persian Gulf Pro League,290,no,208,0,baja,54.6,54.8,1.9,2026-11-04
+ht05,Corea del Sur,K League 1,292,no,383,-1.7,baja,62.8,63.2,7.9,2026-11-04
+ht05,Corea del Sur,K League 2,293,no,455,0.5,baja,66.6,64.8,7.1,2026-11-04
+ht05,Corea del Sur,K3 League,295,no,333,-0.6,baja,65.1,64.6,9.3,2026-11-04
+ht05,Thailand,Thai League 1,296,no,227,0.8,baja,66.9,71.4,4.9,2026-11-04
+ht05,Thailand,Thai League 2,297,no,306,0.7,baja,68.2,68.3,3.9,2026-11-04
+ht05,Venezuela,Primera División,299,no,401,0.8,baja,67,68.6,4.5,2026-11-04
+ht05,United Arab Emirates,Division 1,303,no,191,1.6,baja,71.8,71.2,2.7,2026-11-04
+ht05,Panama,Liga Panameña de Fútbol,304,no,340,0.2,baja,67.3,69.1,0.9,2026-11-04
+ht05,Qatar,Stars League,305,no,138,-0.7,baja,74.2,75.4,0.2,2026-11-04
+ht05,Arabia Saudita,Pro League,307,no,333,-0.4,baja,74,75.1,3.1,2026-11-04
+ht05,Andorra,1a Divisió,312,no,100,2.8,media,66.8,70,1.2,2026-11-04
+ht05,Bosnia,Premijer Liga,315,no,193,-1.2,baja,62.4,56.5,11.8,2026-11-04
+ht05,Bosnia,1st League - FBiH,316,no,211,-0.9,baja,65,67.8,2.2,2026-11-04
+ht05,Bosnia,1st League - RS,317,no,223,1.3,media,67.3,67.7,1.1,2026-11-04
+ht05,Cyprus,1. Division,318,no,237,-1.7,baja,67.1,73,5.5,2026-11-04
+ht05,Cyprus,2. Division,319,no,200,0.3,baja,71.2,72,6.9,2026-11-04
+ht05,India,Indian Super League,323,faltan,66,4.5,baja,67.4,63.6,3.9,2026-11-04
+ht05,India,I-League,324,faltan,34,-1.6,baja,67.4,73.5,,2026-11-04
+ht05,Georgia,Erovnuli Liga 2,326,no,275,1.5,media,66.1,67.6,2.1,2026-11-04
+ht05,Georgia,Erovnuli Liga,327,no,284,-0.9,baja,68.2,69,5.7,2026-11-04
+ht05,Estonia,Esiliiga A,328,aprobada,298,3.2,alta,81,81.2,1.6,2026-11-04
+ht05,Estonia,Meistriliiga,329,no,319,0.6,baja,77.1,80.9,5.2,2026-11-04
+ht05,Kuwait,Premier League,330,no,104,-5.3,baja,68,76.9,11.9,2026-11-04
+ht05,Slovakia,Super Liga,332,no,226,1.6,media,74.7,73,2.9,2026-11-04
+ht05,Ucrania,Premier League,333,no,254,0.7,baja,67.8,66.9,2,2026-11-04
+ht05,Ucrania,Persha Liga,334,no,261,1.2,baja,62.6,64.8,14,2026-11-04
+ht05,Ucrania,Druha Liga,336,no,297,0,baja,72.5,75.4,3.4,2026-11-04
+ht05,,Liga Nacional,339,no,350,0.3,,67.8,69.1,6.2,2026-11-03
+ht05,Vietnam,V.League 1,340,no,171,-0.7,baja,69.8,74.3,8.1,2026-11-04
+ht05,Armenia,Premier League,342,no,163,0,baja,69.1,68.1,4.6,2026-11-04
+ht05,Bolivia,Primera División,344,no,374,1,baja,76.4,78.3,2.8,2026-11-04
+ht05,Chequia,Czech Liga,345,no,314,0.2,baja,70.9,72,2.6,2026-11-04
+ht05,Chequia,FNL,346,no,265,-0.2,baja,73.3,73.2,6.6,2026-11-04
+ht05,Chequia,3. liga - CFL A,348,aprobada,300,2.1,alta,77.4,79,3.6,2026-11-04
+ht05,Chequia,3. liga - MSFL,349,no,356,-1.1,baja,76.5,77,8.9,2026-11-04
+ht05,Chequia,4. liga - Divizie A,350,no,256,0.6,baja,78.9,77.3,4.7,2026-11-04
+ht05,Chequia,4. liga - Divizie B,351,no,268,-0.7,baja,81,81.7,9.1,2026-11-04
+ht05,Chequia,4. liga - Divizie C,352,no,261,1.6,media,79.9,80.8,2,2026-11-04
+ht05,Chequia,4. liga - Divizie D,353,no,281,0.9,media,75.4,76.9,9.1,2026-11-04
+ht05,Chequia,4. liga - Divizie E,354,no,248,2,media,78.4,78.6,0.4,2026-11-04
+ht05,Montenegro,Second League,356,no,201,2.8,media,64,67.2,13.3,2026-11-04
+ht05,Lithuania,1 Lyga,361,no,405,0.4,baja,71.8,73.1,2.7,2026-11-04
+ht05,Lithuania,A Lyga,362,no,295,0.5,baja,68.6,69.2,6,2026-11-04
+ht05,Ethiopia,Premier League,363,no,339,2.3,media,55.2,55.8,3.7,2026-11-04
+ht05,Latvia,1. Liga,364,no,291,1,baja,76.3,78.4,1.8,2026-11-04
+ht05,Faroe Islands,Meistaradeildin,367,no,226,-0.9,baja,75.1,70.8,12.3,2026-11-04
+ht05,Singapore,Premier League,368,faltan,76,1.6,baja,83.2,76.3,5.7,2026-11-04
+ht05,Uzbekistan,Super League,369,no,393,-0.4,baja,67.6,69,4.1,2026-11-04
+ht05,El Salvador,Primera Division,370,no,344,-1,baja,68.4,68.3,7.7,2026-11-04
+ht05,Macedonia,Second League,372,aprobada,232,3.6,alta,74.7,69.4,9.7,2026-11-04
+ht05,Slovenia,1. SNL,373,no,188,3.6,baja,74.2,79.3,6.1,2026-11-04
+ht05,Slovenia,2. SNL,374,no,275,0.9,baja,73,73.5,4.1,2026-11-04
+ht05,Hong Kong,Premier League,380,no,104,1.2,baja,77.3,82.7,9.9,2026-11-04
+ht05,Israel,Ligat Ha'al,383,no,248,-2.3,baja,72.1,67.7,4.6,2026-11-04
+ht05,Jordan,League,387,aprobada,128,4,alta,68,64.1,4.4,2026-11-04
+ht05,Kazakhstan,Premier League,389,no,362,-0.4,baja,65.6,69.6,13.3,2026-11-04
+ht05,Lebanon,Premier League,390,no,121,-0.5,baja,64.1,59.5,6,2026-11-04
+ht05,Malawi,Super League,391,no,321,-0.3,baja,64,58.9,25.8,2026-11-04
+ht05,Malta,Challenge League,392,no,154,0.3,baja,75,79.9,4.6,2026-11-04
+ht05,Malta,Premier League,393,no,218,1.5,media,68.1,68.8,4.2,2026-11-04
+ht05,Moldova,Super Liga,394,no,164,2.4,media,72.7,68.9,3.2,2026-11-04
+ht05,Moldova,Liga 1,395,no,123,-2.2,baja,82.9,78,7.6,2026-11-04
+ht05,Nicaragua,Primera Division,396,no,236,0.1,baja,72.1,71.2,3.9,2026-11-04
+ht05,Angola,Girabola,397,no,235,2.1,media,65,66,7.4,2026-11-04
+ht05,Nigeria,NPFL,399,no,398,0,baja,61.4,64.1,6.7,2026-11-04
+ht05,Zambia,Super League,400,no,273,-0.8,baja,53.4,59,9,2026-11-04
+ht05,San Marino,Campionato,404,no,264,0.8,baja,72.3,70.1,7.5,2026-11-04
+ht05,Rwanda,National Soccer League,405,no,279,1.6,baja,61.4,63.4,3.1,2026-11-04
+ht05,Northern Ireland,Championship,407,no,266,-0.5,baja,72.3,71.8,1.7,2026-11-04
+ht05,Northern Ireland,Premiership,408,no,263,1.1,baja,71.7,72.6,2.1,2026-11-04
+ht05,Cambodia,C-League,410,aprobada,156,2.4,alta,75.3,74.4,0.9,2026-11-04
+ht05,Botswana,Premier League,412,no,210,0.5,baja,56.7,57.6,11.8,2026-11-04
+ht05,Benin,Championnat National,415,no,228,-0.1,baja,54.6,59.6,11.3,2026-11-04
+ht05,Bahrain,Premier League,417,aprobada,121,4,alta,65.7,63.6,0.1,2026-11-04
+ht05,Azerbaijan,Premyer Liqa,419,no,211,0.5,baja,66.8,65.4,2.2,2026-11-04
+ht05,Aruba,Division di Honor,421,faltan,48,11.2,alta,85.2,85.4,1.3,2026-11-04
+ht05,Burkina Faso,Ligue 1,423,no,226,0,baja,51.6,53.1,7.6,2026-11-04
+ht05,Congo DR,Ligue 1,424,no,348,-0.9,baja,59.9,56.6,4.3,2026-11-04
+ht05,Syria,Premier League,425,no,201,1.2,baja,68,65.2,5.8,2026-11-04
+ht05,Italia,Serie D - Girone A,426,no,313,-1.2,baja,65.7,69,10.9,2026-11-04
+ht05,Italia,Serie D - Girone B,427,no,302,-0.8,baja,65.7,67.5,13.8,2026-11-04
+ht05,Italia,Serie D - Girone G,432,no,300,0.3,baja,71.5,72,5.6,2026-11-04
+ht05,España,Primera División RFEF - Group 1,435,no,379,1.9,media,62.9,66.8,3.9,2026-11-04
+ht05,España,Primera División RFEF - Group 2,436,no,382,0.3,baja,63.5,66.8,11.7,2026-11-04
+ht05,España,Tercera División RFEF - Group 1,439,no,307,0.6,baja,63.3,67.4,6.8,2026-11-04
+ht05,España,Tercera División RFEF - Group 2,440,no,310,-1.4,baja,68,64.5,10.3,2026-11-04
+ht05,España,Tercera División RFEF - Group 3,441,no,307,1,baja,63.3,67.8,6.6,2026-11-04
+ht05,España,Tercera División RFEF - Group 4,442,aprobada,310,1.7,alta,65.5,67.4,8.8,2026-11-04
+ht05,España,Tercera División RFEF - Group 5,443,no,312,-0.4,baja,65.2,62.5,15.1,2026-11-04
+ht05,España,Tercera División RFEF - Group 6,444,no,305,1.6,media,62.2,60.3,1.7,2026-11-04
+ht05,España,Tercera División RFEF - Group 7,445,no,301,1,baja,67.5,67.4,4.9,2026-11-04
+ht05,España,Tercera División RFEF - Group 8,446,no,313,0.2,baja,62.8,68.7,7.7,2026-11-04
+ht05,España,Tercera División RFEF - Group 9,447,no,305,-0.3,baja,63.2,65.9,4.3,2026-11-04
+ht05,España,Tercera División RFEF - Group 10,448,no,317,0.1,baja,67.5,68.1,1.5,2026-11-04
+ht05,España,Tercera División RFEF - Group 11,449,aprobada,291,3.7,alta,66.9,68.7,1.4,2026-11-04
+ht05,España,Tercera División RFEF - Group 12,450,no,298,0.6,baja,67.5,66.1,2.9,2026-11-04
+ht05,España,Tercera División RFEF - Group 13,451,no,296,1.1,media,62.6,62.8,3.8,2026-11-04
+ht05,España,Tercera División RFEF - Group 15,453,no,316,0.6,baja,66.8,63.9,4.5,2026-11-04
+ht05,España,Tercera División RFEF - Group 16,454,no,308,-0.2,baja,68.5,65.6,2.9,2026-11-04
+ht05,España,Tercera División RFEF - Group 17,455,no,312,-2,baja,62.1,68.9,12.7,2026-11-04
+ht05,España,Tercera División RFEF - Group 18,456,no,307,0.7,baja,61.6,61.2,2.4,2026-11-04
+ht05,Portugal,Campeonato de Portugal Prio - Group B,458,no,151,1.2,baja,60.3,62.9,9.4,2026-11-04
+ht05,Portugal,Campeonato de Portugal Prio - Group D,460,no,149,2,media,67.7,65.8,4.4,2026-11-04
+ht05,Noruega,2. Division - Group 1,473,no,298,0.6,baja,76.1,78.5,3.3,2026-11-04
+ht05,Noruega,2. Division - Group 2,474,no,300,-1.2,baja,79.5,83.3,9,2026-11-04
+ht05,Austria,Frauenliga,484,no,131,1.5,baja,75.6,73.3,2.7,2026-11-04
+ht05,Bélgica,First Amateur Division,487,no,454,0.2,baja,75.7,78,2.3,2026-11-04
+ht05,Alemania,U19 Bundesliga,488,aprobada,895,1.8,alta,84.4,83.8,2.5,2026-11-04
+ht05,Grecia,Super League 2,494,no,242,-0.6,baja,64.6,61.2,21.4,2026-11-04
+ht05,Israel,Liga Alef,496,no,368,0.3,baja,70.7,68.5,2.4,2026-11-04
+ht05,Slovakia,2. liga,506,no,285,1,media,74,74.7,4.6,2026-11-04
+ht05,Suiza,1. Liga Promotion,510,no,353,1.3,media,80.8,79.3,3.3,2026-11-04
+ht05,Iraq,Iraqi League,542,no,409,0.4,baja,63.6,64.5,7.4,2026-11-04
+ht05,Suecia,Damallsvenskan,549,no,294,0.1,baja,75.9,80.3,4.1,2026-11-04
+ht05,Turquía,3. Lig - Group 1,552,no,219,-1.6,baja,63.8,66.2,24.4,2026-11-04
+ht05,Turquía,3. Lig - Group 2,553,no,213,-1.8,baja,66.6,72.8,7.9,2026-11-04
+ht05,Suecia,Ettan - Norra,563,no,398,1.3,media,74.9,76.4,3.5,2026-11-04
+ht05,Suecia,Ettan - Södra,564,no,384,-0.4,baja,73.8,75.8,13.7,2026-11-04
+ht05,Burundi,Ligue A,566,no,195,1.6,media,69,68.2,1.2,2026-11-04
+ht05,Tanzania,Ligi kuu Bara,567,no,251,2.6,media,63.4,66.9,13.7,2026-11-04
+ht05,Suriname,Eerste Divisie,568,faltan,91,0.9,baja,74.2,71.4,5.8,2026-11-04
+ht05,Kyrgyzstan,Premier League,569,no,351,-0.7,baja,70.3,74.1,7.7,2026-11-04
+ht05,Ghana,Premier League,570,no,300,1.1,baja,60.5,63.3,7.7,2026-11-04
+ht05,Grecia,Gamma Ethniki - Group 1,576,no,126,3,baja,67.2,70.6,2.5,2026-11-04
+ht05,Grecia,Gamma Ethniki - Group 3,578,no,132,-0.6,baja,61.3,61.4,5.4,2026-11-04
+ht05,Grecia,Gamma Ethniki - Group 5,580,faltan,97,2.9,baja,61.3,54.6,13.3,2026-11-04
+ht05,Uganda,Premier League,585,no,236,1.1,baja,63.6,59.7,4.6,2026-11-04
+ht05,Myanmar,National League,588,no,113,1.2,baja,80.2,80.5,6,2026-11-04
+ht05,Suecia,Division 2 - Norra Götaland,592,no,298,0.8,baja,76.2,76.8,0.3,2026-11-04
+ht05,Suecia,Division 2 - Norra Svealand,593,no,296,1.3,baja,75,77,1.4,2026-11-04
+ht05,Suecia,Division 2 - Norrland,594,no,273,-1.4,baja,78.9,83.2,9.8,2026-11-04
+ht05,Suecia,Division 2 - Västra Götaland,596,no,299,0.2,baja,79.3,80.6,2.4,2026-11-04
+ht05,Mali,Première Division,598,no,138,2.6,media,54.3,56.5,2.1,2026-11-04
+ht05,Suiza,1. Liga Classic - Group 1,599,no,267,-1.1,baja,77.8,82.4,11.3,2026-11-04
+ht05,Suiza,1. Liga Classic - Group 2,600,no,274,1.1,media,74.7,76.3,7.4,2026-11-04
+ht05,Suiza,1. Liga Classic - Group 3,601,no,266,0.8,baja,77.9,76.7,8.1,2026-11-04
+ht05,Brasil,Pernambucano - 1,622,faltan,6,9.9,baja,76.1,83.3,,2026-11-04
+ht05,Brasil,Carioca - 2,625,faltan,75,4,media,57.5,58.7,1.2,2026-11-04
+ht05,Hungary,NB III - Northeast,633,no,284,1.5,media,74.6,75.7,0.1,2026-11-04
+ht05,Hungary,NB III - Southwest,634,no,264,2.9,media,78.8,77.7,3.9,2026-11-04
+ht05,Hungary,NB III - Northwest,635,no,275,1.5,baja,77.8,73.1,9.2,2026-11-04
+ht05,Turkmenistan,Ýokary Liga,636,no,162,4.6,alta,59.2,47.5,15.2,2026-11-04
+ht05,Vietnam,V.League 2,637,no,105,1.3,baja,66,59,6.6,2026-11-04
+ht05,Dinamarca,Kvindeliga,638,no,130,-1.7,baja,76.8,82.3,8.1,2026-11-04
+ht05,Slovakia,3. liga - West,644,no,270,1.2,baja,77.1,73,5.5,2026-11-04
+ht05,Slovakia,3. liga - East,645,no,216,1.2,media,76,74.5,5.2,2026-11-04
+ht05,Slovakia,3. liga - Center,646,aprobada,217,1.7,alta,74.9,74.7,0.9,2026-11-04
+ht05,Laos,Lao League,647,faltan,72,3.6,alta,75.8,77.8,1.5,2026-11-04
+ht05,Rusia,Supreme Division Women,649,no,258,0.8,baja,69.6,69.4,1.3,2026-11-04
+ht05,Rusia,Second League - Group 3,650,aprobada,384,2.1,alta,71.1,74,3.4,2026-11-04
+ht05,Rusia,Second League - Group 1,651,no,388,0.2,baja,67.1,67.3,3.8,2026-11-04
+ht05,Rusia,Second League - Group 2,652,no,341,0.6,baja,70,69.5,2.9,2026-11-04
+ht05,Corea del Sur,WK-League,660,no,197,-0.5,baja,69,71.6,5.7,2026-11-04
+ht05,Kosovo,Superliga,664,no,194,-1.1,baja,68.3,65.5,7.1,2026-11-04
+ht05,Chequia,1. Liga U19,668,no,275,-0.1,baja,82.2,81.1,3.5,2026-11-04
+ht05,Chequia,1. Liga Women,669,faltan,84,6,alta,86.7,82.1,6,2026-11-04
+ht05,México,Liga MX Femenil,673,aprobada,387,2.5,alta,79.8,80.6,2.3,2026-11-04
+ht05,Países Bajos,U21 Divisie 1,675,faltan,57,-3.9,baja,79.7,68.4,,2026-11-04
+ht05,Polonia,Central Youth League,676,no,271,1.7,media,77.3,77.1,0.9,2026-11-04
+ht05,Chequia,3. liga - CFL B,685,no,304,1.6,baja,78.9,81.9,5.4,2026-11-04
+ht05,Chequia,4. liga - Divizie F,686,aprobada,278,2.8,alta,79.2,78.4,0.7,2026-11-04
+ht05,Grecia,Gamma Ethniki - Group 9,693,faltan,0,,,,,,2026-11-04
+ht05,Grecia,Gamma Ethniki - Group 10,694,faltan,0,,,,,,2026-11-04
+ht05,Inglaterra,U18 Premier League - North,695,no,189,3,media,83.6,84.7,1.8,2026-11-04
+ht05,Inglaterra,U18 Premier League - South,696,no,226,0,baja,86.6,89.4,4.5,2026-11-04
+ht05,Inglaterra,WSL Cup,697,faltan,0,,,,,,2026-11-04
+ht05,Italia,Campionato Primavera - 1,705,aprobada,395,1.6,alta,70.6,71.6,1.5,2026-11-04
+ht05,Italia,Campionato Primavera - 2,706,no,475,0.2,baja,74.7,76.8,18.6,2026-11-04
+ht05,Bolivia,Nacional B,710,faltan,36,1.8,baja,73.6,80.6,,2026-11-04
+ht05,Chile,Segunda División,711,no,237,2.3,media,69.7,71.7,4.2,2026-11-04
+ht05,México,Liga Premier Serie A,722,no,471,0.4,baja,71.6,72.2,3.7,2026-11-04
+ht05,Noruega,Toppserien,725,no,213,0.4,baja,75.8,75.1,2.4,2026-11-04
+ht05,Oman,Sultan Cup,726,faltan,0,,,,,,2026-11-04
+ht05,Rumania,Liga 1 Feminin,728,faltan,97,0.1,baja,80.9,83.5,7.1,2026-11-04
+ht05,Escocia,Football League - Highland League,730,no,389,0,baja,78.8,81.5,3,2026-11-04
+ht05,Escocia,Football League - Lowland League,731,no,373,0.7,baja,81,85,5.4,2026-11-04
+ht05,Slovakia,I Liga - Women,733,aprobada,136,5.3,alta,84.1,83.8,4.2,2026-11-04
+ht05,South Africa,Diski Challenge,734,no,186,2.1,media,73.5,71.5,10.2,2026-11-04
+ht05,Suecia,Elitettan,736,no,274,1,baja,74,75.5,3.1,2026-11-04
+ht05,Suiza,AXA Women’s Super League,739,no,124,1.5,baja,71.6,77.4,5.7,2026-11-04
+ht05,Alemania,Oberliga - Schleswig-Holstein,744,aprobada,286,2.6,alta,82.4,83.6,1.6,2026-11-04
+ht05,Alemania,Oberliga - Hamburg,745,no,349,1.4,media,85.4,84.8,0.3,2026-11-04
+ht05,Alemania,Oberliga - Niedersachsen,748,no,265,1.6,media,77.4,77,0.7,2026-11-04
+ht05,Alemania,Oberliga - Bremen,749,no,273,0.6,baja,85.9,86.8,0.7,2026-11-04
+ht05,Alemania,Oberliga - Hessen,750,no,368,1.3,media,80.2,82.9,4.6,2026-11-04
+ht05,Alemania,Oberliga - Rheinland-Pfalz / Saar,752,no,354,1.5,media,81.6,81.6,0.3,2026-11-04
+ht05,Alemania,Oberliga - Baden-Württemberg,753,no,344,0.9,baja,78.1,79.1,2.2,2026-11-04
+ht05,Alemania,Oberliga - Nordost-Nord,754,no,247,1.1,baja,78,73.7,7.5,2026-11-04
+ht05,Alemania,Oberliga - Nordost-Süd,755,no,247,-0.1,baja,74.6,76.1,0.7,2026-11-04
+ht05,Gibraltar,Premier Division,758,no,148,-1,baja,81.5,77,8.9,2026-11-04
+ht05,Dominican Republic,Liga Mayor,759,no,153,1,baja,69.6,71.2,2.8,2026-11-04
+ht05,Mauritania,Premier League,762,no,151,1.5,baja,62.6,58.9,6.4,2026-11-04
+ht05,Noruega,3. Division - Girone 1,774,no,282,-0.6,baja,84.9,84.8,0.9,2026-11-04
+ht05,Noruega,3. Division - Girone 3,776,no,275,2.2,media,84.8,84.4,0.7,2026-11-04
+ht05,Noruega,3. Division - Girone 5,778,aprobada,275,3.2,alta,85.4,87.6,2.1,2026-11-04
+ht05,Noruega,3. Division - Girone 6,779,no,280,1.2,baja,83.1,81.8,7.1,2026-11-04
+ht05,Polonia,III Liga - Group 1,780,no,350,0.8,baja,77.4,76.6,3,2026-11-04
+ht05,Polonia,III Liga - Group 2,781,no,347,0.4,baja,75.2,76.1,4.8,2026-11-04
+ht05,Polonia,III Liga - Group 3,782,no,326,0.3,baja,74.5,76.1,8.2,2026-11-04
+ht05,Polonia,III Liga - Group 4,783,no,351,0.8,baja,75.9,71.8,4.9,2026-11-04
+ht05,Rumania,Liga III - Serie 1,784,no,152,0.3,baja,70,67.8,8.2,2026-11-04
+ht05,Rumania,Liga III - Serie 2,785,no,135,-3.1,baja,81.6,71.9,10.3,2026-11-04
+ht05,Rumania,Liga III - Serie 3,786,no,136,2.3,media,76.7,75.7,2.7,2026-11-04
+ht05,Rumania,Liga III - Serie 4,787,no,138,0.9,baja,72.5,68.1,5.7,2026-11-04
+ht05,Rumania,Liga III - Serie 5,788,no,129,0.4,baja,72.5,70.5,7.3,2026-11-04
+ht05,Rumania,Liga III - Serie 6,789,no,148,1.6,baja,73.9,75.7,2.8,2026-11-04
+ht05,Rumania,Liga III - Serie 7,790,no,147,-1.4,baja,76.9,72.1,8.4,2026-11-04
+ht05,Rumania,Liga III - Serie 8,791,no,158,-0.9,baja,73.2,68.4,6.6,2026-11-04
+ht05,Slovenia,3. SNL - East,794,aprobada,177,4.6,alta,73.2,72.3,6.9,2026-11-04
+ht05,Slovenia,3. SNL - West,795,no,206,1.4,media,74.9,75.2,0.9,2026-11-04
+ht05,Cameroon,Elite Two,813,faltan,72,3.7,baja,68.7,72.2,8.9,2026-11-04
+ht05,Tunisia,Ligue 2,828,no,325,0.5,baja,62.6,63.4,5.5,2026-11-04
+ht05,Japón,WE League,854,no,133,1.2,baja,70.5,67.7,8.2,2026-11-04
+ht05,Dinamarca,3. Division,862,no,214,1.2,baja,74.3,71,4.6,2026-11-04
+ht05,Portugal,Liga 3,865,no,279,-2.1,baja,63.3,69.5,15.4,2026-11-04
+ht05,Inglaterra,Premier League Cup,871,faltan,16,-5.8,baja,80.5,68.8,,2026-11-04
+ht05,México,Liga Premier Serie B,872,faltan,70,1.6,baja,69.3,70,4.9,2026-11-04
+ht05,España,Segunda División RFEF - Group 1,875,no,279,-2.1,baja,64.4,68.5,20.8,2026-11-04
+ht05,España,Segunda División RFEF - Group 2,876,no,271,1.8,media,64.2,65.3,8.9,2026-11-04
+ht05,España,Segunda División RFEF - Group 3,877,aprobada,279,3.1,alta,64.4,63.8,3.9,2026-11-04
+ht05,España,Segunda División RFEF - Group 5,879,no,276,2,media,66.2,67,4.8,2026-11-04
+ht05,,Reserve League,906,no,985,0.4,,64.9,66,6,2026-11-03
+ht05,China,League Two,929,no,609,-0.6,baja,62,61.4,4.1,2026-11-04
+ht05,Inglaterra,Non League Premier - Southern Central,931,no,513,0.2,baja,73.7,78.2,8.9,2026-11-04
+ht05,Alemania,Oberliga - Bayern Nord,938,no,342,0.2,baja,75.8,77.8,1.5,2026-11-04
+ht05,Alemania,Oberliga - Bayern Süd,939,no,332,0.4,baja,74.7,77.7,13.2,2026-11-04
+ht05,Italia,Serie C - Girone B,942,no,364,1,baja,63.8,65.7,5,2026-11-04
+ht05,Italia,Serie C - Girone C,943,no,401,-0.5,baja,66.8,69.3,8.4,2026-11-04
+ht05,Croacia,Second NL,946,no,248,1.9,media,73.1,76.6,3.3,2026-11-04
+ht05,Alemania,DFB Pokal - Women,947,faltan,0,,,,,,2026-11-04
+ht05,Portugal,1a Divisão - Women,948,faltan,82,0.3,baja,70.6,63.4,9.6,2026-11-04
+ht05,Internacional,CONMEBOL Libertadores Femenina,949,faltan,1,26.3,,74.3,100,,2026-11-04
+ht05,New Zealand,National League - National,955,faltan,24,12,media,79.7,87.5,,2026-11-04
+ht05,Lesotho,Premier League,962,no,208,-1.4,baja,65.7,66.8,18.9,2026-11-04
+ht05,,Copa de la División Profesional,964,revalidar,122,1.9,,74.4,78.7,7,2026-11-03
+ht05,Gabon,Championnat D1,968,no,121,-1.6,baja,63.6,67.8,0,2026-11-04
+ht05,Hungary,NB III - Southeast,1023,no,278,0.8,baja,77.7,79.1,4.4,2026-11-04
+ht05,Rusia,Second League A - Division A Gold,1025,no,196,-2.2,baja,64.4,64.3,3.3,2026-11-04
+ht05,Polonia,Ekstraliga Women,1033,no,132,-0.2,baja,77.8,78,3,2026-11-04
+ht05,Brasil,Copa Santa Catarina,1036,faltan,26,-1.2,baja,72.2,69.2,,2026-11-04
+ht05,Portugal,Júniores U19,1041,aprobada,308,3,alta,70.2,69.8,1.3,2026-11-04
+ht05,Suecia,Division 2 - Play-offs,1053,faltan,0,,,,,,2026-11-04
+ht05,Georgia,Liga 3,1104,no,365,-0.5,baja,74.6,73.4,8.6,2026-11-04
+ht05,Brasil,Carioca U20,1114,no,115,-0.7,baja,71,68.7,12.8,2026-11-04
+ht05,Estonia,Esiliiga B,1126,no,291,1.6,baja,83.5,86.3,2.8,2026-11-04
+ht05,Brasil,Brasileiro U17,1128,no,323,1.3,media,78.6,77.1,5.7,2026-11-04
+ht05,Estados Unidos,USL Super League,1130,no,137,0.6,baja,67.2,65.7,3.1,2026-11-04
+ht05,Brasil,Goiano - 3,1133,faltan,20,10.3,alta,68.2,75,,2026-11-04
+ht05,Brasil,Sergipano - 2,1135,faltan,8,3.1,baja,65,75,,2026-11-04
+ht05,Brasil,Brasiliense B,1141,faltan,5,-2.9,baja,70,60,,2026-11-04
+ht05,Brasil,Mineiro - 3,1142,faltan,14,3.2,baja,70.1,85.7,,2026-11-04
+ht05,Brasil,Copa Fares Lopes,1165,faltan,0,,,,,,2026-11-04
+ht05,Kosovo,Liga E Pare,1195,no,277,-4.3,baja,65.8,57.4,29.7,2026-11-04
+ht05,Ghana,Division One League,1196,no,606,0.7,baja,63.8,67.5,5.4,2026-11-04
+ht05,México,Liga MX U21,1200,no,401,0.8,baja,70.1,70.3,6,2026-11-04
+ht05,Australia,Australian Championship,1202,faltan,7,-14.8,baja,75.4,42.9,,2026-11-04
+ht05,United Arab Emirates,Pro League U23,1218,faltan,79,0.5,baja,70.6,70.9,9.8,2026-11-04
+ht05,Arabia Saudita,Premier League Women,1227,faltan,26,-12.6,baja,90.1,73.1,,2026-11-04
+ht05,,Liga Women,1229,faltan,75,3.9,,84.2,84,1,2026-11-03
+ht05,Corea del Sur,K4 League,1234,faltan,20,4.6,baja,74.5,85,,2026-11-04
+ht05,Austria,Regionalliga - North,1239,faltan,58,3.3,media,78.6,75.9,1.7,2026-11-04
+ht05,Turquía,U19 league,1240,faltan,20,3.6,baja,76.6,80,,2026-11-04
+ht05,Serbia,U19 league,1241,faltan,37,4.1,baja,80.5,78.4,,2026-11-04
+ht05,México,Primera Premier,1242,faltan,19,-5.9,baja,68.1,73.7,,2026-11-04
+ht05,South Africa,Super League Women,1243,faltan,48,3.9,baja,71.3,75,0.8,2026-11-04
+ht05,Dinamarca,B-Liga Women,1244,faltan,12,21.1,alta,78.4,91.7,,2026-11-04
+btts,Inglaterra,Premier League,39,no,392,0.8,baja,52.8,55.1,5.5,2026-11-04
+btts,Inglaterra,Championship,40,no,613,-1,baja,51.2,57.6,10.1,2026-11-04
+btts,Inglaterra,League One,41,no,604,1,baja,50.8,53.3,2.8,2026-11-04
+btts,Inglaterra,League Two,42,no,613,0.4,baja,50.8,54.3,3.6,2026-11-04
+btts,Inglaterra,National League,43,no,631,0.7,baja,54.4,58.2,5.4,2026-11-04
+btts,Inglaterra,FA WSL,44,no,135,2,baja,54.9,58.5,3.1,2026-11-04
+btts,Inglaterra,National League - North,50,no,611,-0.2,baja,55.7,59.7,10.4,2026-11-04
+btts,Inglaterra,National League - South,51,no,611,0.9,media,52.7,55.3,3,2026-11-04
+btts,Inglaterra,Non League Premier - Isthmian,58,no,513,0.9,baja,58.1,60.8,6.2,2026-11-04
+btts,Inglaterra,Non League Premier - Northern,59,no,491,0.6,baja,52,54.8,8.3,2026-11-04
+btts,Inglaterra,Non League Premier - Southern South,60,no,516,-0.3,baja,56.8,59.5,8,2026-11-04
+btts,Francia,Ligue 1,61,no,320,0.7,baja,53.4,53.1,0.6,2026-11-04
+btts,Francia,Ligue 2,62,no,320,0.1,baja,50.4,53.8,7.9,2026-11-04
+btts,Francia,Ligue 3,63,no,292,-0.5,baja,48.4,54.1,7.3,2026-11-04
+btts,Francia,Feminine Division 1,64,no,119,-1,baja,55.7,43.7,11.1,2026-11-04
+btts,Francia,Coupe de France,66,faltan,0,,,,,,2026-11-04
+btts,Francia,National 2 - Group A,67,no,206,1.6,baja,49.7,54.4,10.9,2026-11-04
+btts,Francia,National 2 - Group B,68,no,208,1.9,baja,48.5,51.9,8.1,2026-11-04
+btts,Francia,National 2 - Group C,69,no,217,1.3,baja,50.2,55.3,6.5,2026-11-04
+btts,Brasil,Serie A,71,no,626,1.1,media,49.3,53,4.1,2026-11-04
+btts,Brasil,Serie B,72,no,640,0.9,baja,46,48.9,3.6,2026-11-04
+btts,Alemania,Bundesliga,78,no,308,-0.9,baja,57.6,63.3,5.8,2026-11-04
+btts,Alemania,2. Bundesliga,79,no,316,0.8,baja,54.9,59.2,4.9,2026-11-04
+btts,Alemania,3. Liga,80,no,407,-1,baja,57.6,64.6,7.9,2026-11-04
+btts,Alemania,Regionalliga - Bayern,83,no,379,1.5,media,55.4,54.4,0.8,2026-11-04
+btts,Alemania,Regionalliga - Nord,84,no,368,0.7,baja,61.8,64.9,3.7,2026-11-04
+btts,Alemania,Regionalliga - Nordost,85,no,368,1.1,baja,55,56.8,0.9,2026-11-04
+btts,Alemania,Regionalliga - SudWest,86,no,349,0.9,baja,59.6,65.3,8.5,2026-11-04
+btts,Alemania,Regionalliga - West,87,no,364,-0.8,baja,57.4,63.5,6.7,2026-11-04
+btts,Países Bajos,Eredivisie,88,no,335,0.3,baja,58.4,64.8,9.5,2026-11-04
+btts,Países Bajos,Eerste Divisie,89,no,439,-0.5,baja,58.6,63.8,5.9,2026-11-04
+btts,Países Bajos,Derde Divisie,92,no,373,-0.8,baja,59.4,59,8.8,2026-11-04
+btts,Portugal,Primeira Liga,94,no,327,1.2,media,51.7,48,6.3,2026-11-04
+btts,Portugal,Segunda Liga,95,no,310,1.3,media,49.6,47.1,4,2026-11-04
+btts,Japón,J1 League,98,no,262,0.6,baja,52.6,53.8,9.4,2026-11-04
+btts,Japón,J2 League,99,no,440,1.7,media,49.4,53.2,4.3,2026-11-04
+btts,Japón,J3 League,100,no,444,1,baja,50.4,53.6,3.5,2026-11-04
+btts,Noruega,Eliteserien,103,no,365,1.3,media,56.1,59.2,2.9,2026-11-04
+btts,Polonia,Ekstraklasa,106,no,346,1,baja,52.7,59,7.1,2026-11-04
+btts,Polonia,I Liga,107,no,336,0.1,baja,55.3,63.1,8.3,2026-11-04
+btts,Polonia,II Liga - East,109,no,333,1,media,55.9,57.4,1.2,2026-11-04
+btts,Gales,Premier League,110,no,244,0.5,baja,55.9,49.2,9,2026-11-04
+btts,Gales,FAW Championship,111,aprobada,528,1.4,alta,57.6,56.4,1.5,2026-11-04
+btts,Suecia,Superettan,114,no,386,0.2,baja,54.2,58.5,4.2,2026-11-04
+btts,Belarus,Premier League,116,no,390,0,baja,49.9,46.4,9.2,2026-11-04
+btts,Belarus,1. Division,117,aprobada,494,2,alta,57.3,58.5,4.3,2026-11-04
+btts,Dinamarca,1. Division,120,no,212,0.8,baja,53,58,5.3,2026-11-04
+btts,Dinamarca,2. Division,122,no,219,0.7,baja,52.6,58,7.2,2026-11-04
+btts,Argentina,Liga Profesional Argentina,128,aprobada,885,1.6,alta,42.6,44.3,5.8,2026-11-04
+btts,Argentina,Primera Nacional,129,no,1131,1,media,39.9,37.5,3.1,2026-11-04
+btts,Argentina,Primera B Metropolitana,131,aprobada,798,1.5,alta,43.1,43,0.5,2026-11-04
+btts,Argentina,Primera C,132,no,755,0.1,baja,43.1,38.9,4.4,2026-11-04
+btts,Argentina,Torneo Federal A,134,no,906,-0.5,baja,42.1,35.8,6.4,2026-11-04
+btts,Italia,Serie A,135,aprobada,402,2.7,alta,48.9,47.3,3.4,2026-11-04
+btts,Italia,Serie B,136,no,395,0.6,baja,49.9,53.2,8.3,2026-11-04
+btts,Italia,Serie C - Girone A,138,no,408,1.2,media,47.2,48.8,2.4,2026-11-04
+btts,Italia,Serie A Women,139,no,121,3.7,media,51.2,46.3,7.8,2026-11-04
+btts,España,La Liga,140,no,410,1.1,baja,51.6,56.3,5.8,2026-11-04
+btts,España,Segunda División,141,no,492,0.3,baja,50.9,56.5,5.6,2026-11-04
+btts,España,Primera División Femenina,142,no,253,-2.2,baja,52.9,41.9,12.9,2026-11-04
+btts,Bélgica,Jupiler Pro League,144,no,337,1.4,media,51.6,53.1,2.9,2026-11-04
+btts,Bélgica,Challenger Pro League,145,no,259,-0.7,baja,53.3,59.8,6.4,2026-11-04
+btts,Bélgica,Second Amateur Division - ACFF,148,aprobada,317,4.6,alta,55,56.2,0.3,2026-11-04
+btts,Bélgica,Second Amateur Division - VFV A,149,no,241,0.8,baja,58.2,62.7,5,2026-11-04
+btts,Bélgica,Second Amateur Division - VFV B,150,no,248,1.7,media,58.9,62.9,5.8,2026-11-04
+btts,Costa Rica,Primera División,162,no,214,1.2,baja,49.1,52.8,7,2026-11-04
+btts,China,League One,170,no,397,-0.2,baja,50.9,55.2,5.3,2026-11-04
+btts,Bulgaria,First League,172,no,324,1.6,media,47.6,43.8,8.6,2026-11-04
+btts,Bulgaria,Second League,173,no,313,1.8,media,49.4,46.3,3.8,2026-11-04
+btts,Bulgaria,Third League - Northeast,175,no,293,-2.3,baja,58.3,45.1,15.4,2026-11-04
+btts,Bulgaria,Third League - Northwest,176,no,129,1.5,baja,55.7,45.7,11.1,2026-11-04
+btts,Bulgaria,Third League - Southeast,177,no,386,0.1,baja,54.5,49.5,9.7,2026-11-04
+btts,Bulgaria,Third League - Southwest,178,no,345,1.5,baja,52.6,50.7,2,2026-11-04
+btts,Escocia,Premiership,179,aprobada,254,2.6,alta,51.6,52.4,4.4,2026-11-04
+btts,Escocia,Championship,180,no,194,1.9,media,48.1,44.3,14.4,2026-11-04
+btts,Escocia,FA Cup,181,faltan,0,,,,,,2026-11-04
+btts,Escocia,League One,183,no,195,2.5,media,51.5,51.8,2.5,2026-11-04
+btts,Escocia,League Two,184,no,204,0.5,baja,55.9,60.3,4.7,2026-11-04
+btts,Escocia,League Cup,185,faltan,4,-118.6,baja,55.7,100,,2026-11-04
+btts,Algeria,Ligue 1,186,no,227,2.9,media,44.8,44.9,2.5,2026-11-04
+btts,Algeria,Ligue 2,187,aprobada,450,2.3,alta,43.1,41.1,2.2,2026-11-04
+btts,Australia,A-League,188,no,144,-1.1,baja,52.7,63.2,15.5,2026-11-04
+btts,Australia,A-League Women,190,faltan,92,3.9,baja,53,55.4,2,2026-11-04
+btts,Grecia,Super League 1,197,no,243,0.2,baja,50.6,47.3,8.4,2026-11-04
+btts,Marruecos,Botola Pro,200,no,213,-0.1,baja,45.6,52.6,8.2,2026-11-04
+btts,Marruecos,Botola 2,201,no,212,2.5,baja,41.6,46.2,6.6,2026-11-04
+btts,Turquía,Süper Lig,203,no,322,0.9,baja,51.4,52.8,4.2,2026-11-04
+btts,Turquía,1. Lig,204,no,406,0.5,baja,53.1,50.2,11.1,2026-11-04
+btts,Turquía,2. Lig,205,no,599,0.2,baja,54.3,50.6,9.5,2026-11-04
+btts,Suiza,Super League,207,no,258,0.3,baja,58.9,64.3,5.7,2026-11-04
+btts,Croacia,HNL,210,no,203,2.8,media,52.1,52.7,14.7,2026-11-04
+btts,Croacia,First NL,211,aprobada,217,3.2,alta,46.3,46.5,3.3,2026-11-04
+btts,Austria,Bundesliga,218,no,218,0.6,baja,52.7,56,1.2,2026-11-04
+btts,Austria,2. Liga,219,no,247,2.7,alta,53.4,50.2,18.4,2026-11-04
+btts,Austria,Regionalliga - Ost,221,aprobada,313,3.1,alta,55.2,53,2.2,2026-11-04
+btts,Austria,Regionalliga - West,223,aprobada,292,2.9,alta,58.6,57.2,5.7,2026-11-04
+btts,Egipto,Premier League,233,no,314,2.4,media,43.2,50,8.8,2026-11-04
+btts,Honduras,Liga Nacional,234,no,272,0.4,baja,54.4,57.7,3.5,2026-11-04
+btts,Rusia,Premier League,235,no,282,1.5,media,51,52.5,1.9,2026-11-04
+btts,Rusia,First League,236,aprobada,361,2.4,alta,48.2,47.6,1.2,2026-11-04
+btts,Colombia,Primera A,239,no,745,0.4,baja,47.1,50.2,4.6,2026-11-04
+btts,Ecuador,Liga Pro,242,no,531,0.8,baja,48.5,50.3,3,2026-11-04
+btts,Paraguay,Division Profesional - Clausura,252,no,185,2.1,media,51,51.9,2.5,2026-11-04
+btts,Estados Unidos,Major League Soccer,253,no,937,-0.6,baja,55.5,62.6,8.1,2026-11-04
+btts,Luxembourg,National Division,261,no,264,2.1,media,54.8,51.1,4.6,2026-11-04
+btts,México,Liga MX,262,no,407,-0.7,baja,54.5,59.7,4.5,2026-11-04
+btts,México,Liga de Expansión MX,263,no,296,0.5,baja,54.4,58.1,4.8,2026-11-04
+btts,Chile,Primera División,265,aprobada,381,1.7,alta,51.1,53,3,2026-11-04
+btts,Chile,Primera B,266,no,417,0.8,baja,49.4,51.3,4,2026-11-04
+btts,Uruguay,Primera División,268,no,387,0.6,baja,48.1,51.2,3.7,2026-11-04
+btts,Uruguay,Segunda División,269,no,382,0.8,baja,46.4,48.7,14.8,2026-11-04
+btts,Hungary,NB I,271,no,219,1.3,media,56.3,57.1,1.4,2026-11-04
+btts,Hungary,NB II,272,aprobada,262,3.2,alta,50.7,49.6,1.9,2026-11-04
+btts,Indonesia,Liga 1,274,aprobada,301,3.1,alta,51.5,51.8,2.3,2026-11-04
+btts,Indonesia,Liga 2,275,no,258,1.6,media,51.2,55,4.1,2026-11-04
+btts,Malaysia,Super League,278,no,144,-0.9,baja,57.4,48.6,9.6,2026-11-04
+btts,Perú,Primera División,281,no,544,0.6,baja,50.6,54.2,7.9,2026-11-04
+btts,Perú,Segunda División,282,no,272,2,media,47.3,45.6,4.9,2026-11-04
+btts,Rumania,Liga I,283,aprobada,363,1.7,alta,49.9,49,2.9,2026-11-04
+btts,Rumania,Liga II,284,no,346,0.5,baja,52.2,48.8,4.2,2026-11-04
+btts,Serbia,Super Liga,286,no,330,0.1,baja,51.6,49.4,4.6,2026-11-04
+btts,South Africa,Premier Soccer League,288,aprobada,251,3.3,alta,43,42.2,1.8,2026-11-04
+btts,South Africa,1st Division,289,no,238,1.4,baja,45.6,47.5,1.2,2026-11-04
+btts,Iran,Persian Gulf Pro League,290,no,208,2.8,media,40,39.4,7.8,2026-11-04
+btts,Corea del Sur,K League 1,292,no,383,0.2,baja,49,55.6,7.1,2026-11-04
+btts,Corea del Sur,K League 2,293,no,455,1.1,media,51.1,54.7,4.3,2026-11-04
+btts,Corea del Sur,K3 League,295,no,333,1.4,media,49.7,52.9,8.9,2026-11-04
+btts,Thailand,Thai League 1,296,no,227,1.6,baja,51.8,54.6,3,2026-11-04
+btts,Thailand,Thai League 2,297,no,306,2.4,media,52.8,54.6,2.5,2026-11-04
+btts,Venezuela,Primera División,299,no,401,1.1,baja,48.4,51.9,5.4,2026-11-04
+btts,United Arab Emirates,Division 1,303,aprobada,191,3.7,alta,54.3,53.4,1.8,2026-11-04
+btts,Panama,Liga Panameña de Fútbol,304,aprobada,340,2.1,alta,49.1,52.4,3.5,2026-11-04
+btts,Qatar,Stars League,305,no,138,1.3,baja,59.2,64.5,6,2026-11-04
+btts,Arabia Saudita,Pro League,307,no,333,1,baja,55.2,56.5,1.4,2026-11-04
+btts,Andorra,1a Divisió,312,no,100,2.4,baja,51.7,41,12.3,2026-11-04
+btts,Bosnia,Premijer Liga,315,no,193,2.5,media,44.7,37.8,5.7,2026-11-04
+btts,Bosnia,1st League - FBiH,316,no,211,0.9,baja,49.7,51.7,5.4,2026-11-04
+btts,Bosnia,1st League - RS,317,no,227,4.4,alta,47.5,42.7,8.7,2026-11-04
+btts,Cyprus,1. Division,318,no,237,1.4,baja,50.6,47.7,4.1,2026-11-04
+btts,Cyprus,2. Division,319,no,200,1.1,baja,50.9,50.5,4,2026-11-04
+btts,India,Indian Super League,323,faltan,66,0.9,baja,49.3,56.1,9.1,2026-11-04
+btts,India,I-League,324,faltan,34,2.3,baja,54.7,55.9,1.3,2026-11-04
+btts,Georgia,Erovnuli Liga 2,326,no,275,1.1,baja,48.5,51.6,3.7,2026-11-04
+btts,Georgia,Erovnuli Liga,327,no,284,0.2,baja,49.8,56.7,9,2026-11-04
+btts,Estonia,Esiliiga A,328,no,298,1.9,media,61.5,59.1,8,2026-11-04
+btts,Estonia,Meistriliiga,329,aprobada,319,1.7,alta,55.7,56.4,0.6,2026-11-04
+btts,Kuwait,Premier League,330,no,104,-0.1,baja,50.5,51.9,18.8,2026-11-04
+btts,Slovakia,Super Liga,332,no,226,1.8,media,55.5,54,2.8,2026-11-04
+btts,Ucrania,Premier League,333,no,254,1.6,baja,50,42.9,7.3,2026-11-04
+btts,Ucrania,Persha Liga,334,no,261,2.7,media,47.4,41.8,6.5,2026-11-04
+btts,Ucrania,Druha Liga,336,no,298,1.3,media,54,48.7,5.6,2026-11-04
+btts,Vietnam,V.League 1,340,no,171,1.7,baja,51.6,57.3,6.2,2026-11-04
+btts,Armenia,Premier League,342,no,163,1.1,baja,50.9,43.6,8.2,2026-11-04
+btts,Bolivia,Primera División,344,no,374,-0.7,baja,57.7,64.2,6.7,2026-11-04
+btts,Chequia,Czech Liga,345,no,314,1.3,baja,51.4,49.4,3.3,2026-11-04
+btts,Chequia,FNL,346,no,265,1.4,media,52.7,54.7,6.7,2026-11-04
+btts,Chequia,3. liga - CFL A,348,aprobada,300,2.1,alta,57.8,58,0.6,2026-11-04
+btts,Chequia,3. liga - MSFL,349,no,356,1,media,56.4,56.7,12.3,2026-11-04
+btts,Chequia,4. liga - Divizie A,350,aprobada,256,2.9,alta,59,55.9,3.9,2026-11-04
+btts,Chequia,4. liga - Divizie B,351,no,268,-0.2,baja,60.5,65.7,5.9,2026-11-04
+btts,Chequia,4. liga - Divizie C,352,no,261,2.3,media,60.2,62.5,3.5,2026-11-04
+btts,Chequia,4. liga - Divizie D,353,aprobada,281,3.9,alta,56.1,56.2,1.7,2026-11-04
+btts,Chequia,4. liga - Divizie E,354,no,248,0.5,baja,58.4,55.6,7.6,2026-11-04
+btts,Montenegro,Second League,356,no,201,3.2,media,49,47.8,1.3,2026-11-04
+btts,Lithuania,1 Lyga,361,no,405,1,baja,54.5,51.4,3.8,2026-11-04
+btts,Lithuania,A Lyga,362,no,295,2,media,50.6,49.5,8.4,2026-11-04
+btts,Ethiopia,Premier League,363,no,341,2,baja,39.6,39.9,1.9,2026-11-04
+btts,Latvia,1. Liga,364,no,291,1.1,baja,59,61.2,4.1,2026-11-04
+btts,Faroe Islands,Meistaradeildin,367,no,226,0.9,baja,57.3,58.8,4,2026-11-04
+btts,Singapore,Premier League,368,faltan,76,-1.3,baja,60.8,47.4,7.3,2026-11-04
+btts,Uzbekistan,Super League,369,no,393,1.8,media,50.2,52.4,6.2,2026-11-04
+btts,El Salvador,Primera Division,370,no,345,0.1,baja,51.8,54.2,7.9,2026-11-04
+btts,Macedonia,Second League,372,no,232,-5.6,baja,54.1,38.4,17.1,2026-11-04
+btts,Slovenia,1. SNL,373,no,188,2.1,media,56.1,54.8,1.7,2026-11-04
+btts,Slovenia,2. SNL,374,no,275,0.2,baja,53.1,49.5,6.9,2026-11-04
+btts,Hong Kong,Premier League,380,no,104,2.1,baja,57.6,61.5,10,2026-11-04
+btts,Israel,Ligat Ha'al,383,aprobada,248,3,alta,55.9,53.6,0.1,2026-11-04
+btts,Jordan,League,387,no,128,3.8,media,50.9,49.2,9,2026-11-04
+btts,Kazakhstan,Premier League,389,no,362,-1.7,baja,49.1,56.9,10.2,2026-11-04
+btts,Lebanon,Premier League,390,no,121,3.3,baja,47.4,39.7,7.9,2026-11-04
+btts,Malawi,Super League,391,no,321,1.2,baja,44.1,37.4,7.2,2026-11-04
+btts,Malta,Challenge League,392,no,154,1,baja,58.3,53.9,6.6,2026-11-04
+btts,Malta,Premier League,393,aprobada,218,3,alta,50.2,53.2,4.1,2026-11-04
+btts,Moldova,Super Liga,394,no,164,1,baja,53.8,47.6,7.3,2026-11-04
+btts,Moldova,Liga 1,395,aprobada,124,3.5,alta,62,62.1,2.8,2026-11-04
+btts,Nicaragua,Primera Division,396,no,236,0.6,baja,54.1,51.3,3.3,2026-11-04
+btts,Angola,Girabola,397,no,241,1.4,baja,44.9,41.5,4.5,2026-11-04
+btts,Nigeria,NPFL,399,no,400,1.5,baja,39.6,42,3.3,2026-11-04
+btts,Zambia,Super League,400,no,274,1.8,baja,38.3,37.6,5.1,2026-11-04
+btts,San Marino,Campionato,404,no,264,2.6,alta,51.8,47.7,15.2,2026-11-04
+btts,Rwanda,National Soccer League,405,no,282,2.5,media,43.6,45,2.1,2026-11-04
+btts,Northern Ireland,Championship,407,no,267,1.2,baja,55.1,51.3,3,2026-11-04
+btts,Northern Ireland,Premiership,408,no,263,0.3,baja,53.4,55.1,0.6,2026-11-04
+btts,Cambodia,C-League,410,no,156,1.9,baja,57.3,56.4,1,2026-11-04
+btts,Botswana,Premier League,412,no,227,2.5,media,44.6,39.2,5.3,2026-11-04
+btts,Benin,Championnat National,415,no,294,2.7,media,39.3,42.2,4.6,2026-11-04
+btts,Bahrain,Premier League,417,no,121,3.7,media,48.3,38,11.4,2026-11-04
+btts,Azerbaijan,Premyer Liqa,419,no,211,1.3,baja,49.9,50.2,3.3,2026-11-04
+btts,Aruba,Division di Honor,421,faltan,90,2.1,media,67.3,68.9,1.6,2026-11-04
+btts,Burkina Faso,Ligue 1,423,no,226,2,baja,38.3,34.1,8.2,2026-11-04
+btts,Congo DR,Ligue 1,424,no,375,0.1,baja,42.1,37.9,6.9,2026-11-04
+btts,Syria,Premier League,425,no,206,3.6,media,48.4,47.6,1.4,2026-11-04
+btts,Italia,Serie D - Girone A,426,no,314,1.2,media,48.4,48.1,11.2,2026-11-04
+btts,Italia,Serie D - Girone B,427,no,302,1,baja,49.5,53,3.7,2026-11-04
+btts,Italia,Serie D - Girone G,432,no,303,1.4,baja,52.6,54.8,3.2,2026-11-04
+btts,España,Primera División RFEF - Group 1,435,aprobada,379,2.5,alta,48.3,49.3,5.6,2026-11-04
+btts,España,Primera División RFEF - Group 2,436,aprobada,382,3,alta,45.2,44.8,4.9,2026-11-04
+btts,España,Tercera División RFEF - Group 1,439,no,307,1.7,media,48,51.1,3.4,2026-11-04
+btts,España,Tercera División RFEF - Group 2,440,no,310,1.2,baja,50.3,45.2,9.3,2026-11-04
+btts,España,Tercera División RFEF - Group 3,441,no,307,1.6,baja,49.6,45,6.3,2026-11-04
+btts,España,Tercera División RFEF - Group 4,442,no,310,2,media,48.9,48.4,3.4,2026-11-04
+btts,España,Tercera División RFEF - Group 5,443,no,312,1.2,baja,48.7,47.8,0.9,2026-11-04
+btts,España,Tercera División RFEF - Group 6,444,no,305,1.3,baja,46.9,47.9,10.8,2026-11-04
+btts,España,Tercera División RFEF - Group 7,445,aprobada,303,3.4,alta,51.4,55.4,5.2,2026-11-04
+btts,España,Tercera División RFEF - Group 8,446,aprobada,313,2.1,alta,46.2,47.6,1,2026-11-04
+btts,España,Tercera División RFEF - Group 9,447,no,305,2.2,media,44.8,45.2,0.7,2026-11-04
+btts,España,Tercera División RFEF - Group 10,448,aprobada,317,2.6,alta,48.9,47.3,3.1,2026-11-04
+btts,España,Tercera División RFEF - Group 11,449,aprobada,291,3.4,alta,50.4,48.8,9.3,2026-11-04
+btts,España,Tercera División RFEF - Group 12,450,no,303,1.3,baja,49.2,48.8,3.5,2026-11-04
+btts,España,Tercera División RFEF - Group 13,451,no,296,2.3,media,47.4,48.6,1.6,2026-11-04
+btts,España,Tercera División RFEF - Group 15,453,no,319,1.8,media,51.5,55.8,5.6,2026-11-04
+btts,España,Tercera División RFEF - Group 16,454,no,308,1.3,media,52.5,48.7,4,2026-11-04
+btts,España,Tercera División RFEF - Group 17,455,aprobada,312,3.4,alta,47,48.1,5,2026-11-04
+btts,España,Tercera División RFEF - Group 18,456,no,307,2.2,media,45.2,40.7,4.6,2026-11-04
+btts,Portugal,Campeonato de Portugal Prio - Group B,458,no,151,2.2,baja,45.2,52.3,7.2,2026-11-04
+btts,Portugal,Campeonato de Portugal Prio - Group D,460,no,149,1.9,baja,48.1,51,10,2026-11-04
+btts,Noruega,2. Division - Group 1,473,no,298,0.7,baja,58,58.7,1.8,2026-11-04
+btts,Noruega,2. Division - Group 2,474,no,300,-0.5,baja,60.6,65.3,7.1,2026-11-04
+btts,Austria,Frauenliga,484,no,131,-4.3,baja,58.3,42,16.9,2026-11-04
+btts,Bélgica,First Amateur Division,487,aprobada,454,2,alta,58.3,55.7,5,2026-11-04
+btts,Alemania,U19 Bundesliga,488,aprobada,895,1.2,alta,65.3,65.3,16.3,2026-11-04
+btts,Grecia,Super League 2,494,no,242,0.8,baja,46.1,39.3,7.3,2026-11-04
+btts,Israel,Liga Alef,496,no,368,1.5,media,53.6,53.8,0,2026-11-04
+btts,Slovakia,2. liga,506,no,285,0.2,baja,55,59.6,4.1,2026-11-04
+btts,Suiza,1. Liga Promotion,510,aprobada,355,2.3,alta,61.7,63.7,2.7,2026-11-04
+btts,Iraq,Iraqi League,542,aprobada,409,2.4,alta,46.8,49.9,8.4,2026-11-04
+btts,Suecia,Damallsvenskan,549,no,294,0.3,baja,55.9,50.3,3.5,2026-11-04
+btts,Turquía,3. Lig - Group 1,552,no,219,0.1,baja,48.7,51.6,6.8,2026-11-04
+btts,Turquía,3. Lig - Group 2,553,no,213,-0.7,baja,49.1,53.5,9.8,2026-11-04
+btts,Suecia,Ettan - Norra,563,no,398,0.3,baja,57.5,60.8,3.5,2026-11-04
+btts,Suecia,Ettan - Södra,564,no,384,0.9,baja,55.6,60.7,5.4,2026-11-04
+btts,Burundi,Ligue A,566,no,242,-0.4,baja,49.4,55.4,8.4,2026-11-04
+btts,Tanzania,Ligi kuu Bara,567,aprobada,253,7.1,alta,42.9,40.3,4.3,2026-11-04
+btts,Suriname,Eerste Divisie,568,no,100,4.7,media,56.5,48,10.2,2026-11-04
+btts,Kyrgyzstan,Premier League,569,no,354,0.7,baja,53.4,55.1,11,2026-11-04
+btts,Ghana,Premier League,570,aprobada,307,4,alta,39.9,37.1,4.1,2026-11-04
+btts,Grecia,Gamma Ethniki - Group 1,576,no,128,0.2,baja,50.5,55.5,11.7,2026-11-04
+btts,Grecia,Gamma Ethniki - Group 3,578,aprobada,139,4.4,alta,46.6,46,2.8,2026-11-04
+btts,Grecia,Gamma Ethniki - Group 5,580,no,109,2.1,baja,45.2,33.9,12.6,2026-11-04
+btts,Uganda,Premier League,585,no,236,0.8,baja,44,36,8.4,2026-11-04
+btts,Myanmar,National League,588,aprobada,113,3.7,alta,61.5,58.4,3.5,2026-11-04
+btts,Suecia,Division 2 - Norra Götaland,592,no,298,0.2,baja,56.7,60.1,5.1,2026-11-04
+btts,Suecia,Division 2 - Norra Svealand,593,no,296,-0.4,baja,58.8,63.5,6.7,2026-11-04
+btts,Suecia,Division 2 - Norrland,594,no,273,-1.8,baja,61.2,67.4,13.4,2026-11-04
+btts,Suecia,Division 2 - Västra Götaland,596,no,299,0,baja,60.2,63.9,5.1,2026-11-04
+btts,Mali,Première Division,598,aprobada,145,6.4,alta,39.7,37.2,2.7,2026-11-04
+btts,Suiza,1. Liga Classic - Group 1,599,no,268,-2.3,baja,59.4,68.7,11,2026-11-04
+btts,Suiza,1. Liga Classic - Group 2,600,no,274,0.1,baja,59.2,64.6,6.4,2026-11-04
+btts,Suiza,1. Liga Classic - Group 3,601,no,266,1.3,media,59.3,59.4,2.4,2026-11-04
+btts,Brasil,Pernambucano - 1,622,faltan,6,24.3,media,53.1,33.3,,2026-11-04
+btts,Brasil,Carioca - 2,625,faltan,75,6.4,media,43.8,41.3,4.6,2026-11-04
+btts,Hungary,NB III - Northeast,633,no,289,1.8,media,57.5,55,3.4,2026-11-04
+btts,Hungary,NB III - Southwest,634,no,267,1,baja,58.3,62.2,5.2,2026-11-04
+btts,Hungary,NB III - Northwest,635,no,275,1.4,baja,58.3,55.3,5.1,2026-11-04
+btts,Turkmenistan,Ýokary Liga,636,no,177,1.1,baja,52.3,40.1,11.7,2026-11-04
+btts,Vietnam,V.League 2,637,aprobada,105,7.1,alta,47.7,44.8,2.2,2026-11-04
+btts,Dinamarca,Kvindeliga,638,no,130,2.9,media,56,53.8,0.2,2026-11-04
+btts,Slovakia,3. liga - West,644,aprobada,270,2.2,alta,57.8,58.5,0.7,2026-11-04
+btts,Slovakia,3. liga - East,645,no,216,2,baja,57,56.5,5.7,2026-11-04
+btts,Slovakia,3. liga - Center,646,no,217,1.5,baja,58.7,60.8,2,2026-11-04
+btts,Laos,Lao League,647,faltan,72,0.6,baja,58,50,3.3,2026-11-04
+btts,Rusia,Supreme Division Women,649,no,258,-4.7,baja,49.4,34.1,16.9,2026-11-04
+btts,Rusia,Second League - Group 3,650,no,384,1.7,media,52.6,46.4,6.5,2026-11-04
+btts,Rusia,Second League - Group 1,651,aprobada,388,2.6,alta,49.5,47.7,3.5,2026-11-04
+btts,Rusia,Second League - Group 2,652,no,341,0.9,baja,51.7,54.3,2.7,2026-11-04
+btts,Corea del Sur,WK-League,660,no,197,1.9,baja,50.5,48.7,7.5,2026-11-04
+btts,Kosovo,Superliga,664,no,194,0.2,baja,51.6,51.5,14.3,2026-11-04
+btts,Chequia,1. Liga U19,668,no,275,0.2,baja,62.5,64.4,4.3,2026-11-04
+btts,Chequia,1. Liga Women,669,faltan,84,-11.9,baja,63.2,41.7,21.9,2026-11-04
+btts,México,Liga MX Femenil,673,no,387,1.1,media,58.7,53.5,5.8,2026-11-04
+btts,Países Bajos,U21 Divisie 1,675,no,105,2.1,media,61.5,61,4.2,2026-11-04
+btts,Polonia,Central Youth League,676,no,273,1.7,media,60.2,60.4,1.2,2026-11-04
+btts,Chequia,3. liga - CFL B,685,no,304,0.8,baja,58.4,56.3,3.4,2026-11-04
+btts,Chequia,4. liga - Divizie F,686,no,278,0.8,baja,59.6,62.2,3.4,2026-11-04
+btts,Grecia,Gamma Ethniki - Group 9,693,faltan,0,,,,,,2026-11-04
+btts,Grecia,Gamma Ethniki - Group 10,694,faltan,0,,,,,,2026-11-04
+btts,Inglaterra,U18 Premier League - North,695,no,189,1.3,media,66.1,66.1,1,2026-11-04
+btts,Inglaterra,U18 Premier League - South,696,no,226,-0.6,baja,66.6,72.1,7,2026-11-04
+btts,Inglaterra,WSL Cup,697,faltan,0,,,,,,2026-11-04
+btts,Italia,Campionato Primavera - 1,705,no,397,-2.4,baja,52.6,62.5,13.4,2026-11-04
+btts,Italia,Campionato Primavera - 2,706,no,477,0,baja,56,60.4,7.4,2026-11-04
+btts,Bolivia,Nacional B,710,faltan,61,6.1,alta,57.4,49.2,13.5,2026-11-04
+btts,Chile,Segunda División,711,no,239,1.6,baja,51.4,53.6,6.2,2026-11-04
+btts,México,Liga Premier Serie A,722,no,476,0.8,baja,52.9,50.4,5.1,2026-11-04
+btts,Noruega,Toppserien,725,no,213,3,media,55.4,50.2,4.2,2026-11-04
+btts,Oman,Sultan Cup,726,faltan,0,,,,,,2026-11-04
+btts,Rumania,Liga 1 Feminin,728,faltan,97,-7.6,baja,62.6,49.5,21.6,2026-11-04
+btts,Escocia,Football League - Highland League,730,no,390,0.5,baja,58.6,56.2,7.5,2026-11-04
+btts,Escocia,Football League - Lowland League,731,aprobada,373,1.6,alta,62.3,61.4,2,2026-11-04
+btts,Slovakia,I Liga - Women,733,no,136,-0.9,baja,64.1,56.6,8.9,2026-11-04
+btts,South Africa,Diski Challenge,734,no,229,1.4,baja,54.8,53.7,2.6,2026-11-04
+btts,Suecia,Elitettan,736,no,274,0.5,baja,56.1,51.5,4.9,2026-11-04
+btts,Suiza,AXA Women’s Super League,739,aprobada,124,6.4,alta,55.5,56.5,4.8,2026-11-04
+btts,Alemania,Oberliga - Schleswig-Holstein,744,aprobada,286,2.7,alta,63.9,66.1,2.6,2026-11-04
+btts,Alemania,Oberliga - Hamburg,745,aprobada,349,1.7,alta,67.6,69.3,2.8,2026-11-04
+btts,Alemania,Oberliga - Niedersachsen,748,no,266,1.8,media,61.1,62,2.7,2026-11-04
+btts,Alemania,Oberliga - Bremen,749,no,273,0.6,baja,67.1,67.4,4.1,2026-11-04
+btts,Alemania,Oberliga - Hessen,750,no,368,1.9,media,61.8,62.8,1.7,2026-11-04
+btts,Alemania,Oberliga - Rheinland-Pfalz / Saar,752,no,354,0.6,baja,62.4,66.4,7,2026-11-04
+btts,Alemania,Oberliga - Baden-Württemberg,753,no,344,0.2,baja,59.6,63.4,4.7,2026-11-04
+btts,Alemania,Oberliga - Nordost-Nord,754,aprobada,247,3.4,alta,61.9,62.3,4.5,2026-11-04
+btts,Alemania,Oberliga - Nordost-Süd,755,no,247,0.8,baja,58.1,62.8,5,2026-11-04
+btts,Gibraltar,Premier Division,758,no,152,-7.3,baja,59.7,42.8,17.8,2026-11-04
+btts,Dominican Republic,Liga Mayor,759,no,153,0,baja,51.3,48.4,6.4,2026-11-04
+btts,Mauritania,Premier League,762,no,155,1.5,baja,49,51,7.1,2026-11-04
+btts,Noruega,3. Division - Girone 1,774,no,282,1.1,media,68.4,70.9,4.8,2026-11-04
+btts,Noruega,3. Division - Girone 3,776,no,275,2,media,66.3,66.2,6.8,2026-11-04
+btts,Noruega,3. Division - Girone 5,778,no,275,0.5,baja,67,70.9,4.8,2026-11-04
+btts,Noruega,3. Division - Girone 6,779,aprobada,280,2.3,alta,64.1,63.2,0.2,2026-11-04
+btts,Polonia,III Liga - Group 1,780,no,350,1,baja,59.5,62,3.9,2026-11-04
+btts,Polonia,III Liga - Group 2,781,aprobada,349,2.5,alta,56.6,56.2,3.4,2026-11-04
+btts,Polonia,III Liga - Group 3,782,no,329,1.9,media,57.1,59.9,2.9,2026-11-04
+btts,Polonia,III Liga - Group 4,783,no,351,1,baja,56.5,56.4,5.1,2026-11-04
+btts,Rumania,Liga III - Serie 1,784,aprobada,158,4.1,alta,54.7,55.7,2.5,2026-11-04
+btts,Rumania,Liga III - Serie 2,785,aprobada,144,2.1,alta,62.9,58.3,4.2,2026-11-04
+btts,Rumania,Liga III - Serie 3,786,aprobada,143,3.9,alta,60.5,60.1,0.8,2026-11-04
+btts,Rumania,Liga III - Serie 4,787,no,143,1.1,baja,57,51.7,6.6,2026-11-04
+btts,Rumania,Liga III - Serie 5,788,no,132,1.8,baja,54,51.5,4,2026-11-04
+btts,Rumania,Liga III - Serie 6,789,no,154,3.1,media,56.2,54.5,2.2,2026-11-04
+btts,Rumania,Liga III - Serie 7,790,no,161,-1.3,baja,56.3,46,11.7,2026-11-04
+btts,Rumania,Liga III - Serie 8,791,no,165,0.1,baja,53.7,45.5,7,2026-11-04
+btts,Slovenia,3. SNL - East,794,aprobada,181,3.6,alta,55.4,54.7,8.7,2026-11-04
+btts,Slovenia,3. SNL - West,795,no,206,1.8,media,56.8,55.8,2.8,2026-11-04
+btts,Cameroon,Elite Two,813,no,110,2,baja,47.4,50,3.6,2026-11-04
+btts,Tunisia,Ligue 2,828,no,326,1.9,media,43.7,40.5,3.1,2026-11-04
+btts,Japón,WE League,854,no,133,2.3,baja,51.5,44.4,9.4,2026-11-04
+btts,Dinamarca,3. Division,862,no,214,1.7,media,56,59.3,2.8,2026-11-04
+btts,Portugal,Liga 3,865,no,279,1.7,baja,46.1,52,5.4,2026-11-04
+btts,Inglaterra,Premier League Cup,871,faltan,16,-6.6,baja,62.2,75,,2026-11-04
+btts,México,Liga Premier Serie B,872,faltan,70,1.1,baja,52.6,45.7,18.5,2026-11-04
+btts,España,Segunda División RFEF - Group 1,875,aprobada,279,2.6,alta,49,51.3,2.8,2026-11-04
+btts,España,Segunda División RFEF - Group 2,876,no,271,1.3,baja,48.4,51.3,4.2,2026-11-04
+btts,España,Segunda División RFEF - Group 3,877,no,279,3.1,media,48.4,52,11,2026-11-04
+btts,España,Segunda División RFEF - Group 5,879,no,276,-0.1,baja,49.1,55.1,5.9,2026-11-04
+btts,China,League Two,929,no,609,0.9,media,45.7,44.2,8.9,2026-11-04
+btts,Inglaterra,Non League Premier - Southern Central,931,no,513,0.9,baja,55,57.3,2.8,2026-11-04
+btts,Alemania,Oberliga - Bayern Nord,938,no,342,0.7,baja,57.8,59.6,2.6,2026-11-04
+btts,Alemania,Oberliga - Bayern Süd,939,no,332,1.5,baja,56.5,58.4,9.5,2026-11-04
+btts,Italia,Serie C - Girone B,942,no,364,0.4,baja,47.2,50.5,4.2,2026-11-04
+btts,Italia,Serie C - Girone C,943,no,401,1.1,media,49.8,51.6,2.2,2026-11-04
+btts,Croacia,Second NL,946,aprobada,248,2.4,alta,53,51.2,2.6,2026-11-04
+btts,Alemania,DFB Pokal - Women,947,faltan,0,,,,,,2026-11-04
+btts,Portugal,1a Divisão - Women,948,faltan,82,2.1,baja,53.2,41.5,9.7,2026-11-04
+btts,Internacional,CONMEBOL Libertadores Femenina,949,faltan,1,-139.5,,53.6,100,,2026-11-04
+btts,New Zealand,National League - National,955,faltan,24,4.6,baja,59.3,58.3,,2026-11-04
+btts,Lesotho,Premier League,962,aprobada,251,3.4,alta,47.5,47,3.3,2026-11-04
+btts,Gabon,Championnat D1,968,no,133,3.5,media,47.5,42.9,5.3,2026-11-04
+btts,Hungary,NB III - Southeast,1023,no,283,1.5,media,57.9,60.8,7.5,2026-11-04
+btts,Rusia,Second League A - Division A Gold,1025,no,196,0.9,baja,46.9,45.9,1.2,2026-11-04
+btts,Polonia,Ekstraliga Women,1033,aprobada,133,4.1,alta,58.8,55.6,7.5,2026-11-04
+btts,Brasil,Copa Santa Catarina,1036,faltan,27,9.5,media,54.9,51.9,,2026-11-04
+btts,Portugal,Júniores U19,1041,aprobada,308,2.3,alta,54,53.6,3.1,2026-11-04
+btts,Suecia,Division 2 - Play-offs,1053,faltan,0,,,,,,2026-11-04
+btts,Georgia,Liga 3,1104,no,366,-0.6,baja,55.4,49.5,5.9,2026-11-04
+btts,Brasil,Carioca U20,1114,no,116,1.7,baja,51.8,48.3,5.8,2026-11-04
+btts,Estonia,Esiliiga B,1126,aprobada,292,3.4,alta,65,62.3,2.8,2026-11-04
+btts,Brasil,Brasileiro U17,1128,no,334,1.3,media,58.4,56,4.7,2026-11-04
+btts,Estados Unidos,USL Super League,1130,no,137,1.8,baja,51.9,47.4,4.8,2026-11-04
+btts,Brasil,Goiano - 3,1133,faltan,26,5.5,baja,54.9,53.8,,2026-11-04
+btts,Brasil,Sergipano - 2,1135,faltan,13,12.2,baja,53,46.2,,2026-11-04
+btts,Brasil,Brasiliense B,1141,faltan,6,32.9,alta,51.5,16.7,,2026-11-04
+btts,Brasil,Mineiro - 3,1142,faltan,14,14.7,baja,51.6,50,,2026-11-04
+btts,Brasil,Copa Fares Lopes,1165,faltan,0,,,,,,2026-11-04
+btts,Kosovo,Liga E Pare,1195,aprobada,336,2.3,alta,50.9,47.3,3.6,2026-11-04
+btts,Ghana,Division One League,1196,no,639,1.4,media,45.8,45.2,7.8,2026-11-04
+btts,México,Liga MX U21,1200,no,407,0,baja,50.2,55.8,6.5,2026-11-04
+btts,Australia,Australian Championship,1202,faltan,7,16.3,media,57.8,42.9,,2026-11-04
+btts,United Arab Emirates,Pro League U23,1218,no,177,2.2,media,57.9,59.9,4.5,2026-11-04
+btts,Arabia Saudita,Premier League Women,1227,faltan,42,2.2,baja,68.2,59.5,,2026-11-04
+btts,Corea del Sur,K4 League,1234,aprobada,106,7.4,alta,54.9,54.7,1.9,2026-11-04
+btts,Austria,Regionalliga - North,1239,faltan,58,-0.5,baja,58.5,44.8,9.6,2026-11-04
+btts,Turquía,U19 league,1240,faltan,34,9.5,alta,58.8,47.1,,2026-11-04
+btts,Serbia,U19 league,1241,faltan,37,0.2,baja,65.5,75.7,9.7,2026-11-04
+btts,México,Primera Premier,1242,faltan,24,-0.6,baja,53.4,66.7,,2026-11-04
+btts,South Africa,Super League Women,1243,faltan,48,4,baja,50.1,33.3,,2026-11-04
+btts,Dinamarca,B-Liga Women,1244,faltan,12,4,baja,62,66.7,,2026-11-04
+over25,,UEFA Champions League,2,faltan,92,2.4,baja,62.6,65.2,0,2026-11-03
+over25,Inglaterra,Premier League,39,no,392,-0.4,baja,52.1,53.1,6.8,2026-11-04
+over25,Inglaterra,Championship,40,no,613,0,baja,48,52.7,5.2,2026-11-04
+over25,Inglaterra,League One,41,no,604,0.1,baja,48,51.8,15.5,2026-11-04
+over25,Inglaterra,League Two,42,no,613,-0.2,baja,47.6,49.3,15.8,2026-11-04
+over25,Inglaterra,National League,43,no,631,2.1,alta,55.3,58,8.7,2026-11-04
+over25,Inglaterra,FA WSL,44,no,135,3.5,media,56.4,59.3,0.3,2026-11-04
+over25,Inglaterra,National League - North,50,no,611,1.4,media,58,59.4,1.8,2026-11-04
+over25,Inglaterra,National League - South,51,no,611,0.2,baja,51.6,55.6,7.2,2026-11-04
+over25,Inglaterra,Non League Premier - Isthmian,58,no,513,-0.9,baja,62.6,64.1,12.9,2026-11-04
+over25,Inglaterra,Non League Premier - Northern,59,no,491,-0.9,baja,49.8,53.8,8.2,2026-11-04
+over25,Inglaterra,Non League Premier - Southern South,60,no,516,0.8,baja,60.7,61.8,4.1,2026-11-04
+over25,Francia,Ligue 1,61,no,320,0.8,baja,54.1,55,14.3,2026-11-04
+over25,Francia,Ligue 2,62,aprobada,320,2.9,alta,46,48.8,4.6,2026-11-04
+over25,Francia,Ligue 3,63,no,292,0.5,baja,42.4,47.3,8.3,2026-11-04
+over25,Francia,Feminine Division 1,64,no,119,1.3,baja,59.3,52.1,10.1,2026-11-04
+over25,Francia,Coupe de France,66,faltan,0,,,,,,2026-11-04
+over25,Francia,National 2 - Group A,67,no,206,-1.1,baja,46.5,50.5,5.5,2026-11-04
+over25,Francia,National 2 - Group B,68,no,208,0.8,baja,42.3,47.6,12,2026-11-04
+over25,Francia,National 2 - Group C,69,no,217,1.2,baja,46.3,51.2,6.8,2026-11-04
+over25,Brasil,Serie A,71,no,626,0.4,baja,45.8,49.4,10.5,2026-11-04
+over25,Brasil,Serie B,72,no,640,1,baja,38,42.5,5,2026-11-04
+over25,Alemania,Bundesliga,78,no,308,1.5,media,62.3,65.9,4.7,2026-11-04
+over25,Alemania,2. Bundesliga,79,no,316,0.5,baja,55.5,57,7.7,2026-11-04
+over25,Alemania,3. Liga,80,no,407,-0.1,baja,61.3,64.6,7.2,2026-11-04
+over25,Alemania,Regionalliga - Bayern,83,no,379,1.2,baja,57.3,53.3,4.9,2026-11-04
+over25,Alemania,Regionalliga - Nord,84,aprobada,368,2.5,alta,70.1,68.2,2.3,2026-11-04
+over25,Alemania,Regionalliga - Nordost,85,no,368,1.2,baja,55.9,56,12.6,2026-11-04
+over25,Alemania,Regionalliga - SudWest,86,aprobada,349,1.8,alta,65.7,64.8,8.5,2026-11-04
+over25,Alemania,Regionalliga - West,87,no,364,-0.6,baja,60.8,63.7,7.3,2026-11-04
+over25,Países Bajos,Eredivisie,88,no,335,2.1,media,63.3,62.7,2.1,2026-11-04
+over25,Países Bajos,Eerste Divisie,89,no,439,0.1,baja,63.3,64,11.1,2026-11-04
+over25,Países Bajos,Derde Divisie,92,no,373,0.9,baja,65.2,65.7,6.7,2026-11-04
+over25,Portugal,Primeira Liga,94,no,327,2.4,media,50.7,53.8,3.4,2026-11-04
+over25,Portugal,Segunda Liga,95,no,310,-0.4,baja,44.4,47.4,12.7,2026-11-04
+over25,Japón,J1 League,98,no,262,0,baja,50.3,53.4,6,2026-11-04
+over25,Japón,J2 League,99,aprobada,440,2.7,alta,44.4,46.6,3.5,2026-11-04
+over25,Japón,J3 League,100,aprobada,444,4.7,alta,46.4,49.1,5.5,2026-11-04
+over25,Noruega,Eliteserien,103,aprobada,365,2.1,alta,59.4,63.3,6.1,2026-11-04
+over25,Polonia,Ekstraklasa,106,aprobada,346,3.3,alta,52,53.5,2.6,2026-11-04
+over25,Polonia,I Liga,107,aprobada,336,3.6,alta,56.9,55.1,4.3,2026-11-04
+over25,Polonia,II Liga - East,109,no,333,1.5,media,57.8,57.4,3.5,2026-11-04
+over25,Gales,Premier League,110,no,244,2.4,media,58.5,56.6,4,2026-11-04
+over25,Gales,FAW Championship,111,no,528,1.4,media,62.2,63.1,3.8,2026-11-04
+over25,Suecia,Superettan,114,no,386,-0.7,baja,54.5,57.3,5.5,2026-11-04
+over25,Belarus,Premier League,116,no,390,1.3,baja,46.1,47.4,10.5,2026-11-04
+over25,Belarus,1. Division,117,aprobada,494,2.3,alta,61.2,62.6,1.4,2026-11-04
+over25,Dinamarca,1. Division,120,no,212,0.6,baja,51.6,55.7,8.9,2026-11-04
+over25,Dinamarca,2. Division,122,no,219,2.9,media,51.9,54.3,6.4,2026-11-04
+over25,Argentina,Liga Profesional Argentina,128,no,885,1.4,media,32,35.7,5.1,2026-11-04
+over25,Argentina,Primera Nacional,129,aprobada,1131,2.3,alta,27.5,31.2,4,2026-11-04
+over25,Argentina,Primera B Metropolitana,131,aprobada,798,2.8,alta,32.5,33,0.7,2026-11-04
+over25,Argentina,Primera C,132,no,755,1.5,media,32.5,31.5,4.7,2026-11-04
+over25,Argentina,Torneo Federal A,134,aprobada,906,2.3,alta,32.9,32.2,2.9,2026-11-04
+over25,Italia,Serie A,135,no,402,2.2,media,43.6,49.5,7,2026-11-04
+over25,Italia,Serie B,136,no,395,0.6,baja,46.3,47.8,17.1,2026-11-04
+over25,Italia,Serie C - Girone A,138,no,408,1.6,media,39.8,43.9,6.7,2026-11-04
+over25,Italia,Serie A Women,139,no,121,3.3,media,48.6,50.4,1.7,2026-11-04
+over25,España,La Liga,140,aprobada,410,3.5,alta,50.2,52.4,2.8,2026-11-04
+over25,España,Segunda División,141,no,492,1,baja,47.4,50.6,10.8,2026-11-04
+over25,España,Primera División Femenina,142,aprobada,253,4.1,alta,53.7,52.6,2.3,2026-11-04
+over25,Bélgica,Jupiler Pro League,144,no,337,1,baja,48.8,53.7,5.2,2026-11-04
+over25,Bélgica,Challenger Pro League,145,no,259,-2.2,baja,52.1,58.7,12.2,2026-11-04
+over25,Bélgica,Second Amateur Division - ACFF,148,aprobada,317,5.3,alta,55.5,55.8,7.7,2026-11-04
+over25,Bélgica,Second Amateur Division - VFV A,149,no,241,0.3,baja,62.4,64.3,5.7,2026-11-04
+over25,Bélgica,Second Amateur Division - VFV B,150,no,248,2.6,media,64.2,67.7,7.6,2026-11-04
+over25,Costa Rica,Primera División,162,no,214,2.2,baja,44.2,47.7,5.1,2026-11-04
+over25,China,League One,170,no,397,1.4,baja,47.9,49.6,5.8,2026-11-04
+over25,Bulgaria,First League,172,no,324,1.4,baja,41.4,43.8,4.8,2026-11-04
+over25,Bulgaria,Second League,173,no,313,2.2,media,45.5,47.9,6.2,2026-11-04
+over25,Bulgaria,Third League - Northeast,175,aprobada,293,3.6,alta,67.6,67.2,3,2026-11-04
+over25,Bulgaria,Third League - Northwest,176,no,129,2.2,baja,59.1,63.6,9.7,2026-11-04
+over25,Bulgaria,Third League - Southeast,177,no,386,1.7,media,58.4,59.8,9.3,2026-11-04
+over25,Bulgaria,Third League - Southwest,178,no,345,2.8,media,53.7,54.8,3.1,2026-11-04
+over25,Escocia,Premiership,179,no,254,0.6,baja,49.9,55.5,7.5,2026-11-04
+over25,Escocia,Championship,180,no,194,0.6,baja,42.5,43.8,11.7,2026-11-04
+over25,Escocia,FA Cup,181,faltan,0,,,,,,2026-11-04
+over25,Escocia,League One,183,no,195,3,media,49.5,50.3,4.2,2026-11-04
+over25,Escocia,League Two,184,no,204,0.1,baja,57.7,57.8,5.3,2026-11-04
+over25,Escocia,League Cup,185,faltan,4,-7.8,baja,56.6,75,,2026-11-04
+over25,Algeria,Ligue 1,186,no,227,3.3,media,36.2,39.6,2,2026-11-04
+over25,Algeria,Ligue 2,187,no,450,1.5,baja,34.8,39.1,13.5,2026-11-04
+over25,Australia,A-League,188,no,144,0.5,baja,51.1,58.3,10.9,2026-11-04
+over25,Australia,A-League Women,190,faltan,92,3.3,baja,52.7,54.3,4.3,2026-11-04
+over25,Grecia,Super League 1,197,no,243,2.9,media,48.3,51.4,5.9,2026-11-04
+over25,Marruecos,Botola Pro,200,no,213,2,baja,36.4,37.1,6.1,2026-11-04
+over25,Marruecos,Botola 2,201,no,212,4,media,29.8,33.5,5.6,2026-11-04
+over25,Turquía,Süper Lig,203,no,322,2.1,media,48.9,54.7,9.8,2026-11-04
+over25,Turquía,1. Lig,204,aprobada,406,4.6,alta,54.5,53.2,8.2,2026-11-04
+over25,Turquía,2. Lig,205,aprobada,599,3.1,alta,56.1,56.9,2,2026-11-04
+over25,Suiza,Super League,207,no,258,2.6,media,64.2,67.8,6.7,2026-11-04
+over25,Croacia,HNL,210,no,203,3.4,media,50.8,50.7,1.9,2026-11-04
+over25,Croacia,First NL,211,no,217,2.3,baja,39.2,47,9.5,2026-11-04
+over25,Austria,Bundesliga,218,no,218,1.7,baja,50.8,54.6,8.8,2026-11-04
+over25,Austria,2. Liga,219,aprobada,247,2.5,alta,52.3,52.6,1.8,2026-11-04
+over25,Austria,Regionalliga - Ost,221,no,313,1.6,media,57.7,58.8,4,2026-11-04
+over25,Austria,Regionalliga - West,223,aprobada,292,2.3,alta,64.5,67.1,6.3,2026-11-04
+over25,Egipto,Premier League,233,no,314,5.5,alta,32,37.3,10.1,2026-11-04
+over25,Honduras,Liga Nacional,234,no,272,1.3,media,55.9,51.5,11.7,2026-11-04
+over25,Rusia,Premier League,235,no,282,2.2,media,48.2,46.8,2.2,2026-11-04
+over25,Rusia,First League,236,aprobada,361,3.7,alta,42,42.4,1,2026-11-04
+over25,Colombia,Primera A,239,no,745,1,media,41.3,44.6,8.8,2026-11-04
+over25,,Primera B,240,aprobada,511,3,alta,40.5,39.7,2.3,2026-11-03
+over25,Ecuador,Liga Pro,242,no,531,1.1,baja,43.6,44.4,6.3,2026-11-04
+over25,Paraguay,Division Profesional - Clausura,252,no,185,2.2,media,47.8,44.9,6.1,2026-11-04
+over25,Estados Unidos,Major League Soccer,253,no,937,1.1,media,57.9,62.4,5.3,2026-11-04
+over25,Luxembourg,National Division,261,no,264,2.7,media,56.2,58.7,5.3,2026-11-04
+over25,México,Liga MX,262,no,407,-0.2,baja,56.1,55,13.3,2026-11-04
+over25,México,Liga de Expansión MX,263,no,296,1.7,media,56.2,55.7,1.3,2026-11-04
+over25,Chile,Primera División,265,no,381,2,media,49.2,52.8,5.2,2026-11-04
+over25,Chile,Primera B,266,no,417,-0.6,baja,44.9,46.8,11.5,2026-11-04
+over25,Uruguay,Primera División,268,no,387,2.1,media,42.4,42.9,5.4,2026-11-04
+over25,Uruguay,Segunda División,269,no,382,1.4,baja,37.8,38.5,3.1,2026-11-04
+over25,Hungary,NB I,271,no,219,0.7,baja,58.4,56.2,7.1,2026-11-04
+over25,Hungary,NB II,272,no,262,2,media,47,48.5,3.4,2026-11-04
+over25,Indonesia,Liga 1,274,no,301,1,baja,49.7,55.1,5.5,2026-11-04
+over25,Indonesia,Liga 2,275,aprobada,258,5.3,alta,50.2,53.5,5.1,2026-11-04
+over25,Malaysia,Super League,278,aprobada,144,3.8,alta,63.8,59.7,13.1,2026-11-04
+over25,Perú,Primera División,281,no,544,0.6,baja,49.6,51.7,4.5,2026-11-04
+over25,Perú,Segunda División,282,no,272,3,media,43.5,46.7,8,2026-11-04
+over25,Rumania,Liga I,283,aprobada,363,2.6,alta,46.6,45.5,8.9,2026-11-04
+over25,Rumania,Liga II,284,no,346,1.1,media,51.4,50.3,1.1,2026-11-04
+over25,Serbia,Super Liga,286,no,330,1.1,baja,50.6,48.5,6.8,2026-11-04
+over25,South Africa,Premier Soccer League,288,aprobada,251,6.5,alta,32.5,33.1,1.2,2026-11-04
+over25,South Africa,1st Division,289,no,238,-1,baja,37.6,43.7,6.8,2026-11-04
+over25,Iran,Persian Gulf Pro League,290,no,208,3.4,baja,26.4,33.2,7.2,2026-11-04
+over25,Corea del Sur,K League 1,292,no,383,1.2,baja,43.7,47.8,10.2,2026-11-04
+over25,Corea del Sur,K League 2,293,no,455,1.8,media,48,48.1,8.4,2026-11-04
+over25,Corea del Sur,K3 League,295,no,333,1.1,baja,44.6,48.6,4.8,2026-11-04
+over25,Thailand,Thai League 1,296,no,227,1.3,baja,51,47.6,4.9,2026-11-04
+over25,Thailand,Thai League 2,297,aprobada,306,3.2,alta,52.2,52.3,3.1,2026-11-04
+over25,Venezuela,Primera División,299,no,401,1,baja,42.9,45.6,9.5,2026-11-04
+over25,United Arab Emirates,Division 1,303,aprobada,191,4.4,alta,54.8,54.5,2.5,2026-11-04
+over25,Panama,Liga Panameña de Fútbol,304,aprobada,340,3.2,alta,44.4,45.9,7,2026-11-04
+over25,Qatar,Stars League,305,no,138,1,baja,64.1,70.3,3.8,2026-11-04
+over25,Arabia Saudita,Pro League,307,no,333,0.2,baja,57.8,56.8,2.5,2026-11-04
+over25,Andorra,1a Divisió,312,no,100,0.3,baja,51.3,56,16.9,2026-11-04
+over25,Bosnia,Premijer Liga,315,no,193,3.3,media,37.5,36.8,9.2,2026-11-04
+over25,Bosnia,1st League - FBiH,316,no,211,-0.2,baja,46.8,52.1,5.9,2026-11-04
+over25,Bosnia,1st League - RS,317,aprobada,227,4,alta,45.9,48,15.8,2026-11-04
+over25,Cyprus,1. Division,318,no,237,0.8,baja,48.2,49.4,4.4,2026-11-04
+over25,Cyprus,2. Division,319,no,200,1.2,baja,47.8,49.5,3.9,2026-11-04
+over25,India,Indian Super League,323,faltan,66,6.3,media,44.8,42.4,3.4,2026-11-04
+over25,India,I-League,324,faltan,34,3.5,baja,56.7,64.7,,2026-11-04
+over25,Georgia,Erovnuli Liga 2,326,no,275,2.2,baja,43.5,48.4,11.1,2026-11-04
+over25,Georgia,Erovnuli Liga,327,no,284,1,baja,45.4,53.5,10.3,2026-11-04
+over25,Estonia,Esiliiga A,328,aprobada,298,2.9,alta,70.9,70.8,4.3,2026-11-04
+over25,Estonia,Meistriliiga,329,no,319,2.5,media,60.5,64.9,7.2,2026-11-04
+over25,Kuwait,Premier League,330,no,104,1.7,baja,47.1,50,7.5,2026-11-04
+over25,Slovakia,Super Liga,332,aprobada,226,2.4,alta,56.5,57.1,2.1,2026-11-04
+over25,Ucrania,Premier League,333,no,254,2.6,media,46.8,50.8,11.2,2026-11-04
+over25,Ucrania,Persha Liga,334,aprobada,261,4.4,alta,40.2,45.6,6.1,2026-11-04
+over25,Ucrania,Druha Liga,336,aprobada,298,2.8,alta,54.7,52.7,6.1,2026-11-04
+over25,,Liga Nacional,339,no,350,1.5,baja,44.6,46,10.9,2026-11-03
+over25,Vietnam,V.League 1,340,no,171,3.3,media,49.3,51.5,4.9,2026-11-04
+over25,Armenia,Premier League,342,no,163,2.3,media,49.4,50.3,5.1,2026-11-04
+over25,Bolivia,Primera División,344,aprobada,374,2.8,alta,65.7,65.5,12.9,2026-11-04
+over25,Chequia,Czech Liga,345,no,314,1.6,media,48.3,51.6,4.2,2026-11-04
+over25,Chequia,FNL,346,no,265,0.8,baja,51.8,54,3.8,2026-11-04
+over25,Chequia,3. liga - CFL A,348,aprobada,300,3.6,alta,62.3,63.3,5.5,2026-11-04
+over25,Chequia,3. liga - MSFL,349,no,356,0.8,baja,59.9,61.2,2.2,2026-11-04
+over25,Chequia,4. liga - Divizie A,350,aprobada,256,4.3,alta,65.6,65.2,4.8,2026-11-04
+over25,Chequia,4. liga - Divizie B,351,no,268,1.8,media,67.4,69.4,2.1,2026-11-04
+over25,Chequia,4. liga - Divizie C,352,no,261,5.8,alta,68.1,70.1,10.4,2026-11-04
+over25,Chequia,4. liga - Divizie D,353,aprobada,281,3.8,alta,59,60.1,1.1,2026-11-04
+over25,Chequia,4. liga - Divizie E,354,no,248,2,media,63.4,59.7,8,2026-11-04
+over25,Montenegro,Second League,356,no,201,0.1,baja,44.4,49.8,7.5,2026-11-04
+over25,Lithuania,1 Lyga,361,aprobada,405,2.3,alta,56.5,58.8,3.7,2026-11-04
+over25,Lithuania,A Lyga,362,no,295,0.1,baja,48,52.9,11.4,2026-11-04
+over25,Ethiopia,Premier League,363,aprobada,341,4.9,alta,25.4,27.3,2.7,2026-11-04
+over25,Latvia,1. Liga,364,no,291,1.4,baja,65.1,70.1,5.8,2026-11-04
+over25,Faroe Islands,Meistaradeildin,367,no,226,2.5,media,63.7,63.7,3.5,2026-11-04
+over25,Singapore,Premier League,368,faltan,76,1,baja,70.7,71.1,0.8,2026-11-04
+over25,Uzbekistan,Super League,369,no,393,0.2,baja,46.5,50.9,6.9,2026-11-04
+over25,El Salvador,Primera Division,370,no,345,-0.6,baja,50,50.1,8.3,2026-11-04
+over25,Macedonia,Second League,372,no,232,7.7,alta,58.4,53,16.4,2026-11-04
+over25,Slovenia,1. SNL,373,no,188,2.6,media,59.2,59,0.9,2026-11-04
+over25,Slovenia,2. SNL,374,no,275,-0.1,baja,53.7,52.7,8.8,2026-11-04
+over25,Hong Kong,Premier League,380,no,104,0,baja,62.3,70.2,10.9,2026-11-04
+over25,Israel,Ligat Ha'al,383,no,248,2,media,58.5,52.4,8.7,2026-11-04
+over25,Jordan,League,387,no,128,4.8,media,48.9,49.2,2.8,2026-11-04
+over25,Kazakhstan,Premier League,389,no,362,-1.1,baja,45.1,51.4,11.9,2026-11-04
+over25,Lebanon,Premier League,390,no,121,3.5,baja,41.4,45.5,6.2,2026-11-04
+over25,Malawi,Super League,391,aprobada,321,3.5,alta,35.6,36.1,4.5,2026-11-04
+over25,Malta,Challenge League,392,no,154,0.8,baja,63.4,57.8,6.8,2026-11-04
+over25,Malta,Premier League,393,aprobada,218,3.6,alta,46.3,46.8,8,2026-11-04
+over25,Moldova,Super Liga,394,no,164,1.2,baja,55.9,56.7,3.3,2026-11-04
+over25,Moldova,Liga 1,395,no,124,-1.2,baja,71,60.5,21.4,2026-11-04
+over25,Nicaragua,Primera Division,396,no,236,2.3,media,56.1,53.8,8.2,2026-11-04
+over25,Angola,Girabola,397,no,241,2.4,baja,37.1,36.1,4,2026-11-04
+over25,Nigeria,NPFL,399,no,400,1.3,baja,30.9,37.5,6.9,2026-11-04
+over25,Zambia,Super League,400,aprobada,274,7.3,alta,24.5,25.5,2.2,2026-11-04
+over25,San Marino,Campionato,404,aprobada,264,3.6,alta,51.4,51.1,1.2,2026-11-04
+over25,Rwanda,National Soccer League,405,no,282,3.4,media,33.3,39,9,2026-11-04
+over25,Northern Ireland,Championship,407,no,267,2.1,media,56.6,54.3,10,2026-11-04
+over25,Northern Ireland,Premiership,408,no,263,0.2,baja,53.5,56.7,15,2026-11-04
+over25,Cambodia,C-League,410,aprobada,156,3.8,alta,61.6,60.3,9.1,2026-11-04
+over25,Botswana,Premier League,412,aprobada,227,5.4,alta,35.8,34.8,11.6,2026-11-04
+over25,Benin,Championnat National,415,no,294,5,media,25.9,31.3,6,2026-11-04
+over25,Bahrain,Premier League,417,no,121,5.7,media,43.1,46.3,4.4,2026-11-04
+over25,Azerbaijan,Premyer Liqa,419,no,211,0,baja,46.3,50.7,6.2,2026-11-04
+over25,Aruba,Division di Honor,421,faltan,90,0,baja,81.9,72.2,15.8,2026-11-04
+over25,Burkina Faso,Ligue 1,423,no,226,2.9,baja,23.3,30.5,8,2026-11-04
+over25,Congo DR,Ligue 1,424,no,375,1,baja,31.3,29.6,6.1,2026-11-04
+over25,Syria,Premier League,425,no,206,3.9,media,44.7,44.2,5,2026-11-04
+over25,Italia,Serie D - Girone A,426,no,314,1.6,baja,42.7,43.9,3,2026-11-04
+over25,Italia,Serie D - Girone B,427,no,302,0.9,baja,44.4,45.7,12.9,2026-11-04
+over25,Italia,Serie D - Girone G,432,aprobada,303,3,alta,51,50.2,2.8,2026-11-04
+over25,España,Primera División RFEF - Group 1,435,aprobada,379,2.9,alta,42.6,44.1,1.5,2026-11-04
+over25,España,Primera División RFEF - Group 2,436,no,382,2.1,baja,36.7,42.1,12.6,2026-11-04
+over25,España,Tercera División RFEF - Group 1,439,no,307,1.2,baja,41.6,44,5,2026-11-04
+over25,España,Tercera División RFEF - Group 2,440,no,310,2.1,media,48.1,46.8,1.6,2026-11-04
+over25,España,Tercera División RFEF - Group 3,441,no,307,2.6,media,47.1,48.2,1.9,2026-11-04
+over25,España,Tercera División RFEF - Group 4,442,no,310,2.2,media,44.7,49.4,11.7,2026-11-04
+over25,España,Tercera División RFEF - Group 5,443,no,312,0.9,baja,43.1,42.6,2.3,2026-11-04
+over25,España,Tercera División RFEF - Group 6,444,no,305,1.3,baja,39.5,42.3,7.4,2026-11-04
+over25,España,Tercera División RFEF - Group 7,445,no,303,2.8,media,48.4,50.5,3.4,2026-11-04
+over25,España,Tercera División RFEF - Group 8,446,no,313,1.5,baja,38.8,43.5,7.1,2026-11-04
+over25,España,Tercera División RFEF - Group 9,447,no,305,3.1,media,37.5,36.4,4.6,2026-11-04
+over25,España,Tercera División RFEF - Group 10,448,no,317,2.2,media,44.7,46.7,14.2,2026-11-04
+over25,España,Tercera División RFEF - Group 11,449,aprobada,291,4.4,alta,48.8,47.8,4.5,2026-11-04
+over25,España,Tercera División RFEF - Group 12,450,no,303,0.9,baja,47.9,44.6,11.3,2026-11-04
+over25,España,Tercera División RFEF - Group 13,451,no,296,2.7,media,40.6,43.9,6.3,2026-11-04
+over25,España,Tercera División RFEF - Group 15,453,no,319,0.8,baja,50.8,51.1,3,2026-11-04
+over25,España,Tercera División RFEF - Group 16,454,aprobada,308,2.8,alta,52.6,51.3,4.5,2026-11-04
+over25,España,Tercera División RFEF - Group 17,455,no,312,3.5,media,40,46.5,8,2026-11-04
+over25,España,Tercera División RFEF - Group 18,456,aprobada,307,4.4,alta,37.7,39.7,3.3,2026-11-04
+over25,Portugal,Campeonato de Portugal Prio - Group B,458,no,151,5.6,media,36.9,41.1,7.9,2026-11-04
+over25,Portugal,Campeonato de Portugal Prio - Group D,460,no,149,1.7,baja,42.1,51,14.6,2026-11-04
+over25,Noruega,2. Division - Group 1,473,no,298,0,baja,63.3,63.4,9,2026-11-04
+over25,Noruega,2. Division - Group 2,474,no,300,2,media,68.5,72.3,5.7,2026-11-04
+over25,Austria,Frauenliga,484,no,131,-1,baja,64.9,58,9.6,2026-11-04
+over25,Bélgica,First Amateur Division,487,aprobada,454,2.9,alta,62.7,59.9,6.3,2026-11-04
+over25,Alemania,U19 Bundesliga,488,no,895,0.1,baja,76.7,73.7,7.3,2026-11-04
+over25,Grecia,Super League 2,494,aprobada,242,3.5,alta,39.6,39.3,5.2,2026-11-04
+over25,Israel,Liga Alef,496,no,368,1,baja,52.7,54.6,8.4,2026-11-04
+over25,Slovakia,2. liga,506,no,285,0.6,baja,57.2,57.2,3.4,2026-11-04
+over25,Suiza,1. Liga Promotion,510,no,355,2.3,alta,70.4,67.3,8.2,2026-11-04
+over25,Iraq,Iraqi League,542,aprobada,409,3.6,alta,40,42.3,3.1,2026-11-04
+over25,Suecia,Damallsvenskan,549,no,294,3.8,media,60.4,64.6,8.1,2026-11-04
+over25,Turquía,3. Lig - Group 1,552,no,219,-0.5,baja,43.1,48.4,16.4,2026-11-04
+over25,Turquía,3. Lig - Group 2,553,no,213,-1.7,baja,44.5,47.9,15.8,2026-11-04
+over25,Suecia,Ettan - Norra,563,no,398,1.5,media,62,61.8,3.7,2026-11-04
+over25,Suecia,Ettan - Södra,564,no,384,-0.1,baja,57.5,63.3,10.1,2026-11-04
+over25,Burundi,Ligue A,566,no,242,-2.1,baja,45.4,52.9,12.5,2026-11-04
+over25,Tanzania,Ligi kuu Bara,567,no,253,2,baja,34.6,43.9,15.5,2026-11-04
+over25,Suriname,Eerste Divisie,568,aprobada,100,4.2,alta,61.2,63,2.1,2026-11-04
+over25,Kyrgyzstan,Premier League,569,no,354,1.1,baja,52.9,54.8,8.1,2026-11-04
+over25,Ghana,Premier League,570,no,307,3,media,30.6,35.8,6.2,2026-11-04
+over25,Grecia,Gamma Ethniki - Group 1,576,no,128,4.3,media,50,55.5,4.9,2026-11-04
+over25,Grecia,Gamma Ethniki - Group 3,578,aprobada,139,7.6,alta,40.2,40.3,1.1,2026-11-04
+over25,Grecia,Gamma Ethniki - Group 5,580,no,109,5,baja,37.1,38.5,4.1,2026-11-04
+over25,Uganda,Premier League,585,no,236,3,media,36.7,33.1,7.9,2026-11-04
+over25,Myanmar,National League,588,no,113,1,baja,70.3,66.4,4.7,2026-11-04
+over25,Suecia,Division 2 - Norra Götaland,592,no,298,0.8,baja,60.4,60.7,3,2026-11-04
+over25,Suecia,Division 2 - Norra Svealand,593,no,296,1.8,media,65.7,68.6,5.7,2026-11-04
+over25,Suecia,Division 2 - Norrland,594,no,273,-1,baja,68.7,75.5,6.5,2026-11-04
+over25,Suecia,Division 2 - Västra Götaland,596,no,299,1.3,baja,67.8,68.2,1.5,2026-11-04
+over25,Mali,Première Division,598,no,145,5.3,baja,26.4,35.9,8.7,2026-11-04
+over25,Suiza,1. Liga Classic - Group 1,599,no,268,2.4,media,64.7,66.8,5.1,2026-11-04
+over25,Suiza,1. Liga Classic - Group 2,600,aprobada,274,2.6,alta,64.6,65.3,7.8,2026-11-04
+over25,Suiza,1. Liga Classic - Group 3,601,aprobada,266,2.1,alta,66.2,63.9,9.6,2026-11-04
+over25,Brasil,Pernambucano - 1,622,faltan,6,16.4,baja,53.7,50,,2026-11-04
+over25,Brasil,Carioca - 2,625,faltan,75,12.1,media,32.1,32,6.2,2026-11-04
+over25,Hungary,NB III - Northeast,633,aprobada,289,5.7,alta,62.1,62.6,5.1,2026-11-04
+over25,Hungary,NB III - Southwest,634,aprobada,267,3.9,alta,64.9,67.8,9.1,2026-11-04
+over25,Hungary,NB III - Northwest,635,aprobada,275,3.1,alta,63.6,63.3,1.6,2026-11-04
+over25,Turkmenistan,Ýokary Liga,636,aprobada,177,7.1,alta,54,54.8,2.3,2026-11-04
+over25,Vietnam,V.League 2,637,aprobada,105,9.1,alta,44.3,41,4.1,2026-11-04
+over25,Dinamarca,Kvindeliga,638,no,130,-3.2,baja,58.5,66.2,8.1,2026-11-04
+over25,Slovakia,3. liga - West,644,no,270,0.2,baja,64.8,60,19.3,2026-11-04
+over25,Slovakia,3. liga - East,645,no,216,2.1,media,63,65.7,5.7,2026-11-04
+over25,Slovakia,3. liga - Center,646,aprobada,217,4.7,alta,66.7,65.9,7.1,2026-11-04
+over25,Laos,Lao League,647,faltan,72,3.2,media,66,66.7,3.5,2026-11-04
+over25,Rusia,Supreme Division Women,649,aprobada,258,3.7,alta,46.9,46.5,2.5,2026-11-04
+over25,Rusia,Second League - Group 3,650,aprobada,384,2.5,alta,52,51.6,5.3,2026-11-04
+over25,Rusia,Second League - Group 1,651,aprobada,388,2.2,alta,45.8,50.8,6,2026-11-04
+over25,Rusia,Second League - Group 2,652,no,341,0.8,baja,50,53.4,5.8,2026-11-04
+over25,Corea del Sur,WK-League,660,no,197,1.1,baja,48.2,47.7,1.1,2026-11-04
+over25,Kosovo,Superliga,664,no,194,-0.5,baja,49.3,47.9,8,2026-11-04
+over25,Chequia,1. Liga U19,668,no,275,0.6,baja,71.1,71.3,3.4,2026-11-04
+over25,Chequia,1. Liga Women,669,faltan,84,4.4,alta,76.3,73.8,4.3,2026-11-04
+over25,México,Liga MX Femenil,673,aprobada,387,3,alta,66,63.3,4.4,2026-11-04
+over25,Países Bajos,U21 Divisie 1,675,no,105,1.8,media,68.9,70.5,5.7,2026-11-04
+over25,Polonia,Central Youth League,676,no,273,3.1,alta,68.3,63.7,10,2026-11-04
+over25,Chequia,3. liga - CFL B,685,no,304,0,baja,64,60.9,6.5,2026-11-04
+over25,Chequia,4. liga - Divizie F,686,no,278,2.5,media,65.7,62.6,5.5,2026-11-04
+over25,Grecia,Gamma Ethniki - Group 9,693,faltan,0,,,,,,2026-11-04
+over25,Grecia,Gamma Ethniki - Group 10,694,faltan,0,,,,,,2026-11-04
+over25,Inglaterra,U18 Premier League - North,695,aprobada,189,2.3,alta,77.8,79.9,2.5,2026-11-04
+over25,Inglaterra,U18 Premier League - South,696,no,226,-0.2,baja,78.5,82.3,6,2026-11-04
+over25,Inglaterra,WSL Cup,697,faltan,0,,,,,,2026-11-04
+over25,Italia,Campionato Primavera - 1,705,no,397,1,baja,50.6,53.9,5,2026-11-04
+over25,Italia,Campionato Primavera - 2,706,no,477,-0.1,baja,58.1,61,5.7,2026-11-04
+over25,Bolivia,Nacional B,710,faltan,61,6.7,alta,65.1,55.7,18.4,2026-11-04
+over25,Chile,Segunda División,711,no,239,3.5,media,50.1,50.2,4.3,2026-11-04
+over25,México,Liga Premier Serie A,722,no,476,4.5,alta,53.1,54.6,21,2026-11-04
+over25,Noruega,Toppserien,725,no,213,2.1,media,60.2,63.4,5.6,2026-11-04
+over25,Oman,Sultan Cup,726,faltan,0,,,,,,2026-11-04
+over25,Rumania,Liga 1 Feminin,728,faltan,97,0,baja,73.1,71.1,4.3,2026-11-04
+over25,Escocia,Football League - Highland League,730,aprobada,390,3.7,alta,65.3,65.6,9.5,2026-11-04
+over25,Escocia,Football League - Lowland League,731,no,373,1.7,media,71.1,69.7,3.6,2026-11-04
+over25,Slovakia,I Liga - Women,733,aprobada,136,5.3,alta,75.8,77.2,5.1,2026-11-04
+over25,South Africa,Diski Challenge,734,no,229,0.1,baja,56.4,57.6,11.7,2026-11-04
+over25,Suecia,Elitettan,736,no,274,2,media,59.6,60.9,1.2,2026-11-04
+over25,Suiza,AXA Women’s Super League,739,no,124,1.1,baja,57.5,63.7,12.9,2026-11-04
+over25,Alemania,Oberliga - Schleswig-Holstein,744,aprobada,286,3,alta,74,76.2,2.8,2026-11-04
+over25,Alemania,Oberliga - Hamburg,745,no,349,0.5,baja,81,78.2,4.1,2026-11-04
+over25,Alemania,Oberliga - Niedersachsen,748,aprobada,266,3.5,alta,69.1,68.4,1.1,2026-11-04
+over25,Alemania,Oberliga - Bremen,749,no,273,1.3,baja,80.6,84.2,4.5,2026-11-04
+over25,Alemania,Oberliga - Hessen,750,no,368,1.2,media,69.9,68.2,4.3,2026-11-04
+over25,Alemania,Oberliga - Rheinland-Pfalz / Saar,752,no,354,0.2,baja,71.7,72.6,5.7,2026-11-04
+over25,Alemania,Oberliga - Baden-Württemberg,753,no,344,-0.9,baja,65.2,68.3,9.5,2026-11-04
+over25,Alemania,Oberliga - Nordost-Nord,754,aprobada,247,5.3,alta,71.2,66.4,9.7,2026-11-04
+over25,Alemania,Oberliga - Nordost-Süd,755,no,247,0.2,baja,62.7,64.8,3.2,2026-11-04
+over25,Gibraltar,Premier Division,758,aprobada,152,5,alta,67.9,65.1,4.9,2026-11-04
+over25,Dominican Republic,Liga Mayor,759,no,153,4.5,media,49.2,49.7,3.7,2026-11-04
+over25,Mauritania,Premier League,762,no,155,3.4,media,43.8,39.4,8.5,2026-11-04
+over25,Noruega,3. Division - Girone 1,774,no,282,1.2,baja,82.3,81.6,1.3,2026-11-04
+over25,Noruega,3. Division - Girone 3,776,aprobada,275,3.4,alta,79.1,79.3,3,2026-11-04
+over25,Noruega,3. Division - Girone 5,778,aprobada,275,3.1,alta,80.6,81.5,2.6,2026-11-04
+over25,Noruega,3. Division - Girone 6,779,aprobada,280,3.3,alta,75.5,74.3,1.7,2026-11-04
+over25,Polonia,III Liga - Group 1,780,no,350,1,baja,66.3,62.6,6.7,2026-11-04
+over25,Polonia,III Liga - Group 2,781,aprobada,349,2.9,alta,59.1,60.2,3.7,2026-11-04
+over25,Polonia,III Liga - Group 3,782,no,329,1.9,media,61.2,63.8,3.9,2026-11-04
+over25,Polonia,III Liga - Group 4,783,no,351,1,baja,60.1,57.5,6.2,2026-11-04
+over25,Rumania,Liga III - Serie 1,784,aprobada,158,3.9,alta,57,57.6,4.1,2026-11-04
+over25,Rumania,Liga III - Serie 2,785,aprobada,144,3.8,alta,73.9,75,4.1,2026-11-04
+over25,Rumania,Liga III - Serie 3,786,aprobada,143,3.9,alta,68.1,69.2,4.6,2026-11-04
+over25,Rumania,Liga III - Serie 4,787,no,143,1.9,baja,60.7,59.4,5.3,2026-11-04
+over25,Rumania,Liga III - Serie 5,788,no,132,-1.3,baja,54.4,57.6,1.7,2026-11-04
+over25,Rumania,Liga III - Serie 6,789,aprobada,154,3.4,alta,60.4,62.3,3.1,2026-11-04
+over25,Rumania,Liga III - Serie 7,790,no,161,2.7,media,61.3,62.7,7.2,2026-11-04
+over25,Rumania,Liga III - Serie 8,791,aprobada,165,3.9,alta,54.4,50.9,4.7,2026-11-04
+over25,Slovenia,3. SNL - East,794,aprobada,181,7.7,alta,57.7,59.1,11.5,2026-11-04
+over25,Slovenia,3. SNL - West,795,no,206,0.6,baja,61.1,67,9.2,2026-11-04
+over25,Cameroon,Elite Two,813,no,110,-2.1,baja,42.1,50.9,8.3,2026-11-04
+over25,Tunisia,Ligue 2,828,no,326,1.4,baja,36.5,43.3,7.6,2026-11-04
+over25,Japón,WE League,854,no,133,3.4,media,49.8,51.1,8.9,2026-11-04
+over25,Dinamarca,3. Division,862,aprobada,214,4,alta,59.3,58.4,2.2,2026-11-04
+over25,Portugal,Liga 3,865,no,279,1.4,baja,37.8,43.7,6.2,2026-11-04
+over25,Inglaterra,Premier League Cup,871,faltan,16,-2.5,baja,70.8,81.3,,2026-11-04
+over25,México,Liga Premier Serie B,872,faltan,70,3.9,media,52.7,47.1,16.8,2026-11-04
+over25,España,Segunda División RFEF - Group 1,875,no,279,2.9,media,43.8,50.2,9.3,2026-11-04
+over25,España,Segunda División RFEF - Group 2,876,aprobada,271,4.5,alta,43.4,44.6,2.2,2026-11-04
+over25,España,Segunda División RFEF - Group 3,877,aprobada,279,5.6,alta,43.7,43.7,6.7,2026-11-04
+over25,España,Segunda División RFEF - Group 5,879,no,276,-1.6,baja,45.2,55.4,12.3,2026-11-04
+over25,,Reserve League,906,aprobada,986,1.7,alta,42.8,43.8,1.4,2026-11-03
+over25,China,League Two,929,no,609,-0.5,baja,36.9,38.8,18.3,2026-11-04
+over25,Inglaterra,Non League Premier - Southern Central,931,no,513,0.9,baja,56.6,58.9,11.9,2026-11-04
+over25,Alemania,Oberliga - Bayern Nord,938,no,342,0.6,baja,62.7,64,4.8,2026-11-04
+over25,Alemania,Oberliga - Bayern Süd,939,no,332,0.2,baja,60.3,62,3.9,2026-11-04
+over25,Italia,Serie C - Girone B,942,no,364,1.6,baja,39.7,39.8,0.5,2026-11-04
+over25,Italia,Serie C - Girone C,943,aprobada,401,2.6,alta,46.3,46.4,8.3,2026-11-04
+over25,Croacia,Second NL,946,no,248,0.4,baja,52.2,54.8,9.3,2026-11-04
+over25,Alemania,DFB Pokal - Women,947,faltan,0,,,,,,2026-11-04
+over25,Portugal,1a Divisão - Women,948,faltan,82,9.1,alta,53.8,53.7,1,2026-11-04
+over25,Internacional,CONMEBOL Libertadores Femenina,949,faltan,1,-89.4,,58.7,100,,2026-11-04
+over25,New Zealand,National League - National,955,faltan,24,-9.5,baja,66,79.2,,2026-11-04
+over25,Lesotho,Premier League,962,aprobada,251,3.8,alta,41.3,41.4,5,2026-11-04
+over25,,Copa de la División Profesional,964,no,147,-1.1,baja,64.9,68.7,2.5,2026-11-03
+over25,Gabon,Championnat D1,968,aprobada,133,8.5,alta,42.5,42.9,4.2,2026-11-04
+over25,Hungary,NB III - Southeast,1023,no,283,-0.1,baja,63.2,67.1,9.6,2026-11-04
+over25,Rusia,Second League A - Division A Gold,1025,no,196,0,baja,39.4,41.3,9,2026-11-04
+over25,Polonia,Ekstraliga Women,1033,no,133,1,baja,64.6,66.2,0.3,2026-11-04
+over25,Brasil,Copa Santa Catarina,1036,faltan,27,8.3,baja,55.3,59.3,,2026-11-04
+over25,Portugal,Júniores U19,1041,aprobada,308,5.3,alta,54.6,53.6,5,2026-11-04
+over25,Suecia,Division 2 - Play-offs,1053,faltan,0,,,,,,2026-11-04
+over25,Georgia,Liga 3,1104,no,366,1.1,media,59.8,58.2,3.7,2026-11-04
+over25,Brasil,Carioca U20,1114,no,116,-2,baja,49.9,59.5,14.3,2026-11-04
+over25,Estonia,Esiliiga B,1126,aprobada,292,3.6,alta,77.9,76,1.7,2026-11-04
+over25,Brasil,Brasileiro U17,1128,no,334,1.6,media,65.9,63.8,11.5,2026-11-04
+over25,Estados Unidos,USL Super League,1130,no,137,2.9,media,50.2,47.4,4.2,2026-11-04
+over25,Brasil,Goiano - 3,1133,faltan,26,-10.6,baja,55.9,73.1,,2026-11-04
+over25,Brasil,Sergipano - 2,1135,faltan,13,-17.7,baja,53.7,69.2,,2026-11-04
+over25,Brasil,Brasiliense B,1141,faltan,6,20.5,baja,51.3,33.3,,2026-11-04
+over25,Brasil,Mineiro - 3,1142,faltan,14,6.3,baja,49.4,57.1,,2026-11-04
+over25,Brasil,Copa Fares Lopes,1165,faltan,0,,,,,,2026-11-04
+over25,Kosovo,Liga E Pare,1195,aprobada,336,3,alta,49.7,48.2,2.1,2026-11-04
+over25,Ghana,Division One League,1196,aprobada,639,3.7,alta,39.5,41.8,8.5,2026-11-04
+over25,México,Liga MX U21,1200,no,407,2.8,media,47.1,51.1,6.2,2026-11-04
+over25,Australia,Australian Championship,1202,faltan,7,16.4,alta,62.6,28.6,,2026-11-04
+over25,United Arab Emirates,Pro League U23,1218,no,177,0,baja,62.5,55.4,6.9,2026-11-04
+over25,Arabia Saudita,Premier League Women,1227,faltan,42,2,baja,82.5,76.2,10,2026-11-04
+over25,,Liga Women,1229,faltan,84,6.8,alta,73.2,69,3.9,2026-11-03
+over25,Corea del Sur,K4 League,1234,no,106,1.3,baja,55.7,60.4,3.2,2026-11-04
+over25,Austria,Regionalliga - North,1239,faltan,58,3.5,media,65.5,55.2,5.9,2026-11-04
+over25,Turquía,U19 league,1240,faltan,34,-1.6,baja,64.6,52.9,,2026-11-04
+over25,Serbia,U19 league,1241,faltan,37,10.8,alta,77,81.1,3.5,2026-11-04
+over25,México,Primera Premier,1242,faltan,24,-15.4,baja,52.1,70.8,,2026-11-04
+over25,South Africa,Super League Women,1243,faltan,48,3.3,baja,46.9,54.2,3.1,2026-11-04
+over25,Dinamarca,B-Liga Women,1244,faltan,12,8.5,alta,70.9,75,,2026-11-04
