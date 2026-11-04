@@ -535,7 +535,8 @@
     }
     // Un bloque por mercado, porque cada uno gana o pierde por su lado.
     box.innerHTML = Object.keys(LOG_MKT_NAME).map(mk => {
-      const list = all.filter(e => mktOf(e) === mk);
+      // Hándicap: las guardadas con un EV imposible (más de 25% contra el mercado) fueron cuotas mal leídas: no cuentan.
+      const list = all.filter(e => mktOf(e) === mk && !(mk === 'ah' && isNum(e.evMkt) && e.evMkt > 0.25));
       return list.length ? logBlock(summarizeLog(list, T), LOG_MKT_NAME[mk]) : '';
     }).join('');
   }
@@ -577,7 +578,7 @@
   // Ligas donde el modelo le gana al mercado (status 'gana') para un mercado: lo usa el filtro del Escáner.
   root.tanoBeatsMarketLeagues = function (market) {
     const mk = market || 'ht05';
-    return new Set(leagueVsMarket(Object.values(readLog()).filter(e => mktOf(e) === mk)).filter(r => r.status === 'gana').map(r => String(r.lid)));
+    return new Set(leagueVsMarket(Object.values(readLog()).filter(e => mktOf(e) === mk && !(mk === 'ah' && isNum(e.evMkt) && e.evMkt > 0.25))).filter(r => r.status === 'gana').map(r => String(r.lid)));
   };
   function groupTable(title, rows) {
     if (!rows || !rows.length) return '';
