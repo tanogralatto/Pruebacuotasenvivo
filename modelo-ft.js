@@ -26,13 +26,24 @@
   /* ------------------------------------------------------------------ */
   /* 1. Matriz de marcadores                                             */
   /* ------------------------------------------------------------------ */
-  function scoreMatrix(lh, la) {
+  // Corrección Dixon-Coles: con rho < 0 sube un poco el 0-0 y el 1-1 y baja el 1-0 y el 0-1.
+  // La suma de la matriz no cambia (la corrección se compensa sola entre esos cuatro marcadores).
+  function dcTau(i, j, lh, la, rho) {
+    if (!rho) return 1;
+    if (i === 0 && j === 0) return 1 - lh * la * rho;
+    if (i === 0 && j === 1) return 1 + lh * rho;
+    if (i === 1 && j === 0) return 1 + la * rho;
+    if (i === 1 && j === 1) return 1 - rho;
+    return 1;
+  }
+  function scoreMatrix(lh, la, rho) {
     if (!(lh >= 0) || !(la >= 0)) return null;
+    const r = isNum(rho) ? rho : 0;
     const ph = [], pa = [];
     for (let k = 0; k <= G; k++) { ph.push(poissonPmf(k, lh)); pa.push(poissonPmf(k, la)); }
     const m = [];
     let tot = 0;
-    for (let i = 0; i <= G; i++) { m.push([]); for (let j = 0; j <= G; j++) { const q = ph[i] * pa[j]; m[i].push(q); tot += q; } }
+    for (let i = 0; i <= G; i++) { m.push([]); for (let j = 0; j <= G; j++) { const q = ph[i] * pa[j] * Math.max(0, dcTau(i, j, lh, la, r)); m[i].push(q); tot += q; } }
     for (let i = 0; i <= G; i++) for (let j = 0; j <= G; j++) m[i][j] /= tot;
     return m;
   }
@@ -296,7 +307,7 @@
 
   // lam = {home, away}; odds = salida de parseOdds. Devuelve las filas con cuota, cuota justa, EV y score.
   function matchMarkets(lam, odds, names) {
-    const m = scoreMatrix(lam.home, lam.away);
+    const m = scoreMatrix(lam.home, lam.away, lam.rho);
     const rows = [];
     if (!m || !odds) return { rows, matrix: m };
     for (const o of odds.values()) {
@@ -352,9 +363,10 @@
   }
 
   // Backtest honesto de una liga: cada partido se pronostica con el modelo ajustado SOLO con partidos anteriores
-  // (se reajusta una vez por semana). T = modelo-poisson.js. games = partidos con goles finales en hg/ag.
+  // (se reajusta una vez por semana). T = modelo-poisson.js. games = partidos con goles finales en hg/ag
+  // (y xG en xh/xa si hay). Devuelve los goles esperados de cada partido; withProbs arma las probabilidades.
   function backtestLeague(games, T, opts) {
-    const o = Object.assign({ batchDays: 7, minHistory: 40 }, opts || {});
+    const o = Object.assign({ batchDays: 7, minHistory: 40, xgWeight: 0 }, opts || {});
     const list = (games || []).filter(g => g && isNum(g.ts) && g.h != null && g.a != null && isNum(g.hg) && isNum(g.ag)).slice().sort((a, b) => a.ts - b.ts);
     const rows = [];
     if (list.length <= o.minHistory) return rows;
@@ -362,18 +374,99 @@
     for (let idx = o.minHistory; idx < list.length; idx++) {
       const g = list[idx];
       if (g.ts - fitAt >= o.batchDays * 86400 || !fit) {
-        const fm = T.buildFitMatches(list, { cutoffTs: g.ts, currentSeason: g.season, goals: 'ft', halfLifeDays: o.halfLifeDays || 240 });
+        const fm = T.buildFitMatches(list, { cutoffTs: g.ts, currentSeason: g.season, goals: 'ft', halfLifeDays: o.halfLifeDays || 240, xgWeight: o.xgWeight });
         fit = T.fitLeague(fm, { priorMatches: o.priorMatches || 14 });
         fitAt = g.ts;
       }
       if (!fit || !fit.ok) continue;
       const pr = T.predictMatch(fit, g.h, g.a, {});
       if (!pr.ok) continue;
-      const m = scoreMatrix(pr.lambdaHome, pr.lambdaAway), s = summarize(m);
-      const base = summarize(scoreMatrix(fit.muH, fit.muA)); // «decir siempre el promedio de goles de la liga»
-      rows.push({ id: g.id, ts: g.ts, hg: g.hg, ag: g.ag, p1x2: [s.home, s.draw, s.away], goals: s.totals, baseGoals: base.totals, expGoals: s.expGoals });
+      rows.push({ id: g.id, ts: g.ts, hg: g.hg, ag: g.ag, lh: pr.lambdaHome, la: pr.lambdaAway, muH: fit.muH, muA: fit.muA });
     }
     return rows;
+  }
+  // Probabilidades de cada fila del backtest con una corrección rho dada.
+  function withProbs(rows, rho) {
+    return (rows || []).map(r => {
+      const s = summarize(scoreMatrix(r.lh, r.la, rho));
+      const base = summarize(scoreMatrix(r.muH, r.muA, rho)); // «decir siempre el promedio de goles de la liga»
+      return Object.assign({}, r, { p1x2: [s.home, s.draw, s.away], goals: s.totals, baseGoals: base.totals, expGoals: s.expGoals });
+    });
+  }
+  // rho de Dixon-Coles por máxima verosimilitud (solo cuentan los marcadores 0-0, 1-0, 0-1 y 1-1).
+  // Con pocos partidos se acerca al valor típico (−0,06).
+  const RHO_PRIOR = -0.06, RHO_WEIGHT = 300;
+  function fitRho(rows) {
+    let best = 0, bestLL = -Infinity, n = 0;
+    for (const r of rows || []) if (isNum(r.lh) && isNum(r.la) && isNum(r.hg) && isNum(r.ag)) n++;
+    if (!n) return { rho: RHO_PRIOR, raw: null, n: 0 };
+    for (let k = -30; k <= 15; k++) {
+      const rho = k / 100;
+      let ll = 0;
+      for (const r of rows) {
+        if (!isNum(r.lh) || r.hg > 1 || r.ag > 1) continue;
+        ll += Math.log(Math.max(1e-9, dcTau(r.hg, r.ag, r.lh, r.la, rho)));
+      }
+      if (ll > bestLL) { bestLL = ll; best = rho; }
+    }
+    return { rho: (n * best + RHO_WEIGHT * RHO_PRIOR) / (n + RHO_WEIGHT), raw: best, n };
+  }
+  // Error total de un backtest (goles + 1X2): sirve para elegir si una liga usa xG y corrección.
+  function backtestError(rows) {
+    let e = 0, n = 0;
+    for (const r of rows || []) { const t = r.hg + r.ag; e += goalsRps(r.goals, t) + rps(r.p1x2, outcome1x2(r.hg, r.ag)); n++; }
+    return n ? e / n : null;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 6. xG                                                               */
+  /* ------------------------------------------------------------------ */
+  // Lee las estadísticas de un partido (/fixtures?ids=… o /fixtures/statistics): xG de la API si viene, y tiros.
+  const statNum = v => { if (v == null) return null; const n = Number(String(v).replace('%', '').replace(',', '.')); return Number.isFinite(n) && n >= 0 ? n : null; };
+  function readStats(statistics, homeId, awayId) {
+    const out = {};
+    for (const block of statistics || []) {
+      const id = block && block.team && block.team.id;
+      const side = String(id) === String(homeId) ? 'home' : String(id) === String(awayId) ? 'away' : null;
+      if (!side) continue;
+      const t = {};
+      for (const st of block.statistics || []) {
+        const type = String(st && st.type || '').toLowerCase().trim();
+        const v = statNum(st && st.value);
+        if (/^(expected[_ ]goals?|xg|goles esperados)$/.test(type)) t.xg = v;
+        else if (type === 'shots on goal') t.sot = v;
+        else if (type === 'shots insidebox') t.sib = v;
+        else if (type === 'shots outsidebox') t.sob = v;
+        else if (type === 'total shots') t.shots = v;
+      }
+      out[side] = t;
+    }
+    return out.home && out.away ? out : null;
+  }
+  // xG aproximado con los tiros: a·tiros dentro del área + b·tiros fuera del área + c·tiros al arco.
+  const XG_DEFAULT = { a: 0.07, b: 0.02, c: 0.17 };
+  function proxyXg(t, coef) {
+    const k = coef || XG_DEFAULT;
+    if (!t) return null;
+    let sib = t.sib, sob = t.sob;
+    if (!isNum(sib) && !isNum(sob) && isNum(t.shots)) { sib = t.shots * 0.6; sob = t.shots * 0.4; }
+    if (!isNum(sib) || !isNum(sob) || !isNum(t.sot)) return null;
+    return k.a * sib + k.b * sob + k.c * t.sot;
+  }
+  // Ajusta a, b, c con partidos que tienen tiros y goles (mínimos cuadrados, sin coeficientes negativos).
+  function fitProxy(samples) {
+    const xs = (samples || []).filter(x => x && isNum(x.sib) && isNum(x.sob) && isNum(x.sot) && isNum(x.goals));
+    if (xs.length < 300) return Object.assign({ n: xs.length, fitted: false }, XG_DEFAULT);
+    const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], y = [0, 0, 0];
+    for (const x of xs) { const v = [x.sib, x.sob, x.sot]; for (let i = 0; i < 3; i++) { y[i] += v[i] * x.goals; for (let j = 0; j < 3; j++) A[i][j] += v[i] * v[j]; } }
+    for (let i = 0; i < 3; i++) A[i][i] += 1e-6 + xs.length * 0.01; // un poco de regularización
+    // Resolver 3x3 (Cramer).
+    const det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    const D = det(A);
+    if (!(Math.abs(D) > 1e-12)) return Object.assign({ n: xs.length, fitted: false }, XG_DEFAULT);
+    const col = k => det(A.map((row, i) => row.map((v, j) => j === k ? y[i] : v))) / D;
+    const a = Math.max(0, col(0)), b = Math.max(0, col(1)), c = Math.max(0, col(2));
+    return { a, b, c, n: xs.length, fitted: true };
   }
 
   // Resumen de goles de un conjunto de filas del backtest.
@@ -404,6 +497,7 @@
   }
 
   const api = {
+    dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
     poissonPmf, scoreMatrix, summarize, lineParts, lineResult, betResult, betProbs, betScore, evaluate,
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
     rps, outcome1x2, goalsRps, ece, backtestLeague, goalsSkill, marketSkill

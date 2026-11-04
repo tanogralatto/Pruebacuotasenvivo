@@ -104,11 +104,49 @@ test('backtest: usa solo partidos anteriores y el modelo le gana al promedio con
     const lh = 1.4 * str[h] / str[a] ** 0.7, la = 1.1 * str[a] / str[h] ** 0.7;
     games.push({ id: id++, ts: ts += 86400, h, a, hg: pois(lh), ag: pois(la), season: 2024, leagueId: 1 });
   }
-  const rows = F.backtestLeague(games, T);
+  const rows = F.withProbs(F.backtestLeague(games, T), 0);
   assert.ok(rows.length > 200);
   assert.ok(rows.every(r => r.p1x2 && Math.abs(r.p1x2.reduce((a, b) => a + b, 0) - 1) < 1e-9));
   const g = F.goalsSkill(rows);
   assert.ok(g.skill > 0, 'skill en goles ' + g.skill);
   const ms = F.marketSkill(rows.map(r => Object.assign({}, r, { m1x2: [0.45, 0.27, 0.28] })));
   assert.ok(ms.skill > 0, 'le gana a un mercado que no distingue equipos');
+});
+
+test('Dixon-Coles: la matriz sigue sumando 1; con rho < 0 sube el 0-0 y el 1-1 y baja el 1-0', () => {
+  const a = F.scoreMatrix(1.3, 1.1), b = F.scoreMatrix(1.3, 1.1, -0.1);
+  close(b.flat().reduce((x, y) => x + y, 0), 1);
+  assert.ok(b[0][0] > a[0][0] && b[1][1] > a[1][1] && b[1][0] < a[1][0] && b[0][1] < a[0][1]);
+  close(b[2][3] / a[2][3], b[4][1] / a[4][1], 1e-12); // el resto solo se reescala
+});
+
+test('Dixon-Coles: fitRho recupera un rho negativo cuando hay más empates bajos', () => {
+  let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const rows = [];
+  for (let n = 0; n < 4000; n++) {
+    const m = F.scoreMatrix(1.3, 1.0, -0.15); let u = rnd(), hg = 0, ag = 0;
+    outer: for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) { u -= m[i][j]; if (u <= 0) { hg = i; ag = j; break outer; } }
+    rows.push({ lh: 1.3, la: 1.0, hg, ag });
+  }
+  const r = F.fitRho(rows);
+  assert.ok(r.raw <= -0.08 && r.raw >= -0.22, 'rho ' + r.raw);
+  assert.ok(r.rho < 0 && r.rho > r.raw, 'se acerca al valor típico');
+  assert.equal(F.fitRho([]).rho, -0.06);
+});
+
+test('xG: lee el xG de la API y los tiros; el aproximado sale de los tiros', () => {
+  const st = [
+    { team: { id: 10 }, statistics: [{ type: 'Shots on Goal', value: 6 }, { type: 'Shots insidebox', value: 10 }, { type: 'Shots outsidebox', value: 5 }, { type: 'expected_goals', value: '1.85' }] },
+    { team: { id: 20 }, statistics: [{ type: 'Shots on Goal', value: 2 }, { type: 'Shots insidebox', value: 4 }, { type: 'Shots outsidebox', value: 6 }, { type: 'expected_goals', value: null }] }
+  ];
+  const s = F.readStats(st, 10, 20);
+  assert.equal(s.home.xg, 1.85); assert.equal(s.away.xg, null);
+  close(F.proxyXg(s.home), 0.07 * 10 + 0.02 * 5 + 0.17 * 6);
+  assert.equal(F.readStats(st, 10, 99), null);
+  // Con muchos partidos, el ajuste recupera coeficientes razonables.
+  let seed = 5; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const samples = [];
+  for (let i = 0; i < 2000; i++) { const sib = Math.round(rnd() * 14), sob = Math.round(rnd() * 8), sot = Math.round(rnd() * sib * 0.6); samples.push({ sib, sob, sot, goals: 0.05 * sib + 0.01 * sob + 0.2 * sot + (rnd() - 0.5) * 0.5 }); }
+  const k = F.fitProxy(samples);
+  assert.ok(k.fitted && Math.abs(k.c - 0.2) < 0.05 && Math.abs(k.a - 0.05) < 0.03, JSON.stringify(k));
 });
