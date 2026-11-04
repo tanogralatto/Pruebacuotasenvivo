@@ -89,12 +89,14 @@
   // Las casas escriben la línea del visitante de dos maneras: con su propio signo («Away +0.5» cuando el local
   // juega −0,5) o repitiendo la del local («Away -0.5»). Se detecta cuál usa cada casa.
   function parseOdds(response) {
-    const books = new Map(), raw = [], betNames = new Set();
+    const books = new Map(), raw = [], betNames = new Set(), allBets = new Map(), allBooks = new Set();
     for (const item of response || []) {
       for (const bk of item.bookmakers || item.odds?.bookmakers || []) {
         const bkName = bk.name || bk.title || 'Casa no informada';
+        allBooks.add(bkName);
         for (const bet of bk.bets || bk.odds || []) {
           const name = String(bet.name || bet.bet || '');
+          allBets.set(name, (allBets.get(name) || 0) + 1); // diagnóstico: todos los mercados que trajo la API
           if (!isAhBet(name)) continue;
           betNames.add(name);
           const vals = [];
@@ -117,7 +119,7 @@
         }
       }
     }
-    return { books, raw, betNames: [...betNames] };
+    return { books, raw, betNames: [...betNames], bookCount: allBooks.size, allBets: [...allBets.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => n + ' (' + c + ')') };
   }
 
   // Por línea: mejor cuota de cada lado y probabilidad sin margen (Pinnacle o mediana de las casas con los dos lados).
@@ -165,7 +167,8 @@
     const o = Object.assign({ from: -3, to: 3, maxGap: 0.12, validated: false }, opts || {});
     const lh = inp && inp.lambdaHome, la = inp && inp.lambdaAway;
     const parsed = inp && inp.odds;
-    if (!(lh > 0) || !(la > 0)) return { ok: false, reason: 'Sin goles esperados del partido completo: no se puede calcular el hándicap.' };
+    const diag = { bookCount: parsed ? parsed.bookCount || 0 : 0, allBets: parsed ? parsed.allBets || [] : [], oddsReceived: !!parsed };
+    if (!(lh > 0) || !(la > 0)) return { ok: false, reason: 'Sin goles esperados del partido completo: no se puede calcular el hándicap.', diag };
     const dist = diffDist(lh, la);
     const byLine = marketByLine(parsed);
     const main = mainLine(parsed, byLine);
@@ -192,7 +195,7 @@
     // Sin cuotas: la línea principal es la que el modelo ve más pareja.
     const modelMain = lines.reduce((b, x) => (!b || Math.abs(x.home.pCond - 0.5) < Math.abs(b.home.pCond - 0.5) ? x : b), null);
     const mainRow = lines.find(x => main != null && Math.abs(x.line - main) < EPS) || modelMain;
-    return { ok: true, lambdaHome: lh, lambdaAway: la, main: mainRow, mainFromOdds: main != null, lines, books: parsed ? parsed.books.size : 0, raw: parsed ? parsed.raw : [], betNames: parsed ? parsed.betNames : [] };
+    return { ok: true, diag, lambdaHome: lh, lambdaAway: la, main: mainRow, mainFromOdds: main != null, lines, books: parsed ? parsed.books.size : 0, raw: parsed ? parsed.raw : [], betNames: parsed ? parsed.betNames : [] };
   }
 
   const api = { diffDist, lineParts, outcome, lineProbs, parseOdds, marketByLine, mainLine, view };
