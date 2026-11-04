@@ -1505,8 +1505,8 @@ async function analizar(){
   }
   try{logPredictions(out,bm());if(bm()==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
   // Goles esperados del partido completo de cada equipo (los del mercado +2,5): los usa el hándicap asiático.
-  const ftLam=new Map();
-  if(bm()==='over25')for(const r of out)if(r.poisson&&r.poisson.ok)ftLam.set(String(r.fx.id),r.poisson.lambdas);
+  const ftLam=new Map(), ftWhy=new Map();
+  if(bm()==='over25')for(const r of out){if(r.poisson&&r.poisson.ok)ftLam.set(String(r.fx.id),r.poisson.lambdas);else ftWhy.set(String(r.fx.id),r.poisson&&r.poisson.reason||'');}
   // Los otros dos mercados: mismo historial y mismas cuotas, solo para el registro (y el λ del 1T para En Vivo).
   for(const mk of Object.keys(oddsByMarket)){
     if(mk===bm()||state.cancel)continue;
@@ -1519,13 +1519,14 @@ async function analizar(){
       });
       logPredictions(extra,mk);
       if(mk==='ht05')saveLambdas(extra);
-      if(mk==='over25')for(const x of extra)if(x.poisson&&x.poisson.ok)ftLam.set(String(x.fx.id),x.poisson.lambdas);
+      if(mk==='over25')for(const x of extra){if(x.poisson&&x.poisson.ok)ftLam.set(String(x.fx.id),x.poisson.lambdas);else ftWhy.set(String(x.fx.id),x.poisson&&x.poisson.reason||'');}
     }catch(e){state.errors.push('Registro de '+mk+': '+e.message);}
   }
   // Hándicap asiático (etapa 1: solo se muestra; todavía no se registra ni se valida).
   if(window.TanoAsian)for(const r of out){
     const lam=ftLam.get(String(r.fx.id));
-    try{r.ah=lam?window.TanoAsian.view({lambdaHome:lam.home,lambdaAway:lam.away,odds:oddsAh.get(String(r.fx.id))||null},window.TanoPoissonModel):{ok:false,reason:'Sin goles esperados del partido completo para este partido (falta historial de la liga).'};}
+    const why=ftWhy.get(String(r.fx.id));
+    try{r.ah=window.TanoAsian.view({lambdaHome:lam?lam.home:null,lambdaAway:lam?lam.away:null,odds:oddsAh.get(String(r.fx.id))||null,modelReason:'Sin cálculo propio: '+(why||'el modelo no pudo calcular los goles esperados de este partido.')},window.TanoPoissonModel);}
     catch(e){r.ah={ok:false,reason:'Error al calcular el hándicap: '+e.message};}
   }
   state.strategyHistory=new Map(tg);
@@ -1604,8 +1605,7 @@ function ahHtml(v,fx){
     metric('EV vs mercado',ev(s.evMkt))+
     metric('Stake sugerido',stake(s))+
     metric('Casas sin margen',pct(s.mkt))+
-    metric('Modelo',pct(s.pCond)+' · justa '+(s.fair?fmtNum(s.fair,2):'—'))+
-    metric('EV modelo',ev(s.ev))+'</div></div>';
+    (v.hasModel?metric('Modelo',pct(s.pCond)+' · justa '+(s.fair?fmtNum(s.fair,2):'—'))+metric('EV modelo',ev(s.ev)):metric('Cuota justa de las casas',Number.isFinite(s.mkt)&&s.mkt>0?fmtNum(1/s.mkt,2):'—'))+'</div></div>';
   const both=[m.home,m.away], priced=both.filter(s=>Number.isFinite(s.evMkt));
   const ok=priced.filter(s=>!s.suspicious).sort((a,b)=>b.evMkt-a.evMkt), bestSide=ok[0];
   const nameOf=s=>s===m.home?hn+' '+fmtAhLine(L):an+' '+fmtAhLine(-L);
@@ -1616,12 +1616,12 @@ function ahHtml(v,fx){
   else if(bestSide.evMkt>=0.03)verdict={cls:'good',t:'Mirar con atención',x:nameOf(bestSide)+' paga más de lo justo según las casas ('+'+'+fmtNum(bestSide.evMkt*100,1)+'%). Confirmá la cuota antes de decidir.'};
   else verdict={cls:bestSide.evMkt>=-0.01?'mid':'bad',t:bestSide.evMkt>=-0.01?'Sin ventaja clara':'No se ve ventaja',x:'En la línea principal, la mejor cuota paga '+(bestSide.evMkt>=-0.01?'casi lo justo':'menos de lo justo')+' según las casas.'};
   // Escalera: líneas con cuota y las cercanas a la principal (±1 gol).
-  const near=v.lines.filter(x=>x.hasOdds||Math.abs(x.line-L)<=1+1e-9);
+  const near=v.lines.filter(x=>x.hasOdds||(v.hasModel&&Math.abs(x.line-L)<=1+1e-9));
   const cell=s=>(s.best?Number(s.best.price).toFixed(2)+' '+ev(s.evMkt):'<span class="small">justa '+(s.fair?fmtNum(s.fair,2):'—')+'</span>');
   const ladder=near.map(x=>'<tr'+(Math.abs(x.line-L)<1e-9?' class="ah-main"':'')+'><td>'+fmtAhLine(x.line)+'</td><td>'+cell(x.home)+'</td><td>'+cell(x.away)+'</td></tr>').join('');
   return '<section class="poisson-panel ah-panel"><div class="poisson-title"><span>Hándicap asiático · partido completo</span><span class="ev-badge none">en prueba</span></div>'+
     '<div class="poisson-verdict '+verdict.cls+'"><b>'+esc(verdict.t)+'.</b> '+verdict.x+'</div>'+
-    '<div class="small">Línea principal'+(v.mainFromOdds?' (la de cuotas más parejas)':' según el modelo (sin cuotas)')+'. Goles esperados: '+hn+' '+fmtNum(v.lambdaHome,2)+' · '+an+' '+fmtNum(v.lambdaAway,2)+'.</div>'+
+    '<div class="small">Línea principal'+(v.mainFromOdds?' (la de cuotas más parejas)':' según el modelo (sin cuotas)')+'. '+(v.hasModel?'Goles esperados: '+hn+' '+fmtNum(v.lambdaHome,2)+' · '+an+' '+fmtNum(v.lambdaAway,2)+'.':'<b>Solo comparación con el mercado.</b> '+esc(v.modelReason))+'</div>'+
     block(hn,fmtAhLine(L),m.home)+block(an,fmtAhLine(-L),m.away)+
     '<details class="val-box"><summary>Ver otras líneas ('+v.lines.filter(x=>x.hasOdds).length+' con cuota)</summary><table class="val-table ah-ladder"><tr><th>Línea '+hn+'</th><th>'+hn+'</th><th>'+an+'</th></tr>'+ladder+'</table>'+
     '<div class="small">Cada celda: mejor cuota y EV contra el mercado; sin cuota, la cuota justa del modelo. La línea es la del local: '+hn+' −0,5 = tiene que ganar, y '+an+' juega +0,5. En las de ,25 y ,75 la apuesta se divide en dos mitades (se puede ganar o perder la mitad). La probabilidad del modelo no cuenta las devoluciones.</div></details>'+

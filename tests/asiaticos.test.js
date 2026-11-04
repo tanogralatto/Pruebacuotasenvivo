@@ -91,3 +91,18 @@ test('vista: línea principal, EV contra el mercado, control de diferencia y sta
   const no = A.view({ lambdaHome: 2.0, lambdaAway: 0.8 }, T);
   assert.equal(no.mainFromOdds, false); assert.ok(no.main.line < 0);
 });
+
+test('sin goles esperados del modelo: igual compara con el mercado', () => {
+  const resp = [{ bookmakers: [
+    { name: 'Pinnacle', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home +1.5', odd: '1.95' }, { value: 'Away -1.5', odd: '1.95' }] }] },
+    { name: 'Otra', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home +1.5', odd: '2.10' }, { value: 'Away -1.5', odd: '1.80' }] }] }] }];
+  const v = A.view({ lambdaHome: null, lambdaAway: null, odds: A.parseOdds(resp), modelReason: 'Sin cálculo propio: muestra insuficiente.' }, T);
+  assert.equal(v.ok, true); assert.equal(v.hasModel, false); assert.match(v.modelReason, /muestra insuficiente/);
+  assert.equal(v.main.line, 1.5);
+  close(v.main.home.evMkt, 0.5 * 2.1 - 1);
+  assert.equal(v.main.home.pCond, null); assert.equal(v.main.home.ev, null);
+  close(v.main.home.kelly.stake, ((0.5 * 1.1 - 0.5) / 1.1) / 8); // solo mercado, ⅛
+  assert.equal(v.lines.length, 1); // sin modelo solo se muestran las líneas con cuota
+  // Sin modelo y sin cuotas: no evaluable.
+  assert.equal(A.view({ lambdaHome: null, lambdaAway: null, odds: null }, T).ok, false);
+});

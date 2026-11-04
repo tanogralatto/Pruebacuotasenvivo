@@ -168,12 +168,15 @@
     const lh = inp && inp.lambdaHome, la = inp && inp.lambdaAway;
     const parsed = inp && inp.odds;
     const diag = { bookCount: parsed ? parsed.bookCount || 0 : 0, allBets: parsed ? parsed.allBets || [] : [], oddsReceived: !!parsed };
-    if (!(lh > 0) || !(la > 0)) return { ok: false, reason: 'Sin goles esperados del partido completo: no se puede calcular el hándicap.', diag };
-    const dist = diffDist(lh, la);
+    const hasModel = lh > 0 && la > 0;
+    const dist = hasModel ? diffDist(lh, la) : null;
     const byLine = marketByLine(parsed);
     const main = mainLine(parsed, byLine);
+    // Sin goles esperados del modelo igual se puede comparar la mejor cuota con el precio sin margen de las casas.
+    if (!hasModel && main == null) return { ok: false, reason: (inp && inp.modelReason ? inp.modelReason + ' ' : '') + 'Y tampoco hay cuotas de hándicap para comparar.', diag };
+    const EMPTY = { win: null, halfWin: null, push: null, halfLose: null, lose: null, W: null, L: null, pCond: null, fair: null };
     const side = (line, s, mk) => {
-      const pr = lineProbs(dist, line, s);
+      const pr = hasModel ? lineProbs(dist, line, s) : EMPTY;
       const best = mk ? (s === 'home' ? mk.bestHome : mk.bestAway) : null;
       const mkt = mk && isNum(mk.mktHome) ? (s === 'home' ? mk.mktHome : 1 - mk.mktHome) : null;
       const odds = best ? best.price : null;
@@ -181,21 +184,21 @@
       const evMkt = odds && isNum(mkt) ? mkt * odds - 1 : null;
       const gap = isNum(mkt) && isNum(pr.pCond) ? pr.pCond - mkt : null;
       const suspicious = isNum(gap) && Math.abs(gap) > o.maxGap;
-      const kel = odds && T && T.kellyStake ? T.kellyStake({ p: pr.pCond, odds, marketProb: isNum(mkt) ? mkt : undefined, validated: o.validated }) : null;
+      const kel = odds && T && T.kellyStake && (isNum(pr.pCond) || isNum(mkt)) ? T.kellyStake({ p: isNum(pr.pCond) ? pr.pCond : mkt, odds, marketProb: isNum(mkt) ? mkt : undefined, validated: hasModel ? o.validated : false }) : null;
       return Object.assign({}, pr, { best, odds, mkt, ev, evMkt, gap, suspicious, kelly: kel });
     };
     const lines = [];
-    for (let l = o.from; l <= o.to + EPS; l += 0.25) {
+    if (hasModel) for (let l = o.from; l <= o.to + EPS; l += 0.25) {
       const line = Math.round(l * 4) / 4, mk = byLine.get(line) || null;
       lines.push({ line, home: side(line, 'home', mk), away: side(line, 'away', mk), mktRef: mk ? mk.mktRef || null : null, hasOdds: !!(mk && (mk.bestHome || mk.bestAway)) });
     }
     // Líneas con cuota fuera del rango mostrado (partidos muy desparejos).
-    for (const [line, mk] of byLine) if (line < o.from - EPS || line > o.to + EPS) lines.push({ line, home: side(line, 'home', mk), away: side(line, 'away', mk), mktRef: mk.mktRef || null, hasOdds: true });
+    for (const [line, mk] of byLine) if (!hasModel || line < o.from - EPS || line > o.to + EPS) lines.push({ line, home: side(line, 'home', mk), away: side(line, 'away', mk), mktRef: mk.mktRef || null, hasOdds: true });
     lines.sort((a, b) => a.line - b.line);
     // Sin cuotas: la línea principal es la que el modelo ve más pareja.
-    const modelMain = lines.reduce((b, x) => (!b || Math.abs(x.home.pCond - 0.5) < Math.abs(b.home.pCond - 0.5) ? x : b), null);
+    const modelMain = hasModel ? lines.reduce((b, x) => (!b || Math.abs(x.home.pCond - 0.5) < Math.abs(b.home.pCond - 0.5) ? x : b), null) : null;
     const mainRow = lines.find(x => main != null && Math.abs(x.line - main) < EPS) || modelMain;
-    return { ok: true, diag, lambdaHome: lh, lambdaAway: la, main: mainRow, mainFromOdds: main != null, lines, books: parsed ? parsed.books.size : 0, raw: parsed ? parsed.raw : [], betNames: parsed ? parsed.betNames : [] };
+    return { ok: true, diag, hasModel, modelReason: hasModel ? null : (inp && inp.modelReason) || 'Sin goles esperados del modelo.', lambdaHome: hasModel ? lh : null, lambdaAway: hasModel ? la : null, main: mainRow, mainFromOdds: main != null, lines, books: parsed ? parsed.books.size : 0, raw: parsed ? parsed.raw : [], betNames: parsed ? parsed.betNames : [] };
   }
 
   const api = { diffDist, lineParts, outcome, lineProbs, parseOdds, marketByLine, mainLine, view };

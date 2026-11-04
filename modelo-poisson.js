@@ -175,7 +175,7 @@
     const o = Object.assign({}, DEFAULTS, opts || {});
     if (!fit || !fit.ok) return { ok: false, reason: (fit && fit.reason) || 'El modelo no pudo ajustarse.' };
     const H = fit.teams[String(homeId)], A = fit.teams[String(awayId)];
-    if (!H || !A) return { ok: false, reason: `No hay historial HT de la competición para ${!H ? 'el local' : 'el visitante'}.` };
+    if (!H || !A) return { ok: false, reason: `${!H ? 'El local' : 'El visitante'} no tiene partidos previos en esta competición (temporada actual y anterior).` };
     if (H.nEff < o.minTeamEffective || A.nEff < o.minTeamEffective) {
       return {
         ok: false,
