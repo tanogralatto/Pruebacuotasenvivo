@@ -73,7 +73,7 @@
   // Métricas del registro propio. T = modelo (scoreRows). Solo partidos liquidados.
   function summarizeLog(entries, T) {
     const settled = (entries || []).filter(e => e && (e.y === 0 || e.y === 1) && (isNum(e.p) || isNum(e.marketProb)));
-    const rows = settled.map(e => ({ ts: e.ts, p: e.p, y: e.y }));
+    const rows = settled.map(e => ({ ts: e.ts, p: e.p, y: e.y, bp: T.BASE_PRIOR ? T.BASE_PRIOR[e.market || 'ht05'] : undefined }));
     const m = T.scoreRows(rows);
     const priced = settled.filter(e => isNum(e.odds) && e.odds > 1);
     const roiOf = list => {
@@ -273,6 +273,53 @@
     return { rows: chosen, picks };
   }
 
+  // Hándicap asiático por liga: ¿el modelo sabe la diferencia de goles? Por cada partido se evalúan cuatro
+  // preguntas (líneas del local): gana (−0,5), no pierde (+0,5), gana por 2+ (−1,5), pierde por 1 como mucho (+1,5).
+  // Cada una se compara con su propia tasa base de la liga (lo que venía pasando, sin mirar el futuro).
+  // rows: del backtest de +2,5 (partido completo), con lh, la (goles esperados) y hg, ag (goles reales).
+  const AH_EVENTS = [{ line: -0.5, prior: 0.45 }, { line: 0.5, prior: 0.72 }, { line: -1.5, prior: 0.22 }, { line: 1.5, prior: 0.88 }];
+  function ahLeagueMetrics(rows, A, T) {
+    const list = (rows || []).filter(r => r && r.lh > 0 && r.la > 0 && isGoals(r.hg) && isGoals(r.ag)).slice().sort((a, b) => a.ts - b.ts);
+    const n = list.length;
+    if (!n || !A) return { count: 0, skill: null, skillSe: null, brier: null, calibration: [], meanP: null, observed: null };
+    const seen = AH_EVENTS.map(() => 0), ones = AH_EVENTS.map(() => 0);
+    let bm = 0, bb = 0, sd = 0, sd2 = 0;
+    const pooled = [];
+    for (const r of list) {
+      const dist = A.diffDist(r.lh, r.la), d = r.hg - r.ag;
+      let dm = 0;
+      AH_EVENTS.forEach((ev, k) => {
+        const p = A.lineProbs(dist, ev.line, 'home').win, y = d + ev.line > 0 ? 1 : 0; // líneas ,5: sin devoluciones
+        const b0 = (ones[k] + ev.prior * 3) / (seen[k] + 3);
+        const em = (p - y) ** 2, eb = (b0 - y) ** 2;
+        bm += em; bb += eb; dm += eb - em;
+        seen[k]++; ones[k] += y;
+        pooled.push({ ts: r.ts, p, y });
+      });
+      sd += dm; sd2 += dm * dm;
+    }
+    const meanD = sd / n, varD = n > 1 ? Math.max(0, (sd2 - n * meanD * meanD) / (n - 1)) : 0;
+    const cal = T.scoreRows(pooled); // solo para la calibración por bandas (la tasa base se calculó arriba)
+    return { count: n, brier: bm / (n * AH_EVENTS.length), baselineBrier: bb / (n * AH_EVENTS.length), skill: bb > 0 ? 1 - bm / bb : null,
+      skillSe: bb > 0 && n > 1 ? Math.sqrt(varD / n) / (bb / n) : null, calibration: cal.calibration, meanP: cal.meanP, observed: cal.observed };
+  }
+  function ahLeagueVerdicts(rows, A, T) {
+    const byLeague = new Map();
+    for (const r of rows || []) { const k = String(r.leagueId); if (!byLeague.has(k)) byLeague.set(k, []); byLeague.get(k).push(r); }
+    const out = {};
+    for (const [lid, list] of byLeague) {
+      const m = ahLeagueMetrics(list, A, T);
+      const bands = (m.calibration || []).filter(b => b.count >= LEAGUE_RULES.minBand);
+      const gap = bands.length ? Math.max(...bands.map(b => Math.abs(b.predicted - b.observed))) : null;
+      const confidence = confidenceOf(m.skill, m.skillSe);
+      let status;
+      if (m.count < LEAGUE_RULES.minN) status = 'faltan';
+      else status = validationVerdict(m, LEAGUE_RULES).validated && confidence === 'alta' ? 'aprobada' : 'no';
+      out[lid] = { lid, status, n: m.count, skill: m.skill, skillSe: m.skillSe, confidence, brier: m.brier, meanP: m.meanP, observed: m.observed, gap };
+    }
+    return out;
+  }
+
   // Confianza en que la mejora sea real y no suerte: z = mejora / error estándar.
   const confidenceOf = (skill, se) => !isNum(skill) || !isNum(se) || !(se > 0) ? null : skill / se >= 1.64 ? 'alta' : skill / se >= 1 ? 'media' : 'baja';
 
@@ -339,7 +386,7 @@
   }
 
   const LV_KEY = 'o05:leagueval:v1';
-  const pure = { settleFromFixture, settleAhFromFixture, ahResult, profitOf, chunk, summarizeLog, brierVsMarket, leagueVsMarket, roiBreakdown, stakeReplay, honestRows, confidenceOf, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
+  const pure = { ahLeagueMetrics, ahLeagueVerdicts, settleFromFixture, settleAhFromFixture, ahResult, profitOf, chunk, summarizeLog, brierVsMarket, leagueVsMarket, roiBreakdown, stakeReplay, honestRows, confidenceOf, validationVerdict, leagueVerdicts, bestByBrier, liveView, pruneLog, LOG_KEY, LAM_KEY, LV_KEY };
   if (typeof module !== 'undefined' && module.exports) module.exports = pure;
   root.TanoVal = pure;
 
@@ -359,6 +406,7 @@
   /* ---- registro de predicciones (antes del partido) ---- */
   const MKT_NAME = { ht05: '+0,5 1T', btts: 'Ambos marcan', over25: '+2,5 goles' };
   const LOG_MKT_NAME = Object.assign({}, MKT_NAME, { ah: 'Hándicap asiático' }); // el registro también guarda el hándicap
+  const VAL_MKT_NAME = LOG_MKT_NAME; // tablas de ligas validadas: los tres mercados de goles + hándicap
   const mktOf = e => (e && e.market) || 'ht05';
   // Clave del registro: +0,5 1T usa el id del partido (como siempre); los otros mercados, "id:mercado".
   const logId = (fid, market) => !market || market === 'ht05' ? String(fid) : String(fid) + ':' + market;
@@ -556,7 +604,7 @@
     const cell = v => { const t = v == null ? '' : String(v); return /[",;\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
     const r3 = x => isNum(x) ? Math.round(x * 1000) / 10 : '';
     const lines = ['mercado,pais,liga,id_liga,estado,partidos,mejora_pct,confianza,dice_pct,pasa_pct,desvio_pts,validada'];
-    for (const mk of Object.keys(MKT_NAME)) {
+    for (const mk of Object.keys(VAL_MKT_NAME)) {
       for (const e of Object.values(readLv(mk))) {
         const st = (e.status === 'aprobada' || e.status === 'conjunta') && !e.confidence ? 'revalidar' : e.status;
         lines.push([mk, e.country ? countryEs(e.country) : '', e.name || '', e.lid, st, e.n ?? '', r3(e.skill), e.confidence || '',
@@ -799,10 +847,22 @@
         lv[k] = Object.assign({}, r, { name: names.get(k) || (lv[k] && lv[k].name) || 'Liga ' + k, country: countries.get(k) || (lv[k] && lv[k].country) || '', cfg: cfgSaved, validatedAt: stamp });
       }
       if (!LS.set(lvKeyOf(market), lv)) throw new Error('el navegador no tiene espacio para guardar la tabla de ligas de ' + MKT_NAME[market] + '. Probá con menos ligas.');
+      // Hándicap asiático: se valida con las mismas predicciones honestas del partido completo (+2,5).
+      let ahOk = null;
+      if (market === 'over25' && root.TanoAsian) {
+        const perAh = ahLeagueVerdicts(honest.rows, root.TanoAsian, T), lvAh = readLv('ah');
+        for (const c of comps) {
+          if (histFailed.has(String(c.lid))) continue;
+          const k = String(c.lid), r = perAh[k] || { lid: k, status: 'faltan', n: 0, skill: null, brier: null, meanP: null, observed: null, gap: null };
+          lvAh[k] = Object.assign({}, r, { name: names.get(k) || (lvAh[k] && lvAh[k].name) || 'Liga ' + k, country: countries.get(k) || (lvAh[k] && lvAh[k].country) || '', cfg: cfgSaved, validatedAt: stamp });
+        }
+        if (!LS.set(lvKeyOf('ah'), lvAh)) throw new Error('el navegador no tiene espacio para guardar la tabla de ligas de hándicap. Probá con menos ligas.');
+        ahOk = comps.filter(c => perAh[String(c.lid)] && perAh[String(c.lid)].status === 'aprobada').length;
+      }
       renderLeagueVal();
       const html = renderValidation({ results, finalCfg, finalMetrics, rawMetrics: bt.metrics, cal, useCal, verdict, xgNote, skipped: bt.skipped, comps });
       const okNow = comps.filter(c => per[String(c.lid)] && per[String(c.lid)].status === 'aprobada').length;
-      return { market, html, ok: okNow, total: comps.filter(c => !histFailed.has(String(c.lid))).length };
+      return { market, html, ok: okNow, ahOk, total: comps.filter(c => !histFailed.has(String(c.lid))).length };
     }
   }
   const histFailed = new Map(); // ligas sin historial en esta validación (lid -> motivo)
@@ -818,7 +878,7 @@
       for (const mk of Object.keys(MKT_NAME)) {
         if (state.cancel) break;
         const r = await runValidationFor(mk, MKT_NAME[mk] + ' · ');
-        if (r) { parts.push(`<details class="val-box"><summary><b>${esc(MKT_NAME[mk])}</b> · ${r.ok} de ${r.total} liga(s) aprobada(s)</summary>${r.html}</details>`); summary.push(`${MKT_NAME[mk]}: ${r.ok} de ${r.total}`); }
+        if (r) { parts.push(`<details class="val-box"><summary><b>${esc(MKT_NAME[mk])}</b> · ${r.ok} de ${r.total} liga(s) aprobada(s)</summary>${r.html}</details>`); summary.push(`${MKT_NAME[mk]}: ${r.ok} de ${r.total}`); if (r.ahOk != null) summary.push(`Hándicap asiático: ${r.ahOk} de ${r.total}`); }
       }
       q('#valOut').innerHTML = parts.length ? '<details class="val-box"><summary><b>Detalle técnico de la última validación</b> (opcional: parámetros, calibración y resultado de todas las ligas juntas)</summary>' + parts.join('') + '</details>' : '';
       const skipped = histFailed.size ? ` Se saltearon ${histFailed.size} liga(s) sin partidos terminados en esta temporada ni en la anterior.` : '';
@@ -830,7 +890,7 @@
 
 
   /* ---- ligas validadas (se van sumando) ---- */
-  const curMarket = () => (typeof state !== 'undefined' && MKT_NAME[state.market]) ? state.market : 'ht05';
+  const curMarket = () => (typeof state !== 'undefined' && VAL_MKT_NAME[state.market]) ? state.market : 'ht05';
   const lvKeyOf = market => !market || market === 'ht05' ? LV_KEY : 'o05:leagueval:' + market + ':v1';
   function readLv(market) { const m = LS.get(lvKeyOf(market), null); return m && typeof m === 'object' ? m : {}; }
   // La validación del 31/10 fue conjunta (sin detalle por liga): esas ligas quedan aprobadas como «prueba conjunta».
@@ -860,7 +920,7 @@
     const list = Object.values(lv).map(e => Object.assign({}, e, { status: (e.status === 'aprobada' || e.status === 'conjunta') && !e.confidence ? 'revalidar' : e.status }));
     const ok = list.filter(e => e.status === 'aprobada').length;
     const toRedo = list.filter(e => e.status === 'revalidar').length;
-    if (!list.length) return { ok: 0, n: 0, html: `<div class="val-box">Ninguna liga validada todavía para ${MKT_NAME[market]}. Marcá ligas en el Escáner (sección 2) y tocá «Validar».</div>` };
+    if (!list.length) return { ok: 0, n: 0, html: `<div class="val-box">Ninguna liga validada todavía para ${VAL_MKT_NAME[market]}. Marcá ligas en el Escáner (sección 2) y tocá «Validar».</div>` };
     // Mejor calibrada primero: aprobadas arriba, y dentro de cada grupo la que más mejora sobre la tasa base.
     list.sort((a, b) => (ST_ORDER[a.status] - ST_ORDER[b.status]) || ((b.skill ?? -9) - (a.skill ?? -9)));
     const rows = list.map(e => `<tr><td>${e.country ? esc(countryEs(e.country)) : '—'}</td><td>${esc(e.name || 'Liga ' + e.lid)}</td><td>${ST_LABEL[e.status] || esc(e.status)}</td>` +
@@ -885,13 +945,13 @@
   // Las tres tablas (una por mercado) juntas; la del mercado elegido en el Escáner viene abierta.
   function renderLeagueVal() {
     migrateLv();
-    const cur = curMarket(), blocks = Object.keys(MKT_NAME).map(mk => Object.assign({ mk }, leagueValBlock(mk)));
+    const cur = curMarket(), blocks = Object.keys(VAL_MKT_NAME).map(mk => Object.assign({ mk }, leagueValBlock(mk)));
     const badge = q('#valBadge');
-    if (badge) badge.textContent = '· ' + blocks.map(b => `${MKT_NAME[b.mk]}: ${b.n ? b.ok + ' aprobada(s)' : 'sin validar'}`).join(' · ');
+    if (badge) badge.textContent = '· ' + blocks.map(b => `${VAL_MKT_NAME[b.mk]}: ${b.n ? b.ok + ' aprobada(s)' : 'sin validar'}`).join(' · ');
     const box = q('#leagueValOut');
     if (!box) return;
     box.innerHTML = '<div class="val-box"><b>Ligas validadas</b> (una tabla por mercado). Cada vez que tocás «Validar», las ligas marcadas se actualizan en los tres mercados; las demás quedan como estaban. En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
-      blocks.map(b => `<details class="val-box"${b.mk === cur ? ' open' : ''}><summary><b>${esc(MKT_NAME[b.mk])}</b> · ${b.n ? b.ok + ' aprobada(s) de ' + b.n + (b.byChance ? ` <span class="small">(por azar se esperarían ~${b.byChance})</span>` : '') : 'sin validar'}</summary>${b.html}</details>`).join('');
+      blocks.map(b => `<details class="val-box"${b.mk === cur ? ' open' : ''}><summary><b>${esc(VAL_MKT_NAME[b.mk])}</b> · ${b.n ? b.ok + ' aprobada(s) de ' + b.n + (b.byChance ? ` <span class="small">(por azar se esperarían ~${b.byChance})</span>` : '') : 'sin validar'}</summary>${b.html}</details>`).join('');
   }
 
   root.tanoRenderLeagueVal = renderLeagueVal;

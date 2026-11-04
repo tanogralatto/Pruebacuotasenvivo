@@ -272,6 +272,8 @@
   /* ------------------------------------------------------------------ */
   const BANDS = [[0, 0.3], [0.3, 0.4], [0.4, 0.5], [0.5, 0.6], [0.6, 0.7], [0.7, 0.8], [0.8, 0.9], [0.9, 1.000001]];
 
+  // Valor típico de cada mercado para arrancar la tasa base (no sale de los datos que se evalúan).
+  const BASE_PRIOR = { ht05: 0.7, btts: 0.5, over25: 0.5, ah: 0.5 }, BASE_WEIGHT = 3;
   function scoreRows(rows, pick) {
     const get = pick || (r => r.p);
     const list = (rows || []).filter(r => r && isNum(get(r)) && (r.y === 0 || r.y === 1)).slice().sort((x, y) => (x.ts || 0) - (y.ts || 0));
@@ -280,7 +282,10 @@
     let brier = 0, base = 0, ll = 0, sumP = 0, sumY = 0, seen = 0, ones = 0, sumD = 0, sumD2 = 0;
     for (const r of list) {
       const p = clamp(get(r), 1e-6, 1 - 1e-6);
-      const b0 = seen >= 10 ? (ones + 0.7 * 10) / (seen + 10) : 0.7; // tasa base previa (sin mirar el futuro)
+      // Tasa base previa (sin mirar el futuro): arranca en el valor típico del mercado (r.bp; 0,7 = +0,5 1T)
+      // con peso de 3 partidos y enseguida sigue a lo que va pasando en la liga.
+      const prior = isNum(r.bp) ? r.bp : 0.7;
+      const b0 = (ones + prior * BASE_WEIGHT) / (seen + BASE_WEIGHT);
       const bm = (p - r.y) ** 2, bb = (b0 - r.y) ** 2;
       brier += bm;
       base += bb;
@@ -338,7 +343,8 @@
             if (!pr.ok) { skipped.insufficient++; continue; }
             const y = marketOutcome(g, market), mp = marketProbs(pr, market, o);
             if (y === null) continue;
-            rows.push({ id: g.id, ts: g.ts, leagueId, p: mp.p, lam: pr.lambdaTotal, se: pr.seLambda, pLow: mp.pLow, y });
+            rows.push({ id: g.id, ts: g.ts, leagueId, p: mp.p, lam: pr.lambdaTotal, se: pr.seLambda, pLow: mp.pLow, y, bp: BASE_PRIOR[market],
+              lh: pr.lambdaHome, la: pr.lambdaAway, hg: g.hg, ag: g.ag });
           }
         }
         i = j;
@@ -542,7 +548,7 @@
 
   const api = {
     DEFAULTS, buildFitMatches, fitLeague, predictMatch, fitCalibration, applyCalibration,
-    scoreRows, rollingBacktest, tuneParams, validateCalibration, evDecision, kellyStake,
+    BASE_PRIOR, scoreRows, rollingBacktest, tuneParams, validateCalibration, evDecision, kellyStake,
     MARKETS, marketProbs, marketOutcome, ftGames,
     liveRemainingLambda, liveMarket, elapsedShare, poissonPmf,
     calculate, summarizeTeam, DEFAULT_PRIOR_MATCHES: 8

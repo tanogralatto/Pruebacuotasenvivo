@@ -258,3 +258,23 @@ test('hándicap en el registro: ROI con medias y sin modelo', () => {
   assert.equal(s.metrics.count, 2); // el Brier solo con las que tienen cálculo propio
   assert.equal(s.replay.n, 2);      // la simulación de banca usa el precio de las casas si falta el modelo
 });
+
+test('hándicap por liga: aprueba si el modelo sabe la diferencia de goles, no si solo agrega ruido', () => {
+  const A = require('../asiaticos.js');
+  const r = rng(77);
+  const pois = l => { let k = 0, q = Math.exp(-l), c = q; const u = r(); while (u > c && k < 15) { k++; q *= l / k; c += q; } return k; };
+  const rows = [];
+  for (let i = 0; i < 600; i++) {
+    // Liga 1: equipos muy distintos y el modelo conoce los goles esperados reales.
+    const sh = Math.exp((r() - 0.5) * 1.6), sa = Math.exp((r() - 0.5) * 1.6), lh = 1.4 * sh / sa, la = 1.1 * sa / sh;
+    rows.push({ leagueId: 1, ts: i, lh, la, hg: pois(lh), ag: pois(la) });
+    // Liga 2: todos iguales (1,4 y 1,1), el modelo inventa diferencias.
+    const nh = 1.4 * Math.exp((r() - 0.5) * 0.8), na = 1.1 * Math.exp((r() - 0.5) * 0.8);
+    rows.push({ leagueId: 2, ts: i, lh: nh, la: na, hg: pois(1.4), ag: pois(1.1) });
+  }
+  const v = V.ahLeagueVerdicts(rows, A, T);
+  assert.equal(v['1'].n, 600); assert.ok(v['1'].skill > 0.02, 'mejora ' + v['1'].skill); assert.equal(v['1'].confidence, 'alta'); assert.equal(v['1'].status, 'aprobada');
+  assert.ok(v['2'].skill < 0); assert.equal(v['2'].status, 'no');
+  // Pocos partidos: faltan datos.
+  assert.equal(V.ahLeagueVerdicts(rows.filter(x => x.leagueId === 1).slice(0, 50), A, T)['1'].status, 'faltan');
+});
