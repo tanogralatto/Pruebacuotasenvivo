@@ -53,7 +53,7 @@ section.panel{background:var(--surface);border:1px solid var(--line);border-radi
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .field.grow{flex:1 1 240px}
-.market-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.market-switch{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .market-option{min-height:56px;padding:7px 10px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;text-align:left}
 .market-option[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .market-main{font-size:14px;font-weight:700}
@@ -501,6 +501,7 @@ body.no-hints .poisson-metric .hint{display:none}
         <button type="button" class="market-option" data-market="ht05" aria-pressed="true"><span class="market-main">+0,5 1T</span><span class="market-help">Gol antes del descanso</span></button>
         <button type="button" class="market-option" data-market="btts" aria-pressed="false"><span class="market-main">Ambos marcan</span><span class="market-help">En el partido</span></button>
         <button type="button" class="market-option" data-market="over25" aria-pressed="false"><span class="market-main">+2,5 goles</span><span class="market-help">En el partido</span></button>
+        <button type="button" class="market-option" data-market="ah" aria-pressed="false"><span class="market-main">Hándicap asiático</span><span class="market-help">En el partido · en prueba</span></button>
       </div>
     </div>
     <div class="field" style="width:180px">
@@ -701,7 +702,7 @@ body.no-hints .poisson-metric .hint{display:none}
       <p><b>1. Anotá cómo salieron los partidos de ayer.</b> En la pestaña <b>Validación</b>, tocá <b>«Liquidar registro»</b>. La app busca los resultados de los partidos que analizaste y anota si acertó.</p>
       <p><b>2. Buscá los partidos de hoy</b> en el <b>Escáner</b>:</p>
       <ol>
-        <li>En <b>2. Partidos y ligas</b>, elegí el mercado: <b>+0,5 1T</b> (al menos un gol antes del descanso), <b>Ambos marcan</b> (los dos equipos hacen gol) o <b>+2,5 goles</b> (3 goles o más en el partido).</li>
+        <li>En <b>2. Partidos y ligas</b>, elegí el mercado: <b>+0,5 1T</b> (al menos un gol antes del descanso), <b>Ambos marcan</b> (los dos equipos hacen gol) o <b>+2,5 goles</b> (3 goles o más en el partido) o <b>Hándicap asiático</b> (en prueba; se explica más abajo).</li>
         <li>Elegí la fecha y tocá <b>«Buscar partidos»</b>.</li>
         <li>Marcá las ligas que te interesan («Todas» y «Ninguna» marcan o desmarcan de una vez).</li>
         <li>Tocá <b>«Analizar»</b>. En pantalla ves el mercado elegido, pero la app guarda en el registro <b>los tres mercados</b> de cada partido, sin gastar consultas extra.</li>
@@ -725,7 +726,7 @@ body.no-hints .poisson-metric .hint{display:none}
         <li><b>«Stake sugerido (Kelly)»</b>: cuánto apostar, en % de tu banca y en pesos. Si dice <b>«No apostar»</b>, hacele caso.</li>
         <li><b>«EV estimado»</b>: sale solo del cálculo de la app. Si dice «provisorio» (liga no aprobada), no te fíes de ese número solo.</li>
       </ul>
-      <p><b>Hándicap asiático</b> (debajo del recuadro del modelo, <b>en prueba</b>): muestra la línea principal del partido (la de cuotas más parejas) con un bloque por equipo: mejor cuota, <b>EV vs mercado</b>, stake sugerido, precio de las casas sin margen y lo que calcula el modelo. En «Ver otras líneas» está la escalera completa. La línea es la del local: <b>−0,5</b> = el local tiene que ganar; el visitante juega <b>+0,5</b>. En las de ,25 y ,75 la apuesta se divide en dos mitades, así que se puede ganar o perder la mitad. Si aparece <b>«⚠️ muy lejos del mercado»</b>, no uses el cálculo propio en ese partido. Todavía no se guarda en el registro ni está validado por liga: guiate por «EV vs mercado».</p>
+      <p><b>Hándicap asiático</b> (<b>en prueba</b>): elegí <b>«Hándicap asiático»</b> como mercado en el Escáner. Cada tarjeta muestra a la derecha el mejor EV contra el mercado y, al abrirla, la línea principal del partido (la de cuotas más parejas) con un bloque por equipo: mejor cuota, <b>EV vs mercado</b>, stake sugerido, precio de las casas sin margen y lo que calcula el modelo. En «Ver otras líneas» está la escalera completa. La línea es la del local: <b>−0,5</b> = el local tiene que ganar; el visitante juega <b>+0,5</b>. En las de ,25 y ,75 la apuesta se divide en dos mitades, así que se puede ganar o perder la mitad. Si aparece <b>«⚠️ muy lejos del mercado»</b>, no uses el cálculo propio en ese partido. Todavía no se guarda en el registro ni está validado por liga: guiate por «EV vs mercado».</p>
       <p class="help-rule"><b>Regla simple:</b> apostá solo si la frase de arriba está en <b>verde</b> y el stake <b>no</b> dice «No apostar». Antes de apostar, fijate que la cuota de tu casa siga igual.</p>
     </details>
 
@@ -1063,7 +1064,7 @@ function band(p){ if(p===null||p===undefined) return 'h0'; return p>=85?'h4':p>=
 /*ENDPURE*/
 
 const API='https://v3.football.api-sports.io';
-const marketDefs={ht05:{title:'Over 0.5 1T',short:'Más de 0,5 goles al descanso',period:'primer tiempo'},btts:{title:'Ambos equipos marcan',short:'Ambos marcan',period:'partido completo'},over25:{title:'Más de 2,5 goles',short:'Más de 2,5 goles',period:'partido completo'}};
+const marketDefs={ht05:{title:'Over 0.5 1T',short:'Más de 0,5 goles al descanso',period:'primer tiempo'},btts:{title:'Ambos equipos marcan',short:'Ambos marcan',period:'partido completo'},over25:{title:'Más de 2,5 goles',short:'Más de 2,5 goles',period:'partido completo'},ah:{title:'Hándicap asiático',short:'Hándicap asiático (partido completo)',period:'partido completo'}};
 const TZ='America/Argentina/Buenos_Aires';
 const TTL=12*3600*1000;
 const $=s=>document.querySelector(s);
@@ -1090,6 +1091,8 @@ const LS={
     return false;
   }
 };
+// Con «Hándicap asiático» elegido, todo lo que es de goles (indicadores, detalle, registro) usa +2,5 del partido completo.
+function bm(){return state.market==='ah'?'over25':state.market}
 const fmtDate=ts=>new Date(ts*1000).toLocaleDateString('es-AR',{timeZone:TZ,day:'2-digit',month:'2-digit',year:'2-digit'});
 const fmtTime=iso=>new Date(iso).toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false});
 
@@ -1440,7 +1443,7 @@ async function analizar(){
   // Se leen las cuotas de los tres mercados de la misma respuesta (no cuesta consultas extra):
   // el mercado elegido se muestra, y los otros dos se guardan igual en el registro.
   const oddsByMarket={ht05:new Map(),btts:new Map(),over25:new Map()}, seenFixtures=new Set(), oddsAh=new Map();
-  const prematchOddsByFixture=oddsByMarket[state.market]||oddsByMarket.ht05;
+  const prematchOddsByFixture=oddsByMarket[bm()]||oddsByMarket.ht05;
   if(fxs.length){
     const oddsDate=$('#date').value||fxs[0].iso.slice(0,10);
     const oddsComps=new Map();
@@ -1494,19 +1497,19 @@ async function analizar(){
   const out=[];
   for(const f of fxs){
     const key=[f.hid,f.aid].sort((a,b)=>a-b).join('-');
-    const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),state.market);
+    const tr=tramos(f,tg.get(f.hid),tg.get(f.aid),hg.get(key),bm());
     const leagueKey=String(f.lid)+':'+String(f.season);
-    const poisson=poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null);
-    if(poisson)poisson.market=state.market;
+    const poisson=poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null,bm());
+    if(poisson)poisson.market=bm();
     out.push({fx:f,tr,poisson,...resumen(tr)});
   }
-  try{logPredictions(out,state.market);if(state.market==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
+  try{logPredictions(out,bm());if(bm()==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
   // Goles esperados del partido completo de cada equipo (los del mercado +2,5): los usa el hándicap asiático.
   const ftLam=new Map();
-  if(state.market==='over25')for(const r of out)if(r.poisson&&r.poisson.ok)ftLam.set(String(r.fx.id),r.poisson.lambdas);
+  if(bm()==='over25')for(const r of out)if(r.poisson&&r.poisson.ok)ftLam.set(String(r.fx.id),r.poisson.lambdas);
   // Los otros dos mercados: mismo historial y mismas cuotas, solo para el registro (y el λ del 1T para En Vivo).
   for(const mk of Object.keys(oddsByMarket)){
-    if(mk===state.market||state.cancel)continue;
+    if(mk===bm()||state.cancel)continue;
     try{
       const extra=fxs.map(f=>{
         const leagueKey=String(f.lid)+':'+String(f.season);
@@ -1683,7 +1686,7 @@ function poissonHtml(model){
 /* ---- resultados ---- */
 function cellHtml(t){
   if(!t.valid){
-    const why=t.games.length?(state.market==='ht05'?'sin marcador HT':'sin marcador final'):'sin partidos';
+    const why=t.games.length?(bm()==='ht05'?'sin marcador HT':'sin marcador final'):'sin partidos';
     return `<div class="cell h0" title="${esc(t.full)}: ${why}"><span class="lab">${esc(t.lab)}</span><span class="pct">s/d</span><span class="cnt">s/d</span><span class="bar"><i style="--w:0%"></i></span></div>`;
   }
   const short=t.games.length<t.target||t.valid<t.games.length;
@@ -1696,26 +1699,28 @@ function cardHtml(r,i){
     <details class="result-detail">
       <summary class="fav-summary">
         <span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.hn)} vs ${esc(f.an)}</span></span>
-        <span class="fav-average ${band(r.avg)}">${r.avg===null?'—':Math.round(r.avg)+'%'}</span><span class="fav-arrow" aria-hidden="true">▾</span>
+        ${state.market==='ah'?ahSummaryBadge(r):`<span class="fav-average ${band(r.avg)}">${r.avg===null?'—':Math.round(r.avg)+'%'}</span>`}<span class="fav-arrow" aria-hidden="true">▾</span>
       </summary>
       <div class="result-expanded">
         <p class="league">${esc(f.lc)} · ${esc(f.ln)} · ${esc(marketDefs[state.market].short)}</p>
-        <div class="result-actions"><span class="small">Promedio descriptivo · ${r.n} de 7 indicadores</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
-        <div class="cells">${r.tr.map(cellHtml).join('')}</div>
-        ${r.poisson!==undefined?poissonHtml(r.poisson):''}
-        ${r.ah?ahHtml(r.ah,r.fx):''}
+        <div class="result-actions"><span class="small">${state.market==='ah'?'Hándicap asiático · línea principal y mejor precio':`Promedio descriptivo · ${r.n} de 7 indicadores`}</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
+        ${state.market==='ah'?(r.ah?ahHtml(r.ah,r.fx):''):`<div class="cells">${r.tr.map(cellHtml).join('')}</div>
+        ${r.poisson!==undefined?poissonHtml(r.poisson):''}`}
         <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
       </div>
     </details>
   </article>`;
 }
-function evOf(r){const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return d&&Number.isFinite(d.ev)?d.ev:null}
-function isEvPlus(r){const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return !!d&&(d.signal==='ev_solido'||d.signal==='ev_posible')}
+// Hándicap: el mejor EV contra el mercado de la línea principal (sin contar lados «muy lejos del mercado»).
+function ahBest(r){const v=r&&r.ah;if(!v||!v.ok||!v.main)return null;const xs=[v.main.home,v.main.away].filter(s=>Number.isFinite(s.evMkt)&&!s.suspicious);if(!xs.length)return null;const s=xs.sort((a,b)=>b.evMkt-a.evMkt)[0];return {side:s===v.main.home?'home':'away',ev:s.evMkt,line:v.main.line};}
+function ahSummaryBadge(r){const b=ahBest(r),v=r.ah;if(!b)return '<span class="fav-average h0" title="Sin precio de las casas para comparar">—</span>';const cls=b.ev>=0.03?'h4':b.ev>=-0.01?'h2':'h1';const name=b.side==='home'?r.fx.hn:r.fx.an,l=b.side==='home'?b.line:-b.line;return '<span class="fav-average '+cls+'" title="'+esc(name+' '+fmtAhLine(l))+'">'+(b.ev>=0?'+':'')+fmtNum(b.ev*100,1)+'%</span>';}
+function evOf(r){if(state.market==='ah'){const b=ahBest(r);return b?b.ev:null}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return d&&Number.isFinite(d.ev)?d.ev:null}
+function isEvPlus(r){if(state.market==='ah'){const b=ahBest(r);return !!b&&b.ev>=0.03}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return !!d&&(d.signal==='ev_solido'||d.signal==='ev_posible')}
 function sorted(){
   const m=parseInt($('#minAvg').value,10)||0, s=$('#sort').value;
   const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, onlyEv=!!($('#onlyEv')&&$('#onlyEv').checked), now=Date.now();
-  const beat=$('#onlyBeatMkt')&&$('#onlyBeatMkt').checked&&window.tanoBeatsMarketLeagues?window.tanoBeatsMarketLeagues(state.market):null;
-  const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(!onlyEv||isEvPlus(r))&&(!beat||beat.has(String(r.fx.lid)))&&(m===0||(r.avg!==null&&r.avg>=m)));
+  const beat=state.market!=='ah'&&$('#onlyBeatMkt')&&$('#onlyBeatMkt').checked&&window.tanoBeatsMarketLeagues?window.tanoBeatsMarketLeagues(bm()):null;
+  const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(!onlyEv||isEvPlus(r))&&(!beat||beat.has(String(r.fx.lid)))&&(m===0||state.market==='ah'||(r.avg!==null&&r.avg>=m)));
   const nv=x=>x===null?-1:x;
   if(s==='ev') list.sort((a,b)=>(evOf(b)===null?-9:evOf(b))-(evOf(a)===null?-9:evOf(a))||nv(b.avg)-nv(a.avg));
   else if(s==='min') list.sort((a,b)=>nv(b.min)-nv(a.min)||nv(b.avg)-nv(a.avg));
@@ -1739,7 +1744,7 @@ function renderResults(){
   const sin=shownResults.filter(r=>r.n<7).length;
   if(sin) notes.push(`${sin} de ${shownResults.length} partidos tienen menos de 7 criterios con datos. El promedio descriptivo usa solo criterios válidos; no es una probabilidad calibrada.`);
   const incompletos=shownResults.reduce((n,r)=>n+r.tr.filter(t=>t.valid<t.games.length||t.games.length<t.target).length,0);
-  if(incompletos) notes.push(`${incompletos} indicadores tienen menos partidos válidos que el objetivo. X/N muestra la frecuencia entre partidos con marcador ${state.market==='ht05'?'HT':'final'} conocido; los s/d no entran en N.`);
+  if(incompletos) notes.push(`${incompletos} indicadores tienen menos partidos válidos que el objetivo. X/N muestra la frecuencia entre partidos con marcador ${bm()==='ht05'?'HT':'final'} conocido; los s/d no entran en N.`);
   notes.push('Un 100% con pocos partidos no se compara con un 20/20. El promedio de indicadores es descriptivo, no una probabilidad real.');
   for(const e of state.errors.slice(0,3)) notes.push('Error de la API: '+e);
   $('#notes').innerHTML=notes.map(n=>`<div>${esc(n)}</div>`).join('');
@@ -1747,24 +1752,24 @@ function renderResults(){
 function detailHtml(r){
   return r.tr.map(t=>{
     const rng=t.valid?` · datos válidos del ${fmtDate(t.min)} al ${fmtDate(t.max)}`:'';
-    const inferidos=state.market==='ht05'?t.games.filter(g=>g.fh===0&&!g.ht).length:0;
+    const inferidos=bm()==='ht05'?t.games.filter(g=>g.fh===0&&!g.ht).length:0;
     const inferidosLabel=inferidos?` · ${inferidos} inferido(s) por FT 0-0`:'';
-    const missingHT=state.market==='ht05'?t.games.filter(g=>g.fh===null).length:0;
+    const missingHT=bm()==='ht05'?t.games.filter(g=>g.fh===null).length:0;
     const missingLabel=missingHT?` · ${missingHT} sin HT válido`:'';
-    const validationCounts=state.market==='ht05'?t.games.reduce((a,g)=>{const status=(g.htValidation||validateHtRecord(g)).status;a[status]=(a[status]||0)+1;return a;},{}):{};
-    const validationLabel=state.market==='ht05'?Object.entries(validationCounts).map(([k,v])=>({valid_api:'HT verificado',inferred_zero_final:'inferido por FT 0-0',missing_api:'ausente en API',invalid_processed:'inconsistencia HT',legacy_unverified:'caché antigua/no verificable'}[k]||k)+': '+v).join(' · '):'';
+    const validationCounts=bm()==='ht05'?t.games.reduce((a,g)=>{const status=(g.htValidation||validateHtRecord(g)).status;a[status]=(a[status]||0)+1;return a;},{}):{};
+    const validationLabel=bm()==='ht05'?Object.entries(validationCounts).map(([k,v])=>({valid_api:'HT verificado',inferred_zero_final:'inferido por FT 0-0',missing_api:'ausente en API',invalid_processed:'inconsistencia HT',legacy_unverified:'caché antigua/no verificable'}[k]||k)+': '+v).join(' · '):'';
     const rows=t.games.map(g=>{
-      const validScore=state.market==='ht05'?g.fh!==null:!!g.fs;
-      const hit=validScore&&hitFor(g,state.market);
+      const validScore=bm()==='ht05'?g.fh!==null:!!g.fs;
+      const hit=validScore&&hitFor(g,bm());
       const cls=!validScore?'na':hit?'y':'n';
-      const score=state.market==='ht05'?(g.ht?`${g.ht[0]}-${g.ht[1]}`:(g.fh===0?'0-0*':'s/d')):(g.fs?`${g.fs[0]}-${g.fs[1]}`:'s/d');
+      const score=bm()==='ht05'?(g.ht?`${g.ht[0]}-${g.ht[1]}`:(g.fh===0?'0-0*':'s/d')):(g.fs?`${g.fs[0]}-${g.fs[1]}`:'s/d');
       const validation=g.htValidation||validateHtRecord(g);
-      const htStatus=state.market!=='ht05'?'':validation.detail||'Origen HT desconocido';
-      const mk=!validScore?'s/d':hit?(state.market==='btts'?'ambos marcan':state.market==='over25'?'+2,5':'gol'):(state.market==='btts'?'no marcan ambos':state.market==='over25'?'−2,5':'sin gol');
+      const htStatus=bm()!=='ht05'?'':validation.detail||'Origen HT desconocido';
+      const mk=!validScore?'s/d':hit?(bm()==='btts'?'ambos marcan':bm()==='over25'?'+2,5':'gol'):(bm()==='btts'?'no marcan ambos':bm()==='over25'?'−2,5':'sin gol');
       return `<li class="${cls}" title="${esc(htStatus)}"><span>${fmtDate(g.d)}</span><span>${esc(g.hn)} <b>${score}</b> ${esc(g.an)}${htStatus?`<small class="small" style="display:block">${esc(htStatus)}</small>`:''}</span><span class="m">${mk}</span></li>`;
     }).join('')||'<li class="na"><span></span><span>sin partidos</span><span></span></li>';
     return `<div><h3>${esc(t.full)}: ${t.valid?`${t.hits}/${t.valid} válidos (${Math.round(t.pct)}%)`:'sin datos'} · ${t.games.length}/${t.target} partidos revisados${inferidosLabel}${missingLabel}${rng}</h3>${validationLabel?'<p class="small">'+esc(validationLabel)+'</p>':''}<ul>${rows}</ul></div>`;
-  }).join('')+`<p class="small">Marcador mostrado: ${state.market==='ht05'?'primer tiempo':'tiempo completo'}. ${state.market==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. Los partidos sin HT válido no se incluyen en el denominador. ':''}La muestra revisa los últimos partidos disponibles hasta el objetivo indicado; los registros sin marcador válido no se reemplazan por partidos más antiguos. Por eso, partidos revisados y partidos válidos pueden ser distintos.</p>`;
+  }).join('')+`<p class="small">Marcador mostrado: ${bm()==='ht05'?'primer tiempo':'tiempo completo'}. ${bm()==='ht05'?'0-0* = marcador al descanso inferido porque el resultado final fue 0-0 y faltaba el dato HT; se cuenta como sin gol. Los partidos sin HT válido no se incluyen en el denominador. ':''}La muestra revisa los últimos partidos disponibles hasta el objetivo indicado; los registros sin marcador válido no se reemplazan por partidos más antiguos. Por eso, partidos revisados y partidos válidos pueden ser distintos.</p>`;
 
 }
 function copyList(){
