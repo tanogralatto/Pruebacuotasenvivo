@@ -120,3 +120,28 @@ test('lista de apuestas: todas las líneas con cuota, ordenadas por EV contra el
   const away1 = rows.find(r => r.side === 'away' && r.line === -1);
   assert.equal(away1.sideLine, 1); close(away1.fairMkt, 1 / away1.mkt);
 });
+
+test('controles: formato del visitante con líneas simétricas, casas fuera del mercado y cuotas raras', () => {
+  // Casa que repite la línea del local para el visitante y ofrece líneas simétricas (−0,5 y +0,5):
+  // por conteo de líneas no se distingue, pero solo una lectura arma pares coherentes.
+  const same = [{ bookmakers: [{ name: 'Rara', bets: [{ name: 'Asian Handicap', values: [
+    { value: 'Home -0.5', odd: '1.90' }, { value: 'Away -0.5', odd: '1.95' },
+    { value: 'Home +0.5', odd: '1.30' }, { value: 'Away +0.5', odd: '3.40' }] }] }] }];
+  const p = A.parseOdds(same).books.get('Rara');
+  assert.deepEqual(p.get(-0.5), { home: 1.9, away: 1.95 });
+  assert.deepEqual(p.get(0.5), { home: 1.3, away: 3.4 });
+  // Una casa muy lejos del mercado no aporta la mejor cuota.
+  const resp = [{ bookmakers: [
+    { name: 'Pinnacle', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home -1.5', odd: '2.40' }, { value: 'Away +1.5', odd: '1.62' }] }] },
+    { name: 'Vieja', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home -1.5', odd: '4.20' }, { value: 'Away +1.5', odd: '1.22' }] }] }] }];
+  const m = A.marketByLine(A.parseOdds(resp)).get(-1.5);
+  assert.equal(m.bestHome.bookmaker, 'Pinnacle'); assert.equal(m.dropped, 1);
+  // Pares sin sentido (margen imposible) se descartan.
+  const bad = [{ bookmakers: [{ name: 'X', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home -1', odd: '1.20' }, { value: 'Away +1', odd: '1.25' }] }] }] }];
+  assert.equal(A.parseOdds(bad).books.size, 0);
+  // EV de más de 25% contra el mercado: cuota rara, sin stake y al final de la lista.
+  const v = A.view({ lambdaHome: 1.4, lambdaAway: 1.2, odds: A.parseOdds([{ bookmakers: [
+    { name: 'Pinnacle', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home 0', odd: '1.90' }, { value: 'Away 0', odd: '1.95' }] }] },
+    { name: 'B', bets: [{ name: 'Asian Handicap', values: [{ value: 'Home 0', odd: '1.92' }, { value: 'Away 0', odd: '1.93' }] }] }] }]) }, T);
+  assert.ok(A.betRows(v).every(r => !r.oddOdds));
+});

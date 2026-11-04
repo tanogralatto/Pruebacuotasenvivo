@@ -453,7 +453,9 @@
       // La apuesta que se guarda es la mejor de la lista (mayor EV contra el mercado, en cualquier línea).
       const rows = root.TanoAsian ? root.TanoAsian.betRows(v) : [];
       if (!rows.length) continue;
-      const x = rows.find(z => isNum(z.evMkt)) || rows[0], side = x.side, sideLine = x.sideLine, m = { line: x.line };
+      const x = rows.find(z => isNum(z.evMkt) && !z.oddOdds) || rows.find(z => !z.oddOdds);
+      if (!x) continue;
+      const side = x.side, sideLine = x.sideLine, m = { line: x.line };
       log[id] = {
         id, fid: String(r.fx.id), market: 'ah', ts, lid: r.fx.lid, season: r.fx.season, hid: r.fx.hid, aid: r.fx.aid, hn: r.fx.hn, an: r.fx.an, ln: r.fx.ln, lc: r.fx.lc || '',
         line: m.line, side, sideLine, p: isNum(x.pCond) ? x.pCond : null, marketProb: isNum(x.mkt) ? x.mkt : null,

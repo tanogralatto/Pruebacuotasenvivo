@@ -1598,13 +1598,13 @@ function ahHtml(v,fx){
   const stake=s=>{const k=s.kelly;if(!k||!k.ok)return '—';if(!(k.stake>0))return 'No';const b=bankrollValue();return fmtNum(k.stake*100,1)+'%'+(b?'<br><span class="small">$'+Math.round(b*k.stake).toLocaleString('es-AR')+'</span>':'');};
   const name=r=>(r.side==='home'?hn:an)+' '+fmtAhLine(r.sideLine);
   const rows=window.TanoAsian.betRows(v), top=rows.slice(0,8), rest=rows.slice(8);
-  const best=rows.find(r=>Number.isFinite(r.evMkt));
+  const best=rows.find(r=>Number.isFinite(r.evMkt)&&!r.oddOdds);
   let verdict;
   if(!rows.length)verdict={cls:'none',t:'Sin cuotas de hándicap',x:'La API no trajo cuotas de hándicap asiático para este partido.'};
   else if(!best)verdict={cls:'mid',t:'Sin referencia de las casas',x:'Hay cuotas, pero no el precio sin margen de las casas para comparar: no se puede saber si conviene.'};
   else if(best.evMkt>=0.03)verdict={cls:'good',t:'Mirar con atención',x:'<b>'+name(best)+'</b> a '+Number(best.odds).toFixed(2)+' ('+esc(best.best.bookmaker)+') paga '+fmtNum(best.evMkt*100,1)+'% más que la cuota justa de las casas. Confirmá la cuota antes de decidir.'};
   else verdict={cls:best.evMkt>=-0.01?'mid':'bad',t:best.evMkt>=-0.01?'Sin ventaja clara':'No se ve ventaja',x:'La mejor apuesta ('+name(best)+') paga '+(best.evMkt>=-0.01?'casi lo justo':'menos de lo justo')+' según las casas.'};
-  const tr=r=>'<tr'+(Number.isFinite(r.evMkt)&&r.evMkt>=0.03?' class="ah-value"':'')+'><td><b>'+name(r)+'</b></td><td>'+Number(r.odds).toFixed(2)+'<br><span class="small">'+esc(r.best.bookmaker)+'</span></td><td>'+(r.fairMkt?fmtNum(r.fairMkt,2):'—')+'</td><td>'+ev(r.evMkt)+'</td><td>'+stake(r)+'</td></tr>';
+  const tr=r=>'<tr'+(Number.isFinite(r.evMkt)&&r.evMkt>=0.03&&!r.oddOdds?' class="ah-value"':'')+'><td><b>'+name(r)+'</b>'+(r.oddOdds?'<br><span class="small">⚠️ cuota rara, revisala</span>':'')+'</td><td>'+Number(r.odds).toFixed(2)+'<br><span class="small">'+esc(r.best.bookmaker)+'</span></td><td>'+(r.fairMkt?fmtNum(r.fairMkt,2):'—')+'</td><td>'+ev(r.evMkt)+'</td><td>'+stake(r)+'</td></tr>';
   const head='<tr><th>Apuesta</th><th>Cuota</th><th>Justa</th><th>EV</th><th>Stake</th></tr>';
   const table='<table class="val-table ah-table">'+head+top.map(tr).join('')+'</table>'+
     (rest.length?'<details class="val-box"><summary>Ver las otras '+rest.length+' apuestas</summary><table class="val-table ah-table">'+head+rest.map(tr).join('')+'</table></details>':'');
@@ -1714,7 +1714,7 @@ function cardHtml(r,i){
   </article>`;
 }
 // Hándicap: el mejor EV contra el mercado de la línea principal (sin contar lados «muy lejos del mercado»).
-function ahBest(r){const v=r&&r.ah;if(!v||!v.ok||!window.TanoAsian)return null;const x=window.TanoAsian.betRows(v).find(s=>Number.isFinite(s.evMkt));return x?{side:x.side,ev:x.evMkt,line:x.line}:null;}
+function ahBest(r){const v=r&&r.ah;if(!v||!v.ok||!window.TanoAsian)return null;const x=window.TanoAsian.betRows(v).find(s=>Number.isFinite(s.evMkt)&&!s.oddOdds);return x?{side:x.side,ev:x.evMkt,line:x.line}:null;}
 function ahSummaryBadge(r){const b=ahBest(r),v=r.ah;if(!b)return '<span class="fav-average h0" title="Sin precio de las casas para comparar">—</span>';const cls=b.ev>=0.03?'h4':b.ev>=-0.01?'h2':'h1';const name=b.side==='home'?r.fx.hn:r.fx.an,l=b.side==='home'?b.line:-b.line;return '<span class="fav-average '+cls+'" title="'+esc(name+' '+fmtAhLine(l))+'">'+(b.ev>=0?'+':'')+fmtNum(b.ev*100,1)+'%</span>';}
 function evOf(r){if(state.market==='ah'){const b=ahBest(r);return b?b.ev:null}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return d&&Number.isFinite(d.ev)?d.ev:null}
 function isEvPlus(r){if(state.market==='ah'){const b=ahBest(r);return !!b&&b.ev>=0.03}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return !!d&&(d.signal==='ev_solido'||d.signal==='ev_posible')}

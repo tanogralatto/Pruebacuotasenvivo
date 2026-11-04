@@ -88,6 +88,7 @@
   // Devuelve { books: Map(casa -> Map(líneaLocal -> {home, away})), raw: [ejemplos de texto], betNames: [...] }.
   // Las casas escriben la línea del visitante de dos maneras: con su propio signo («Away +0.5» cuando el local
   // juega −0,5) o repitiendo la del local («Away -0.5»). Se detecta cuál usa cada casa.
+  const validPair = rec => rec && rec.home > 1 && rec.away > 1 && (1 / rec.home + 1 / rec.away) >= 0.98 && (1 / rec.home + 1 / rec.away) <= 1.2;
   function parseOdds(response) {
     const books = new Map(), raw = [], betNames = new Set(), allBets = new Map(), allBooks = new Set();
     for (const item of response || []) {
@@ -108,14 +109,21 @@
           }
           if (!vals.length) continue;
           const homes = vals.filter(x => x.side === 'home'), aways = vals.filter(x => x.side === 'away');
-          const has = (arr, l) => arr.some(x => Math.abs(x.line - l) < EPS);
-          let own = 0, same = 0;
-          for (const h of homes) if (Math.abs(h.line) > EPS) { if (has(aways, -h.line)) own++; if (has(aways, h.line)) same++; }
-          const awayIsOwnLine = own >= same; // lo habitual: la línea del visitante con su propio signo
+          // Las casas escriben la línea del visitante con su propio signo («Away +0.5» si el local da 0,5) o repitiendo
+          // la del local («Away -0.5»). Se prueban las dos lecturas y se queda la que arma pares coherentes:
+          // en una misma línea, 1/local + 1/visitante tiene que estar entre 0,98 y 1,20 (el margen de la casa).
+          const build = own => {
+            const m = new Map();
+            for (const h of homes) { const rec = m.get(h.line) || {}; rec.home = h.price; m.set(h.line, rec); }
+            for (const a of aways) { const l = own ? -a.line : a.line; const rec = m.get(l) || {}; rec.away = a.price; m.set(l, rec); }
+            let ok = 0;
+            for (const [l, rec] of m) { if (validPair(rec)) ok++; else m.delete(l); } // sin par coherente, la línea no se usa
+            return { m, ok };
+          };
+          const A1 = build(true), A2 = build(false), pick = A2.ok > A1.ok ? A2 : A1;
           const lines = books.get(bkName) || new Map();
-          for (const h of homes) { const rec = lines.get(h.line) || {}; rec.home = h.price; lines.set(h.line, rec); }
-          for (const a of aways) { const l = awayIsOwnLine ? -a.line : a.line; const rec = lines.get(l) || {}; rec.away = a.price; lines.set(l, rec); }
-          books.set(bkName, lines);
+          for (const [l, rec] of pick.m) lines.set(l, rec);
+          if (lines.size) books.set(bkName, lines);
         }
       }
     }
@@ -123,25 +131,31 @@
   }
 
   // Por línea: mejor cuota de cada lado y probabilidad sin margen (Pinnacle o mediana de las casas con los dos lados).
+  // Por línea: precio sin margen de referencia (Pinnacle, o mediana de las casas) y mejor cuota de cada lado.
+  // La mejor cuota solo sale de casas que coinciden con la referencia (±10 puntos): si una casa se aleja más,
+  // casi siempre es una cuota vieja o mal cargada, no una oportunidad.
+  const MAX_BOOK_GAP = 0.10;
   function marketByLine(parsed) {
     const out = new Map();
     if (!parsed) return out;
     for (const [bk, lines] of parsed.books) {
       for (const [l, rec] of lines) {
         const o = out.get(l) || { line: l, bestHome: null, bestAway: null, pairs: [] };
-        if (rec.home && (!o.bestHome || rec.home > o.bestHome.price)) o.bestHome = { price: rec.home, bookmaker: bk };
-        if (rec.away && (!o.bestAway || rec.away > o.bestAway.price)) o.bestAway = { price: rec.away, bookmaker: bk };
-        if (rec.home && rec.away) o.pairs.push({ bk, pHome: (1 / rec.home) / (1 / rec.home + 1 / rec.away), gap: Math.abs(rec.home - rec.away) });
+        o.pairs.push({ bk, home: rec.home, away: rec.away, pHome: (1 / rec.home) / (1 / rec.home + 1 / rec.away), gap: Math.abs(rec.home - rec.away) });
         out.set(l, o);
       }
     }
     for (const o of out.values()) {
       const pin = o.pairs.find(x => /pinnacle/i.test(x.bk));
-      if (pin) { o.mktHome = pin.pHome; o.mktRef = 'Pinnacle, sin margen'; }
-      else if (o.pairs.length) {
-        const ps = o.pairs.map(x => x.pHome).sort((a, b) => a - b), n = ps.length;
-        o.mktHome = n % 2 ? ps[(n - 1) / 2] : (ps[n / 2 - 1] + ps[n / 2]) / 2;
-        o.mktRef = 'mediana de ' + n + ' casa' + (n > 1 ? 's' : '') + ', sin margen';
+      const ps = o.pairs.map(x => x.pHome).sort((a, b) => a - b), n = ps.length;
+      const median = n % 2 ? ps[(n - 1) / 2] : (ps[n / 2 - 1] + ps[n / 2]) / 2;
+      if (pin && (n < 3 || Math.abs(pin.pHome - median) <= MAX_BOOK_GAP)) { o.mktHome = pin.pHome; o.mktRef = 'Pinnacle, sin margen'; }
+      else { o.mktHome = median; o.mktRef = 'mediana de ' + n + ' casa' + (n > 1 ? 's' : '') + ', sin margen'; }
+      o.dropped = 0;
+      for (const x of o.pairs) {
+        if (Math.abs(x.pHome - o.mktHome) > MAX_BOOK_GAP) { o.dropped++; continue; }
+        if (!o.bestHome || x.home > o.bestHome.price) o.bestHome = { price: x.home, bookmaker: x.bk };
+        if (!o.bestAway || x.away > o.bestAway.price) o.bestAway = { price: x.away, bookmaker: x.bk };
       }
     }
     return out;
@@ -184,8 +198,9 @@
       const evMkt = odds && isNum(mkt) ? mkt * odds - 1 : null;
       const gap = isNum(mkt) && isNum(pr.pCond) ? pr.pCond - mkt : null;
       const suspicious = isNum(gap) && Math.abs(gap) > o.maxGap;
+      const oddOdds = isNum(evMkt) && evMkt > 0.25; // ninguna casa paga 25% más que el mercado: es un error de carga
       const kel = odds && T && T.kellyStake && (isNum(pr.pCond) || isNum(mkt)) ? T.kellyStake({ p: isNum(pr.pCond) ? pr.pCond : mkt, odds, marketProb: isNum(mkt) ? mkt : undefined, validated: hasModel ? o.validated : false }) : null;
-      return Object.assign({}, pr, { best, odds, mkt, ev, evMkt, gap, suspicious, kelly: kel });
+      return Object.assign({}, pr, { best, odds, mkt, ev, evMkt, gap, suspicious, oddOdds, kelly: oddOdds ? null : kel });
     };
     const lines = [];
     if (hasModel) for (let l = o.from; l <= o.to + EPS; l += 0.25) {
@@ -214,7 +229,8 @@
           fairMkt: isNum(s.mkt) && s.mkt > 0 ? 1 / s.mkt : null }));
       }
     }
-    return out.sort((a, b) => (isNum(b.evMkt) ? b.evMkt : -9) - (isNum(a.evMkt) ? a.evMkt : -9) || a.odds - b.odds);
+    const key = r => r.oddOdds ? -10 : isNum(r.evMkt) ? r.evMkt : -9;
+    return out.sort((a, b) => key(b) - key(a) || a.odds - b.odds);
   }
 
   const api = { betRows, diffDist, lineParts, outcome, lineProbs, parseOdds, marketByLine, mainLine, view };
