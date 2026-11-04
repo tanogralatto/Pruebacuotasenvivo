@@ -455,14 +455,12 @@ body.no-hints .poisson-metric .hint{display:none}
 
 <details id="routineBox" class="routine" open>
   <summary>📌 Tu rutina (tocá para ocultar o mostrar)</summary>
-  <p><b>Todos los días, dos pasos:</b></p>
   <ol>
-    <li><b>Tocá «Liquidar registro»</b> (pestaña Validación). Anota cómo salieron los partidos de ayer.</li>
-    <li><b>Analizá los partidos del día</b> en el Escáner, como siempre. La app guarda sola cada predicción con su cuota.</li>
+    <li><b>Analizá los partidos del día</b> en el Escáner: fecha → «Buscar partidos» → marcá las ligas → «Analizar».</li>
+    <li><b>Guardá con la estrella ☆</b> los que te interesen, y seguilos en <b>En Vivo</b> durante el primer tiempo.</li>
   </ol>
-  <p><b>EV:</b> el número más confiable es <b>«EV vs mercado (sin margen)»</b>. Todavía no sabemos si gana plata: hasta entonces, si apostás, que sea poco.</p>
-  <p><b>En 2 o 3 semanas</b> (unas 300 predicciones liquidadas): tocá <b>«Copiar registro»</b> y pasáselo a Claude. Ahí se sabe si el sistema gana plata de verdad.</p>
-  <p class="small"><b>Pendiente una vez:</b> la validación ahora es más estricta (cada partido se juzga solo con lo anterior y se mira si la mejora puede ser suerte). Marcá tus ligas en el Escáner y tocá «Validar» en la pestaña Validación para actualizar la tabla. Opcional: para probar el xG, poné 500 en «Consultas para bajar xG», tocá «Bajar xG» y después «Validar».</p>
+  <p><b>EV:</b> el número más confiable es <b>«EV vs mercado (sin margen)»</b>. Si apostás, que sea poco.</p>
+  <p class="small">Goles del partido completo, 1X2 y hándicap asiático están en la app nueva: <a href="./goles.html">TanoApp Goles</a>.</p>
 </details>
 
 <div class="userbar">
@@ -477,7 +475,7 @@ body.no-hints .poisson-metric .hint{display:none}
   <button id="tabLive" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="liveView">En Vivo</button>
   <button id="tabFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="favoritesView">Favoritos</button>
   <button id="tabVipFavorites" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="vipFavoritesView">Favoritos VIP</button>
-  <button id="tabValidation" class="app-tab" type="button" role="tab" aria-selected="false" aria-controls="validationView">Validación</button>
+  <button id="tabValidation" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="validationView">Validación</button>
   <button id="tabStrategy" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="ghStrategyView">Estrategia AEG</button>
   <button id="tabTelegram" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="telegramView">Configuración Telegram VIP</button>
   <button id="tabAccess" class="app-tab hidden" type="button" role="tab" aria-selected="false" aria-controls="accessView">Accesos</button>
@@ -500,6 +498,9 @@ body.no-hints .poisson-metric .hint{display:none}
     </div>
     <button id="btnKey" class="primary" type="button">Guardar y probar</button>
   </div>
+  <div class="row">
+    <div class="field" style="width:170px"><label for="bankroll">Tu banca para apostar ($)</label><input id="bankroll" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000"></div>
+  </div>
   <div id="quota" class="status" role="status">La clave se guarda solo en este navegador. No forma parte del archivo.</div>
 </section>
 
@@ -507,12 +508,9 @@ body.no-hints .poisson-metric .hint{display:none}
   <h2 id="t-fx">2. Partidos y ligas</h2>
   <div class="row">
     <div class="field" style="width:100%">
-      <label for="market">Mercado de goles</label>
+      <label for="market">Mercado</label>
       <div class="market-switch" role="group" aria-label="Elegir mercado">
         <button type="button" class="market-option" data-market="ht05" aria-pressed="true"><span class="market-main">+0,5 1T</span><span class="market-help">Gol antes del descanso</span></button>
-        <button type="button" class="market-option" data-market="btts" aria-pressed="false"><span class="market-main">Ambos marcan</span><span class="market-help">En el partido</span></button>
-        <button type="button" class="market-option" data-market="over25" aria-pressed="false"><span class="market-main">+2,5 goles</span><span class="market-help">En el partido</span></button>
-        <button type="button" class="market-option" data-market="ah" aria-pressed="false"><span class="market-main">Hándicap asiático</span><span class="market-help">En el partido · en prueba</span></button>
       </div>
     </div>
     <div class="field" style="width:180px">
@@ -559,7 +557,7 @@ body.no-hints .poisson-metric .hint{display:none}
       <select id="minAvg"><option value="0">Todos</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
     <label class="check"><input id="applyCriteria" type="checkbox"><span>Aplicar criterios</span></label>
     <label class="check"><input id="onlyEv" type="checkbox"><span>Solo EV+ (Poisson)</span></label>
-    <label class="check"><input id="onlyBeatMkt" type="checkbox"><span>Solo ligas donde le gana a las casas</span></label>
+    <label class="check hidden"><input id="onlyBeatMkt" type="checkbox"><span>Solo ligas donde le gana a las casas</span></label>
     <label class="check"><input id="showHints" type="checkbox" checked><span>Mostrar explicaciones</span></label>
     <button id="btnCopy" type="button">Copiar lista</button>
   </div>
@@ -599,7 +597,6 @@ body.no-hints .poisson-metric .hint{display:none}
       <div class="row">
         <div class="field" style="width:170px"><label for="evMinEdge">Ventaja mínima para EV+ (%)</label><input id="evMinEdge" type="number" min="0" max="50" step="0.5" value="5"></div>
         <div class="field" style="width:190px"><label for="xgBudget">Consultas para bajar xG</label><input id="xgBudget" type="number" min="10" max="2000" step="10" value="200"></div>
-        <div class="field" style="width:170px"><label for="bankroll">Tu banca para apostar ($)</label><input id="bankroll" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000"></div>
       </div>
       <div class="row">
         <button id="btnValidate" type="button" class="primary">Validar con las ligas marcadas</button>
@@ -705,22 +702,20 @@ body.no-hints .poisson-metric .hint{display:none}
       <ol>
         <li><b>Entrá con tu cuenta de Google.</b> Si aparece «Acceso pendiente», esperá a que el dueño te apruebe: la app se abre sola. Abrí el link desde <b>Safari o Chrome</b>, no desde WhatsApp ni Instagram (ahí el login de Google no funciona).</li>
         <li><b>Cargá tu clave de API-Football.</b> En el <b>Escáner</b>, sección <b>1. Conexión</b>: pegá tu clave y tocá <b>«Guardar y probar»</b>. La app saca de ahí los partidos y las cuotas.</li>
-        <li><b>Cargá tu banca.</b> En la pestaña <b>Validación</b>, escribí en «Tu banca para apostar ($)» cuánta plata tenés para apostar. Con eso la app te dice cuánto apostar en cada partido.</li>
+        <li><b>Cargá tu banca.</b> En el <b>Escáner</b>, sección <b>1. Conexión</b>, escribí en «Tu banca para apostar ($)» cuánta plata tenés para apostar. Con eso la app te dice cuánto apostar en cada partido.</li>
       </ol>
     </details>
 
     <details class="routine">
       <summary>Todos los días, paso a paso</summary>
-      <p><b>1. Anotá cómo salieron los partidos de ayer.</b> En la pestaña <b>Validación</b>, tocá <b>«Liquidar registro»</b>. La app busca los resultados de los partidos que analizaste y anota si acertó.</p>
-      <p><b>2. Buscá los partidos de hoy</b> en el <b>Escáner</b>:</p>
+      <p><b>1. Buscá los partidos de hoy</b> en el <b>Escáner</b>:</p>
       <ol>
-        <li>En <b>2. Partidos y ligas</b>, elegí el mercado: <b>+0,5 1T</b> (al menos un gol antes del descanso), <b>Ambos marcan</b> (los dos equipos hacen gol) o <b>+2,5 goles</b> (3 goles o más en el partido) o <b>Hándicap asiático</b> (en prueba; se explica más abajo).</li>
         <li>Elegí la fecha y tocá <b>«Buscar partidos»</b>.</li>
         <li>Marcá las ligas que te interesan («Todas» y «Ninguna» marcan o desmarcan de una vez).</li>
-        <li>Tocá <b>«Analizar»</b>. En pantalla ves el mercado elegido, pero la app guarda en el registro <b>los tres mercados</b> de cada partido, sin gastar consultas extra.</li>
+        <li>Tocá <b>«Analizar»</b>.</li>
       </ol>
-      <p><b>3. Leé cada partido</b> en <b>4. Resultados</b> (la parte siguiente explica cómo).</p>
-      <p><b>4. Opcional:</b> tocá la <b>estrella ☆</b> para guardarlo en <b>Favoritos</b> o <b>Favoritos VIP</b> (estos últimos son los de las alertas de Telegram).</p>
+      <p><b>2. Leé cada partido</b> en <b>4. Resultados</b> (la parte siguiente explica cómo).</p>
+      <p><b>3. Opcional:</b> tocá la <b>estrella ☆</b> para guardarlo en <b>Favoritos</b> o <b>Favoritos VIP</b> (estos últimos son los de las alertas de Telegram).</p>
     </details>
 
     <details class="routine">
@@ -738,7 +733,6 @@ body.no-hints .poisson-metric .hint{display:none}
         <li><b>«Stake sugerido (Kelly)»</b>: cuánto apostar, en % de tu banca y en pesos. Si dice <b>«No apostar»</b>, hacele caso.</li>
         <li><b>«EV estimado»</b>: sale solo del cálculo de la app. Si dice «provisorio» (liga no aprobada), no te fíes de ese número solo.</li>
       </ul>
-      <p><b>Hándicap asiático</b> (<b>en prueba</b>). Arriba de la tabla podés elegir de dónde sale la <b>cuota justa</b>: <b>«De las casas»</b> (por defecto, la más confiable: Pinnacle o la mediana sin margen) o <b>«De nuestro modelo»</b> (como la muestra Alphametri: los EV salen más grandes, pero si el modelo se equivoca con un equipo fallan todas juntas; usalo solo como referencia, sobre todo si la liga no está aprobada). El stake siempre usa el precio de las casas. elegí <b>«Hándicap asiático»</b> como mercado en el Escáner. Cada tarjeta muestra a la derecha el mejor EV contra el mercado. Al abrirla ves <b>una tabla con todas las apuestas de hándicap</b> del partido, ordenadas de mejor a peor: <b>Apuesta</b> (p. ej. «Real Madrid −1,5») · <b>Cuota</b> (la mejor y en qué casa) · <b>Justa</b> (la cuota sin la ganancia de las casas) · <b>EV</b> (cuánto paga de más, en verde, o de menos, en rojo) · <b>Stake</b>. La fila resaltada en verde es la que conviene mirar. −1,5 = tiene que ganar por 2 o más; +1,5 = no puede perder por más de 1. En las de ,25 y ,75 se puede ganar o perder la mitad; en las enteras el empate en la línea devuelve la plata. El cálculo propio está en «Qué dice el cálculo propio»: si la liga no está aprobada para hándicap, tomalo solo como referencia. La mejor apuesta se guarda en el registro y se liquida con «Liquidar registro». Se valida por liga junto con los demás mercados (tabla «Hándicap asiático»); en las ligas aprobadas el stake usa el modelo y las casas con ¼ de Kelly, y en las demás solo las casas con ⅛.</p>
       <p class="help-rule"><b>Regla simple:</b> apostá solo si la frase de arriba está en <b>verde</b> y el stake <b>no</b> dice «No apostar». Antes de apostar, fijate que la cuota de tu casa siga igual.</p>
     </details>
 
@@ -748,70 +742,14 @@ body.no-hints .poisson-metric .hint{display:none}
     </details>
 
     <details class="routine">
-      <summary>De vez en cuando: validar las ligas</summary>
-      <p>El cálculo de la app no funciona igual de bien en todas las ligas. Validar sirve para saber en cuáles <b>el cálculo funciona</b>:</p>
-      <ol>
-        <li>En el <b>Escáner</b>, marcá las ligas (no importa qué mercado esté elegido).</li>
-        <li>En la pestaña <b>Validación</b>, tocá <b>«Validar con las ligas marcadas»</b>. Se validan <b>todos los mercados de una vez</b> (+0,5 1T, Ambos marcan, +2,5 y Hándicap asiático). Solo se actualizan las ligas marcadas; las demás quedan como estaban.</li>
-        <li>Mirá las tablas <b>«Ligas validadas»</b>: hay una por mercado, y se abren o cierran tocando su nombre.</li>
-      </ol>
-      <p><b>Qué significa cada columna:</b></p>
-      <ul>
-        <li><b>Estado</b>: ✅ Aprobada (el cálculo funciona en esa liga) · ❌ No aprobada (no le gana a adivinar con el promedio de la liga) · ⏳ Faltan datos (menos de 100 partidos) · 🔄 Volver a validar (se aprobó con un método anterior más generoso; mientras tanto cuenta como no aprobada).</li>
-        <li><b>Partidos</b>: con cuántos partidos se probó. Más partidos, resultado más confiable.</li>
-        <li><b>Mejora</b>: <b>la columna más importante</b>. Cuánto mejor acierta el cálculo que decir siempre el promedio de la liga. Negativa o cerca de 0 = en esa liga no sirve.</li>
-        <li><b>Confianza</b>: si la mejora es real o puede ser suerte. 🟢 Alta = casi seguro que es real · 🟡 Media = puede ser · 🔴 Baja = puede ser pura casualidad. Para aprobar hace falta 🟢.</li>
-        <li><b>Dice / pasa</b>: el promedio que predijo y el que pasó. Que coincidan está bien, pero <b>no alcanza</b>: un cálculo que dice siempre lo mismo también coincide y no sirve para elegir partidos.</li>
-        <li><b>Desvío</b>: el mayor error en algún grupo de partidos. Más bajo = mejor.</li>
-      </ul>
-      <p>Con validar una vez por mes alcanza.</p>
-    </details>
-
-    <details class="routine">
-      <summary>¿La app gana plata? (el registro)</summary>
-      <p>En la pestaña <b>Validación</b>, abajo, está el <b>registro</b>: cada predicción que la app guardó antes del partido, con su cuota y su resultado. Hay un bloque por mercado. Lo que vas a ver, de arriba hacia abajo:</p>
-      <ol>
-        <li><b>Brier y calibración</b>: qué tan bien acertaron las probabilidades (Brier más bajo = mejor).</li>
-        <li><b>Apuestas y ROI</b>: cuánto habrías ganado apostando 1 unidad en todas, en las EV+ y en las EV+ sólidas. Si el modelo «prometía» mucho más EV del que salió, está siendo optimista.</li>
-        <li><b>«¿Le gana el modelo a las casas?»</b>: <b>el cuadro más importante</b>. Compara, con las mismas predicciones, qué tan bien aciertan el modelo y las casas sin margen. ✅ = el modelo acierta mejor (buena señal con más de 300 predicciones) · ❌ = las casas aciertan mejor (seguí solo «EV vs mercado»).</li>
-        <li><b>«¿En qué ligas le gana a las casas?»</b>: lo mismo, liga por liga (se explica en la parte siguiente).</li>
-        <li><b>«¿Dónde se gana y dónde se pierde?»</b> (tocalo para abrirlo): el ROI separado por rango de EV, por EV vs mercado y por liga. Sirve para ver si hay un rango o una liga donde la ganancia se repite. Con grupos de menos de ~50 apuestas, los números saltan mucho por azar.</li>
-        <li><b>Simulación de la banca</b>: qué le habría pasado a tu banca apostando todas las señales EV+ con el stake sugerido (¼ Kelly) y con un stake fijo del 1%. «Peor caída» es lo máximo que bajó la banca desde su punto más alto. Si Kelly sale peor que el stake fijo, el modelo todavía no tiene ventaja real.</li>
-      </ol>
-      <p><b>Paciencia:</b> con pocas decenas de apuestas los resultados son pura suerte. Hacen falta <b>cientos</b> para saber si el sistema funciona.</p>
-    </details>
-
-    <details class="routine">
-      <summary>Cómo elegir en qué ligas apostar</summary>
-      <p>La ventaja no está en todas las ligas: está en saber <b>en cuáles el modelo le gana a las casas</b>. Para eso está la tabla <b>«¿En qué ligas le gana a las casas?»</b> (pestaña Validación, dentro del registro).</p>
-      <p><b>Cómo leerla:</b></p>
-      <ul>
-        <li>✅ <b>Le gana</b>: en esa liga el modelo acierta mejor que las casas, con confianza alta y al menos 50 predicciones. <b>Son las ligas para apostar.</b></li>
-        <li>🟡 <b>Puede ser</b>: da positivo, pero todavía puede ser suerte. Seguí sumando datos.</li>
-        <li>❌ <b>No le gana</b>: las casas aciertan igual o mejor. No apuestes ahí por el cálculo propio.</li>
-        <li>⏳ <b>Faltan datos</b>: menos de 50 predicciones liquidadas.</li>
-        <li><b>Habilidad vs mercado</b>: cuánto mejor (positivo) o peor (negativo) acierta el modelo que las casas en esa liga.</li>
-      </ul>
-      <p><b>No es lo mismo que «Ligas validadas»:</b> esa tabla dice si el cálculo funciona mejor que el promedio de la liga; esta dice si le gana <b>a las casas</b>, que es mucho más difícil y es lo que hace falta para ganar plata.</p>
-      <p><b>Cómo usarla todos los días:</b></p>
-      <ol>
-        <li>Analizá en el Escáner <b>muchas ligas, antes de que empiecen los partidos</b>, aunque no apuestes en ellas. Cada partido analizado con cuota suma una predicción a su liga. Con el partido empezado o terminado no se guarda nada.</li>
-        <li>Al día siguiente tocá <b>«Liquidar registro»</b>.</li>
-        <li>Cuando ya tengas ligas con ✅, en el Escáner marcá <b>«Solo ligas donde le gana a las casas»</b>: te muestra solo los partidos de esas ligas. La app sigue guardando las predicciones de todos los partidos analizados, así las demás ligas siguen sumando.</li>
-      </ol>
-      <p>Al principio la tabla va a estar casi toda en ⏳. Lleva semanas o meses llenarla.</p>
-    </details>
-
-    <details class="routine">
       <summary>Cuánto apostar: el stake sugerido (Kelly)</summary>
       <p>Kelly es una fórmula que dice <b>qué parte de tu banca apostar según cuánta ventaja hay</b>: mucha ventaja, más plata; poca, menos; ninguna, nada.</p>
       <p>Como la probabilidad es una estimación, la app usa Kelly con frenos:</p>
       <ul>
-        <li><b>En ligas aprobadas</b> usa un promedio entre el cálculo de la app y las casas, y apuesta <b>¼</b> de lo que diría Kelly completo.</li>
-        <li><b>En ligas no aprobadas</b> usa <b>solo las chances de las casas</b> (el cálculo propio todavía no se ganó la confianza) y apuesta <b>⅛</b>. Si no hay precio de las casas, dice «No apostar».</li>
+        <li>Usa <b>solo las chances de las casas</b> (el cálculo propio no está validado) y apuesta <b>⅛</b>. Si no hay precio de las casas, dice «No apostar».</li>
         <li><b>Nunca más del 3%</b> de la banca en un partido.</li>
       </ul>
-      <p>Para verlo en pesos, cargá tu banca en la pestaña Validación («Tu banca para apostar»). Se guarda solo en ese dispositivo: en la compu y en el teléfono se carga por separado.</p>
+      <p>Para verlo en pesos, cargá tu banca en el Escáner, sección 1 («Tu banca para apostar»). Se guarda solo en ese dispositivo: en la compu y en el teléfono se carga por separado.</p>
     </details>
 
     <details class="routine">
@@ -1685,7 +1623,7 @@ function poissonHtml(model){
   const kelText=!kel||!kel.ok?'—':kel.stake>0?fmtNum(kel.stake*100,1)+'% de la banca'+(bank?' ≈ $'+Math.round(bank*kel.stake).toLocaleString('es-AR'):''):'No apostar';
   const kelSrc=kel&&kel.source==='mercado'?'usando solo las chances de las casas (la liga no está aprobada, así que el cálculo propio todavía no cuenta)':kel&&kel.source==='mezcla'?'usando una probabilidad intermedia entre el modelo y las casas':'usando la probabilidad del modelo';
   const kelHint=!kel||!kel.ok?'Falta la cuota para calcularlo.':kel.full==null?'La liga no está aprobada y no hay precio de las casas para comparar: no se sugiere apostar.':!(kel.stake>0)?'Calculado '+kelSrc+': con esas chances la cuota no da ventaja, así que Kelly dice no apostar.':'Cuánto apostar según Kelly, '+kelSrc+
-    ', apostando solo '+(kel.fraction===0.25?'¼':'⅛')+' de lo que diría Kelly completo'+(kel.capped?'; quedó en el tope del 3%':'')+'.'+(kel.stake>0&&!bank?' Cargá tu banca en la pestaña Validación para verlo en pesos.':'');
+    ', apostando solo '+(kel.fraction===0.25?'¼':'⅛')+' de lo que diría Kelly completo'+(kel.capped?'; quedó en el tope del 3%':'')+'.'+(kel.stake>0&&!bank?' Cargá tu banca en el Escáner (sección 1) para verlo en pesos.':'');
   const grid=
     metric('Probabilidad '+M.name+(model.calibrated?' (calibrada)':''),fmtPct(model.probability),'',M.probHint)+
     metric('Rango (±1 desvío)',fmtPct(model.pLow,0)+' – '+fmtPct(model.pHigh,0),'','Entre qué valores podría estar la chance real. Si el rango es ancho, el cálculo es menos seguro.')+
@@ -1825,8 +1763,7 @@ function copyList(){
 
 /* ---- eventos ---- */
 $('#date').value=new Date().toLocaleDateString('en-CA',{timeZone:TZ});
-state.market=LS.get('o05:market','ht05');
-if(!marketDefs[state.market]) state.market='ht05';
+state.market='ht05'; // esta app es solo la estrategia +0,5 1T (goles y hándicap están en goles.html)
 function updateMarketUI(){
   document.querySelectorAll('.market-option').forEach(button=>{
     const active=button.dataset.market===state.market;
