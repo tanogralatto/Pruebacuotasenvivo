@@ -812,7 +812,9 @@
       `<td>${isNum(e.gap) ? num(e.gap * 100, 1) + ' pts' : '—'}</td>` +
       `<td>${e.validatedAt ? new Date(e.validatedAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '—'}</td></tr>`).join('');
     const hasJoint = list.some(e => e.status === 'conjunta');
-    return { ok, n: list.length, html:
+    // Aprobadas que se esperarían solo por azar (≈5% de las ligas evaluadas, por la regla de confianza alta).
+    const evaluated = list.filter(e => e.status !== 'faltan').length, byChance = Math.round(evaluated * 0.05);
+    return { ok, n: list.length, byChance, html:
       '<table class="val-table"><tr><th>País</th><th>Liga</th><th>Estado</th><th>Partidos</th><th>Mejora</th><th>Confianza</th><th>Dice / pasa</th><th>Desvío</th><th>Fecha</th></tr>' + rows + '</table>' +
       '<div class="small"><b>Mejora</b>: cuánto acierta mejor que adivinar con el promedio de goles (más alto = mejor). ' +
       '<b>Confianza</b>: si la mejora es real o puede ser suerte, según cuántos partidos hay (alta = casi seguro que es real; media = puede ser; baja = puede ser pura casualidad). ' +
@@ -830,7 +832,7 @@
     const box = q('#leagueValOut');
     if (!box) return;
     box.innerHTML = '<div class="val-box"><b>Ligas validadas</b> (una tabla por mercado). Cada vez que tocás «Validar», las ligas marcadas se actualizan en los tres mercados; las demás quedan como estaban. En las ligas sin aprobar, el EV+ aparece como «provisorio».</div>' +
-      blocks.map(b => `<details class="val-box"${b.mk === cur ? ' open' : ''}><summary><b>${esc(MKT_NAME[b.mk])}</b> · ${b.n ? b.ok + ' aprobada(s) de ' + b.n : 'sin validar'}</summary>${b.html}</details>`).join('');
+      blocks.map(b => `<details class="val-box"${b.mk === cur ? ' open' : ''}><summary><b>${esc(MKT_NAME[b.mk])}</b> · ${b.n ? b.ok + ' aprobada(s) de ' + b.n + (b.byChance ? ` <span class="small">(por azar se esperarían ~${b.byChance})</span>` : '') : 'sin validar'}</summary>${b.html}</details>`).join('');
   }
 
   root.tanoRenderLeagueVal = renderLeagueVal;
