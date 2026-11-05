@@ -3052,7 +3052,8 @@ function startAlertHistory() {
     // En «VIP anteriores» se pueden reasignar las alertas a AEG o dataGol (todas las del mes o una por una).
     const moveBar = activeGroup === 'vip_legacy'
       ? '<div class="alert-move-bar"><span>Pasar las ' + monthAlerts.length + ' alertas de ' + esc(selectedMonth) + ' a:</span>'
-        + '<button type="button" data-move-all="aeg">💎 AEG</button><button type="button" data-move-all="datagol">💎 dataGol</button></div>'
+        + '<button type="button" data-move-all="aeg">💎 AEG</button><button type="button" data-move-all="datagol">💎 dataGol</button>'
+        + '<div id="alertMoveStatus" class="small" aria-live="polite" style="flex-basis:100%"></div></div>'
       : '';
     list.innerHTML = moveBar + monthAlerts.map(a => {
       const status = outcome[a.result_status] || (!a.result_status ? ['Pendiente', 'pending'] : ['Sin resultado', 'unavailable']);
@@ -3097,6 +3098,7 @@ function startAlertHistory() {
       };
     });
     const strategyName = { aeg: 'AEG', datagol: 'dataGol' };
+    const moveStatus = msg => { const el = list.querySelector('#alertMoveStatus'); if (el) el.textContent = msg; unitStatus.textContent = msg; };
     const moveAlerts = async (ids, strategy, buttons) => {
       if (!ids.length) return;
       if (ids.length > 1 && !confirm('¿Pasar ' + ids.length + ' alertas de VIP anteriores (' + selectedMonth + ') a ' + strategyName[strategy] + '?')) return;
@@ -3107,9 +3109,10 @@ function startAlertHistory() {
           ids.slice(i, i + 400).forEach(id => batch.update(doc(db, 'tanoapp_telegram_alerts', id), { vip_strategy: strategy, vip_strategy_reassigned_at: serverTimestamp() }));
           await batch.commit();
         }
-        unitStatus.textContent = ids.length + (ids.length === 1 ? ' alerta pasada' : ' alertas pasadas') + ' a ' + strategyName[strategy] + '.';
+        moveStatus(ids.length + (ids.length === 1 ? ' alerta pasada' : ' alertas pasadas') + ' a ' + strategyName[strategy] + '.');
       } catch (e) {
-        unitStatus.textContent = 'No se pudieron mover las alertas. Hay que habilitar en las reglas de Firebase la edición del campo vip_strategy.';
+        moveStatus('⚠️ Firebase rechazó el cambio (' + (e?.code || e?.message || 'error') + '). Hay que permitir en las reglas de Firestore editar los campos vip_strategy y vip_strategy_reassigned_at de tanoapp_telegram_alerts.');
+        alert('Firebase rechazó el cambio: faltan permisos en las reglas de Firestore para editar vip_strategy.');
         console.error('No se pudo reasignar la estrategia VIP', e);
         buttons.forEach(b => { b.disabled = false; });
       }
