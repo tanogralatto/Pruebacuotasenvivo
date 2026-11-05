@@ -354,7 +354,21 @@ const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const LS={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}};
+const LS={
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  // El almacenamiento común es chico (≈5 MB) y lo comparte la app de +0,5 1T. Si se llena, se borran las
+  // copias que se pueden volver a bajar (historiales viejos de las dos apps) y se reintenta.
+  set(k,v){
+    const j=JSON.stringify(v);
+    try{localStorage.setItem(k,j);return true}catch(e){}
+    try{
+      const drop=[];
+      for(let i=0;i<localStorage.length;i++){const x=localStorage.key(i);if(x&&x!==k&&(/^o05:v\d+:(league|h|t):/.test(x)||x==='tg:first'||/^tg:(day|lg):/.test(x)))drop.push(x)}
+      drop.forEach(x=>localStorage.removeItem(x));
+      localStorage.setItem(k,j);return true;
+    }catch(e){console.warn('No se pudo guardar '+k+' en el navegador',e);return false}
+  }
+};
 const pct=(x,d=1)=>Number.isFinite(x)?(x*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%':'—';
 const spct=(x,d=1)=>Number.isFinite(x)?(x>0?'+':x<0?'−':'')+Math.abs(x*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%':'—';
 const dec=(x,d=2)=>Number.isFinite(x)?Number(x).toFixed(d):'—';
@@ -567,7 +581,8 @@ async function updateAll(){
     prog(5,8);
     // 4) Análisis de cada partido con cuotas.
     say('Calculando mercados…');
-    const first=LS.get('tg:first',{})||{};
+    const first=(await DB.get('first'))||{};
+    try{localStorage.removeItem('tg:first')}catch(e){}
     for(const d of dates){
       const day={date:d,ts:Date.now(),fx:[]};
       const byL=new Map();for(const f of fixtures[d])if(odds[d].has(String(f.id))){if(!byL.has(f.lid))byL.set(f.lid,[]);byL.get(f.lid).push(f)}
@@ -611,8 +626,8 @@ async function updateAll(){
       await DB.set('day:'+d,day);state.days[d]=day;
     }
     const cut=Date.now()/1000-3*86400;for(const id of Object.keys(first))if((first[id].ts||0)<cut)delete first[id];
-    LS.set('tg:first',first);
-    LS.set('tg:updated',Date.now());renderDash();
+    await DB.set('first',first);
+    await setUpdated(Date.now());renderDash();
     prog(6,8);
     // 5) Cuotas de los últimos 7 días (la API las guarda una semana): para medir 1X2 contra las casas.
     const bf=LS.get('tg:bf',{})||{};
@@ -647,7 +662,7 @@ async function updateAll(){
     prog(7,8);
     // 7) Precisión de todas las ligas con historial.
     await computePrecision(allLeagues,reg,t=>say(t));
-    LS.set('tg:updated',Date.now());
+    await setUpdated(Date.now());
     try{await cloudPush();if(window.tgCloud&&window.tgCloud.user)syncLine('☁︎ Guardado en tu cuenta recién: tus otros dispositivos ya lo pueden ver.')}catch(e){warn.push('No se pudo guardar en tu cuenta: '+e.message);syncLine('☁︎ No se pudo guardar en tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
     say(`Listo · ${state.calls} consultas a la API`+(warn.length?' · avisos: '+warn.slice(0,2).join(' | '):''));
   }catch(e){say(e.message,true)}
@@ -667,6 +682,10 @@ async function knownLeagues(loaded){
   }
   return out;
 }
+
+// Hora de la última actualización: localStorage y también la base grande (por si el primero está lleno).
+async function setUpdated(t){LS.set('tg:updated',t);try{await DB.set('updated',t)}catch(e){}}
+async function getUpdated(){const a=LS.get('tg:updated',0);let b=0;try{b=(await DB.get('updated'))||0}catch(e){}return Math.max(a,b)}
 
 /* ---------------- sincronización con la cuenta (ver el módulo de Firebase al final) ---------------- */
 // En la nube no se guardan historiales ni xG (se vuelven a bajar): solo lo que se ve en pantalla.
@@ -696,18 +715,18 @@ async function cloudPush(){
   say('Guardando en tu cuenta…');
   const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
   await loadXg();
-  await C.pushAll({xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:LS.get('tg:updated',0),bf:LS.get('tg:bf',{})});
+  await C.pushAll({xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{})});
 }
 // Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
 async function cloudPull(force){
   const C=window.tgCloud;if(!C||!C.user||state.running)return false;
-  const got=await C.pullIfNewer(force?0:LS.get('tg:updated',0),[dayStr(-1),dayStr(0),dayStr(1)]);
+  const got=await C.pullIfNewer(force?0:await getUpdated(),[dayStr(-1),dayStr(0),dayStr(1)]);
   if(!got)return false;
   for(const [d,x] of Object.entries(got.days||{})){const day=unpackDay(x);await DB.set('day:'+d,day);state.days[d]=day}
   if(got.prec){state.prec=got.prec;await DB.set('prec',got.prec)}
   if(got.fav)LS.set('tg:fav',got.fav);
   if(got.bf)LS.set('tg:bf',Object.assign({},LS.get('tg:bf',{}),got.bf));
-  if(got.updated)LS.set('tg:updated',got.updated);
+  if(got.updated)await setUpdated(got.updated);
   return true;
 }
 async function cloudMergeXg(){
@@ -853,7 +872,7 @@ async function getDay(d){if(!state.days[d])state.days[d]=await DB.get('day:'+d);
 async function renderDash(){
   if(route().v!=='dash')return;
   $$('.seg [data-day]').forEach(b=>b.classList.toggle('on',b.dataset.day===state.view));
-  const up=LS.get('tg:updated',0);
+  const up=await getUpdated();
   $('#updWhen').innerHTML=up?`Última actualización <b>${ago(up)}</b>`:'Todavía no se actualizó. Tocá <b>Actualizar todo</b>.';
   const list=$('#dList');
   if(!state.key){list.innerHTML='<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>.</div>';return}
@@ -1171,6 +1190,7 @@ const C=window.tgCloud={user:null,
     const meta=JSON.parse(m.data().v);
     const out={updated:meta.updated,bf:meta.bf};
     const f=await getDoc(ref('fav'));if(f.exists())out.fav=JSON.parse(f.data().v);
+    meta.updated=meta.updated||meta.ts||0;out.updated=meta.updated;
     if(!(meta.updated>localUpdated))return out.fav?{fav:out.fav}:null;
     out.days={};
     for(const d of dates)if(meta.days&&meta.days[d]){const x=await getText('day_'+d,meta.days[d]);if(x)out.days[d]=x}
