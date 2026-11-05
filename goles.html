@@ -153,6 +153,7 @@ svg text{fill:var(--muted);font:11px var(--mono)}
 .fl-h{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
 .fl-h .mono{color:var(--acc);font-weight:700}
 input[type=range]{width:100%;accent-color:var(--acc)}
+#evmin button{padding:7px 10px;font-size:14px}
 #slot button,#src button,#msrc button{padding:7px 12px;font-size:14px}
 .ev small{display:block;font-weight:400;color:var(--dim);font-size:11px}
 #cloudBtn{white-space:nowrap}
@@ -192,9 +193,9 @@ details.guide th{color:var(--muted);font-weight:600}
     <h3>Uso diario (paso a paso)</h3>
     <ol>
       <li>Tocá <b>↻ Actualizar todo</b> una o dos veces por día: a la mañana y antes de los partidos de la tarde o la noche.</li>
-      <li>En los filtros, dejá <b>Cuota justa: De las casas</b> (la más confiable) y subí el <b>Edge mínimo</b> a 40+. Si querés, elegí <b>Horario</b> o una liga.</li>
-      <li>Tocá un partido de la lista. En cada grupo de mercados, la primera fila es la de mayor <b>Score</b>.</li>
-      <li>Antes de apostar, fijate que <b>tu casa pague igual o más</b> que la cuota de la app. Abajo de cada cuota dice en qué casa está.</li>
+      <li>En los filtros, dejá <b>Cuota justa: De las casas</b> (la más confiable), <b>EV mínimo: 2%</b> y subí el <b>Edge mínimo</b> a 40+. Si querés, elegí <b>Horario</b> o una liga.</li>
+      <li>Tocá un partido de la lista y elegí <b>una sola apuesta: la de mayor Score</b> de todo el partido (ver «Qué apuesta elegir»).</li>
+      <li>Justo antes de apostar, tocá <b>↻ Cuotas de este partido</b> y fijate que <b>tu casa pague igual o más</b> que la cuota de la app, y más que la cuota justa. Abajo de cada cuota dice en qué casa está.</li>
       <li>Si usás <b>Del modelo</b>, apostá solo en los grupos que dicen <b>✓</b> (liga aprobada para ese mercado).</li>
       <li>Guardá con la <b>☆</b> los que sigas: aparecen en <b>★ Favoritos</b>.</li>
     </ol>
@@ -209,11 +210,12 @@ details.guide th{color:var(--muted);font-weight:600}
           <li><b>Del modelo</b>: el precio según nuestro modelo, como Alpha. Los EV salen más grandes, pero solo valen en las ligas en verde de Precisión.</li>
           <li><b>Coinciden</b>: solo apuestas con valor según las dos. Salen menos, pero son las más sólidas.</li>
         </ul></li>
+      <li><b>EV mínimo</b>: las apuestas con menos valor que esto no se muestran ni cuentan para el edge. Con «De las casas», dejalo en <b>2%</b>: por debajo, el valor puede desaparecer con el mínimo movimiento de la cuota.</li>
       <li><b>Edge mínimo</b>: oculta los partidos con menos valor. Con «De las casas» los números son más bajos: empezá por 40+. Con «Del modelo», por 55+.</li>
       <li><b>Horario</b> (hora de Argentina): Mañana hasta las 11:59, Tarde de 12 a 18:59, Noche desde las 19.</li>
       <li><b>Solo ligas en verde</b>: deja solo las ligas donde el modelo acierta, y el edge cuenta solo los mercados aprobados. Sirve con «Del modelo» y «Coinciden»; con «De las casas» no hace falta (queda gris).</li>
     </ul>
-    <p>La app recuerda cómo dejaste la cuota justa, el edge mínimo, el horario y «Solo ligas en verde».</p>
+    <p>La app recuerda cómo dejaste la cuota justa, el EV mínimo, el edge mínimo, el horario y «Solo ligas en verde».</p>
 
     <h3>Qué significa cada número</h3>
     <ul>
@@ -222,6 +224,27 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>EV</b>: probabilidad × cuota − 1. +5% = en promedio ganarías $5 por cada $100 si apostaras muchas veces así. Abajo, en chico, el EV según la otra fuente («modelo» o «casas»).</li>
       <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras). 0 si no hay valor.</li>
       <li><b>Edge del partido (0-100)</b>: el número de la lista. Combina el mejor score de los dos grupos de mercados con más valor, con la fuente elegida. Verde (65+) = buenas oportunidades; amarillo (35-64) = algo hay; gris = poco o nada.</li>
+    </ul>
+
+    <h3>Qué apuesta elegir dentro de un partido</h3>
+    <ol>
+      <li><b>La de mayor Score</b>, no la de mayor EV. El Score combina el valor con la chance de ganar. El EV más alto suele estar en cuotas altas (hándicap −2, más de 4,5 goles), que se pierden muy seguido y donde un error chico del cálculo desarma el valor. Con el mismo EV, una cuota de 1,60 es mucho más segura que una de 4,00.</li>
+      <li><b>Una sola apuesta por partido.</b> Las líneas parecidas (Hándicap −0,5 y −0,75 del mismo equipo, Más de 2,5 y Más de 3) son casi la misma apuesta: si ponés varias, apostás lo mismo dos veces.</li>
+      <li><b>Nunca grupos opuestos</b> en el mismo partido: no «Muchos goles» y «Pocos goles», ni «Gana local» y «Gana visitante».</li>
+      <li>Con «De las casas», <b>al menos +2% de EV</b> (es el filtro EV mínimo).</li>
+      <li><b>Un EV muy alto con «De las casas»</b> (más de 6 u 8%) casi siempre es una cuota vieja o que la casa ya cambió: verificá en la casa antes de apostar.</li>
+      <li>Justo antes de apostar, <b>↻ Cuotas de este partido</b>: si tu casa ya no paga más que la cuota justa, no hay valor.</li>
+    </ol>
+
+    <h3>Por qué hay edge con «De las casas»</h3>
+    <p>El edge mide el valor según la fuente elegida. Con «Del modelo»: cuánto pagan las casas por encima de lo que dice el modelo. Con «De las casas»: cuánto paga alguna casa por encima del precio justo del mercado (Pinnacle o la mediana, sin margen). Un edge alto ahí quiere decir que hay casas pagando bastante más que el resto, sobre todo en cuotas bajas.</p>
+
+    <h3>Por qué la cuota puede no coincidir con tu casa</h3>
+    <ul>
+      <li>Las cuotas son las de tu última actualización («Última lectura» en cada partido).</li>
+      <li>API-Football renueva las cuotas cada pocas horas, no al instante.</li>
+      <li>La API trae las versiones internacionales de las casas; la de tu país puede pagar algo distinto.</li>
+      <li>Siempre manda la cuota de tu casa en ese momento.</li>
     </ul>
 
     <h3>La ficha del partido</h3>
@@ -284,7 +307,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <tr><td>Ligas</td><td>Las que elige Alpha</td><td>Todas las que trae tu API-Football</td></tr>
       <tr><td>Cuota justa</td><td>Del modelo</td><td>Elegís: de las casas (sin margen), del modelo, o cuando coinciden</td></tr>
       <tr><td>Edge y score</td><td>Fórmula propia (suma los EV de todos los mercados con valor, pesando las cuotas bajas)</td><td>Fórmula propia parecida: combina los dos grupos con más valor (no suma líneas casi iguales para no inflar el número). Los números no son comparables 1 a 1.</td></tr>
-      <tr><td>Filtros</td><td>Liga, match score mínimo, horario</td><td>Lo mismo + buscar equipo, cuota justa y solo ligas en verde</td></tr>
+      <tr><td>Filtros</td><td>Liga, match score mínimo, horario</td><td>Lo mismo + buscar equipo, cuota justa, EV mínimo y solo ligas en verde</td></tr>
       <tr><td>Cuotas</td><td>«Lectura» en Inicial / 4 h / 1 h, sellada</td><td>La mejor cuota de cada actualización; ▲▼ contra la primera lectura.</td></tr>
       <tr><td>Precisión</td><td>Solo con lecturas guardadas desde junio 2026</td><td>Historial (goles) + cuotas de cierre históricas y guardadas (1X2). Tiene datos desde el primer día.</td></tr>
       <tr><td>Estudio</td><td>Distribución de goles, timeline por minuto, clima</td><td>Goles esperados, resultado, contexto de liga, matriz de marcadores y ratings.</td></tr>
@@ -302,6 +325,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="filters box">
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
     <div class="fl" style="margin-top:4px"><div class="fl-h"><b>Cuota justa</b> <button class="info" data-tip="src">i</button></div><div class="seg" id="src"><button data-src="mkt">De las casas</button><button data-src="model">Del modelo</button><button data-src="both">Coinciden</button></div><div class="small" id="srcHint" style="margin-top:6px"></div></div>
+    <div class="fl"><div class="fl-h"><b>EV mínimo</b> <button class="info" data-tip="evmin">i</button></div><div class="seg" id="evmin"><button data-ev="0">Todos</button><button data-ev="0.01">1%</button><button data-ev="0.02">2%</button><button data-ev="0.03">3%</button><button data-ev="0.05">5%</button></div></div>
     <div class="fl"><div class="fl-h"><b>Edge mínimo</b> <button class="info" data-tip="edge">i</button> <span class="mono" id="minEdgeVal">0+</span></div><input type="range" id="minEdge" min="0" max="95" step="5" value="0"></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
     <label class="small row" id="greenWrap" style="gap:6px;margin-top:10px"><input type="checkbox" id="onlyGreen" style="accent-color:var(--acc)"> Solo ligas en verde (donde el modelo acierta; no aplica con «De las casas»)</label>
@@ -868,10 +892,12 @@ function view(r,src){
   if(src==='model')return Object.assign({},md,{alt:mk});
   if(src==='mkt')return mk?Object.assign({},mk,{alt:md}):{fair:null,ev:null,score:0,alt:md};
   if(!mk)return {fair:null,ev:null,score:0,alt:md};
-  const ok=mk.ev>=0.005&&md.ev>=0.005;
+  const ok=mk.ev>=evMin()&&md.ev>=evMin();
   return {fair:mk.fair,ev:mk.ev,score:ok?Math.min(mk.score,md.score):0,alt:md,both:ok};
 }
-const hasValue=(v,src)=>src==='both'?!!v.both:Number.isFinite(v.ev)&&v.ev>=0.005;
+// EV mínimo para considerar que una apuesta tiene valor (filtro «EV mínimo»; 2% por defecto).
+const evMin=()=>Math.max(0.005,Number(LS.get('tg:evMin',0.02))||0);
+const hasValue=(v,src)=>src==='both'?!!v.both:Number.isFinite(v.ev)&&v.ev>=evMin();
 function edgeOf(a,allowed,src){
   if(!a.rows)return 0;
   const best={};
@@ -902,6 +928,7 @@ async function renderDash(){
   const q=$('#q').value.trim().toLowerCase(), minE=Number($('#minEdge').value), onlyGreen=$('#onlyGreen').checked, fv=favs();
   const lgSel=$('#lg').value, slot=LS.get('tg:slot','all'), src=srcNow();
   $$('#src [data-src]').forEach(b=>b.classList.toggle('on',b.dataset.src===src));
+  const em=Number(LS.get('tg:evMin',0.02));$$('#evmin [data-ev]').forEach(b=>b.classList.toggle('on',Math.abs(Number(b.dataset.ev)-em)<1e-9));
   $('#greenWrap').style.opacity=src==='mkt'?.45:1;
   $('#srcHint').textContent=src==='mkt'?'Precio justo de las casas (Pinnacle o la mediana, sin margen). No depende del modelo: sirve en todas las ligas.':src==='model'?'Precio justo de nuestro modelo. Confiá solo en las ligas en verde.':'Solo apuestas con valor contra las casas y también según el modelo. Menos apuestas, más sólidas.';
   $('#minEdgeVal').textContent=minE+'+';
@@ -966,6 +993,7 @@ async function renderMatch(id){
   if(!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
   const src=srcNow();
   h+=`<div class="fl"><div class="fl-h"><b>Cuota justa</b> <button class="info" data-tip="src">i</button></div><div class="seg" id="msrc">${Object.entries(SRC_NAME).map(([k,n])=>`<button data-msrc="${k}" class="${k===src?'on':''}">${n}</button>`).join('')}</div></div>`;
+  h+=`<div class="small" style="margin-top:8px">Se muestran las apuestas con EV de ${Math.round(evMin()*100)}% o más (filtro «EV mínimo» en la lista). <b>Elegí una sola por partido: la de mayor Score.</b> <button class="info" data-tip="pick">i</button></div>`;
   if(src!=='model'&&!a.rows.some(r=>r.m>0))h+=`<div class="none" style="margin-top:10px">Este análisis es anterior a la cuota justa de las casas. Tocá ↻ Actualizar todo para verla.</div>`;
   for(const g of F.GROUPS){
     const rows=a.rows.filter(r=>r.g===g.id).map(r=>Object.assign({},r,{v:view(r,src)})).sort((x,y)=>y.v.score-x.v.score||(y.v.ev||-9)-(x.v.ev||-9));if(!rows.length)continue;
@@ -1111,6 +1139,8 @@ const TIPS={
   lam:['Goles esperados','Cuántos goles esperamos de cada equipo según el ataque y la defensa de los dos en esta liga (temporada actual y anterior, con más peso a lo reciente). Si la liga usa xG, mezcla goles con xG.'],
   skill1x2:['Habilidad 1X2','Cuánto mejor acierta el modelo el ganador (local, empate, visitante) que las casas sin margen, en los mismos partidos. Positivo = mejor que las casas. Usa las cuotas de cierre históricas de football-data.co.uk (unas 40 ligas, dos temporadas) más las cuotas que la app guarda en cada actualización (todas las ligas).'],
   src:['Cuota justa: de dónde sale','«De las casas»: el precio justo según las propias casas (Pinnacle, o la mediana de todas), sin su margen. Si una casa paga más que eso, hay valor. No depende del modelo: es la ventaja más probada y sirve en todas las ligas. «Del modelo»: el precio según nuestro modelo; confiá solo en ligas en verde. «Coinciden»: solo cuando hay valor según las dos; el EV y la cuota justa que se ven son los de las casas.'],
+  evmin:['EV mínimo','Las apuestas con menos valor que esto no se muestran ni cuentan para el edge. Con «De las casas», 2% es un buen piso: por debajo, el valor puede desaparecer con el mínimo movimiento de la cuota. «Todos» muestra desde 0,5%.'],
+  pick:['¿Qué apuesta elegir?','La de mayor Score (la primera fila), no la de mayor EV: el Score combina el valor con la chance de ganar. El EV más alto suele estar en cuotas altas, que se pierden seguido. Una sola apuesta por partido: líneas parecidas (Hándicap −0,5 y −0,75, Más de 2,5 y Más de 3) son casi la misma apuesta. Nunca grupos opuestos. Antes de apostar, tocá «↻ Cuotas de este partido» y fijate que tu casa pague más que la cuota justa.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
   skillGoals:['Habilidad en goles','Cuánto mejor acierta el modelo la cantidad de goles de cada partido que decir siempre el promedio de la liga. Positivo = distingue partidos de muchos y pocos goles.'],
   ece:['Calibración (ECE)','Si el modelo dice 60%, ¿pasa el 60% de las veces? Es la diferencia promedio. Menos de 3% es bueno.'],
@@ -1154,6 +1184,7 @@ $('#btnUpdate').addEventListener('click',updateAll);
 $('#minEdge').value=LS.get('tg:minEdge','0');
 $('#onlyGreen').checked=!!LS.get('tg:green',false);
 $('#onlyGreen').addEventListener('change',()=>LS.set('tg:green',$('#onlyGreen').checked));
+$('#evmin').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b)return;LS.set('tg:evMin',Number(b.dataset.ev));showAllLeagues=false;renderDash()});
 $('#src').addEventListener('click',e=>{const b=e.target.closest('[data-src]');if(!b)return;LS.set('tg:src',b.dataset.src);showAllLeagues=false;renderDash()});
 $('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
 $('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
