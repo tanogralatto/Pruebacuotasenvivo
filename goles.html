@@ -186,29 +186,51 @@ details.guide th{color:var(--muted);font-weight:600}
     <summary>📘 Cómo funciona la app (y en qué se diferencia de Alpha)</summary>
 
     <h3>Qué hace</h3>
-    <p>Busca apuestas donde la cuota de las casas <b>paga más de lo que debería</b> según nuestro modelo. Cubre todas las ligas que trae API-Football, con mercados de partido completo: goles (más/menos, ambos marcan), 1X2, doble oportunidad y hándicap asiático. La estrategia de +0,5 goles en el 1T sigue en la otra app.</p>
+    <p>Busca apuestas donde una casa <b>paga más de lo que debería</b>. Cubre todas las ligas que trae API-Football, con mercados de partido completo: goles (más/menos y ambos marcan), 1X2, doble oportunidad y hándicap asiático. La estrategia de +0,5 goles en el 1T sigue en la otra app.</p>
+    <p>El «precio justo» con el que se compara cada cuota puede salir de dos lugares: de <b>las propias casas</b> (sin su margen) o de <b>nuestro modelo</b>. Lo elegís con <b>Cuota justa</b> (se explica abajo).</p>
 
-    <h3>Uso diario</h3>
+    <h3>Uso diario (paso a paso)</h3>
     <ol>
-      <li>Tocá <b>↻ Actualizar todo</b> una o dos veces por día (a la mañana y antes de los partidos de la tarde/noche).</li>
-      <li>Filtrá: <b>Edge mínimo</b> (empezá por 55+), <b>Horario</b> y, si querés, <b>Solo ligas en verde</b>.</li>
-      <li>Tocá un partido. En cada grupo de mercados mirá la primera fila: es la de mayor <b>Score</b>.</li>
-      <li>Con <b>De las casas</b>, apostá si tu casa paga igual o más que la cuota que muestra la app (y en la casa que dice ahí). Con <b>Del modelo</b>, además el grupo tiene que decir <b>✓</b> (liga aprobada para ese mercado).</li>
+      <li>Tocá <b>↻ Actualizar todo</b> una o dos veces por día: a la mañana y antes de los partidos de la tarde o la noche.</li>
+      <li>En los filtros, dejá <b>Cuota justa: De las casas</b> (la más confiable) y subí el <b>Edge mínimo</b> a 40+. Si querés, elegí <b>Horario</b> o una liga.</li>
+      <li>Tocá un partido de la lista. En cada grupo de mercados, la primera fila es la de mayor <b>Score</b>.</li>
+      <li>Antes de apostar, fijate que <b>tu casa pague igual o más</b> que la cuota de la app. Abajo de cada cuota dice en qué casa está.</li>
+      <li>Si usás <b>Del modelo</b>, apostá solo en los grupos que dicen <b>✓</b> (liga aprobada para ese mercado).</li>
       <li>Guardá con la <b>☆</b> los que sigas: aparecen en <b>★ Favoritos</b>.</li>
     </ol>
+
+    <h3>Los filtros</h3>
+    <ul>
+      <li><b>Hoy / Mañana / ★ Favoritos</b>: qué partidos ver.</li>
+      <li><b>Buscar equipo</b> y <b>Todas las ligas</b>: para ir directo a un partido o a una liga.</li>
+      <li><b>Cuota justa</b>: de dónde sale el precio justo.
+        <ul>
+          <li><b>De las casas</b> (recomendado): Pinnacle, o la mediana de todas las casas, sin su margen. Si otra casa paga más, hay valor. <b>No depende del modelo</b>, así que sirve en <b>todas las ligas</b>. Es la ventaja más probada, porque las casas comunes tardan en mover sus cuotas. Los EV son chicos (1 a 5%), pero reales.</li>
+          <li><b>Del modelo</b>: el precio según nuestro modelo, como Alpha. Los EV salen más grandes, pero solo valen en las ligas en verde de Precisión.</li>
+          <li><b>Coinciden</b>: solo apuestas con valor según las dos. Salen menos, pero son las más sólidas.</li>
+        </ul></li>
+      <li><b>Edge mínimo</b>: oculta los partidos con menos valor. Con «De las casas» los números son más bajos: empezá por 40+. Con «Del modelo», por 55+.</li>
+      <li><b>Horario</b> (hora de Argentina): Mañana hasta las 11:59, Tarde de 12 a 18:59, Noche desde las 19.</li>
+      <li><b>Solo ligas en verde</b>: deja solo las ligas donde el modelo acierta, y el edge cuenta solo los mercados aprobados. Sirve con «Del modelo» y «Coinciden»; con «De las casas» no hace falta (queda gris).</li>
+    </ul>
+    <p>La app recuerda cómo dejaste la cuota justa, el edge mínimo, el horario y «Solo ligas en verde».</p>
 
     <h3>Qué significa cada número</h3>
     <ul>
       <li><b>Cuota</b>: la mejor entre las casas (descarta las que se alejan mucho del resto, casi siempre cuotas viejas). ▲▼ = cómo se movió desde la primera lectura.</li>
-      <li><b>Cuota justa</b>: 1 ÷ la probabilidad. Elegís de dónde sale (arriba, en los filtros, y en cada partido):
-        <ul>
-          <li><b>De las casas</b> (recomendado): el precio justo según las propias casas, Pinnacle o la mediana, sin su margen. Si otra casa paga más, hay valor. <b>No depende del modelo</b>, así que sirve en todas las ligas. Es la ventaja más probada, porque las casas comunes tardan en mover sus cuotas. Los EV son chicos (1-5%), pero reales.</li>
-          <li><b>Del modelo</b>: el precio según nuestro modelo, como Alpha. Los EV salen más grandes, pero solo valen en las ligas en verde.</li>
-          <li><b>Coinciden</b>: solo apuestas con valor según las dos. Salen menos, pero son las más sólidas.</li>
-        </ul></li>
-      <li><b>EV</b>: probabilidad × cuota − 1. +5% = en promedio ganarías $5 por cada $100. Abajo, en chico, el EV según la otra fuente.</li>
+      <li><b>Cuota justa</b>: 1 ÷ la probabilidad, según la fuente elegida. Si la casa paga más, hay valor.</li>
+      <li><b>EV</b>: probabilidad × cuota − 1. +5% = en promedio ganarías $5 por cada $100 si apostaras muchas veces así. Abajo, en chico, el EV según la otra fuente («modelo» o «casas»).</li>
       <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras). 0 si no hay valor.</li>
-      <li><b>Edge del partido (0-100)</b>: el número de la lista. Combina el mejor score de los dos grupos de mercados con más valor. 65+ = buenas oportunidades.</li>
+      <li><b>Edge del partido (0-100)</b>: el número de la lista. Combina el mejor score de los dos grupos de mercados con más valor, con la fuente elegida. Verde (65+) = buenas oportunidades; amarillo (35-64) = algo hay; gris = poco o nada.</li>
+    </ul>
+
+    <h3>La ficha del partido</h3>
+    <ul>
+      <li>Arriba: liga, hora, edge y la ☆. Debajo del nombre: el modelo que usa esa liga (por ejemplo «Poisson + corrección Dixon-Coles + xG»).</li>
+      <li><b>Cuota justa</b>: el mismo selector que en la lista; cambiarlo acá también lo cambia allá.</li>
+      <li>Grupos: <b>Muchos goles</b>, <b>Pocos goles</b>, <b>Gana local</b>, <b>Gana visitante</b> y <b>Otros</b>. Al lado de cada uno, si la liga está aprobada para ese mercado: ✓ sí, ✕ no, ⏳ faltan partidos.</li>
+      <li>Solo se ven los mercados con valor; <b>Mostrar todos</b> abre el resto.</li>
+      <li><b>Ver estudio del partido</b>: goles esperados, resultado (local, empate, visitante), contexto de liga, matriz de marcadores y ratings de ataque y defensa.</li>
     </ul>
 
     <h3>Cómo calcula la probabilidad (el modelo)</h3>
@@ -216,23 +238,41 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>Poisson con ataque y defensa</b> de cada equipo, ajustado con toda la liga (temporada actual y anterior, con más peso a lo reciente). De ahí salen los goles esperados de cada equipo y la matriz de marcadores; de la matriz, todos los mercados.</li>
       <li><b>Corrección Dixon-Coles</b>: ajusta los marcadores bajos (0-0, 1-0, 0-1, 1-1). Se calcula por liga.</li>
       <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
-      <li>Cada liga usa la combinación (con o sin xG, con o sin corrección) que <b>mejor acertó</b> en su historial. Lo ves en el estudio del partido («Modelo: …») y en Precisión («usa xG»).</li>
+      <li>Cada liga usa la combinación (con o sin xG, con o sin corrección) que <b>mejor acertó</b> en su historial.</li>
     </ul>
 
-    <h3>Precisión: en qué ligas confiar</h3>
+    <h3>Precisión: en qué ligas confiar en el modelo</h3>
     <ul>
-      <li><b>Habilidad 1X2</b>: cuánto mejor acierta el modelo el ganador que las casas sin margen. Usa cuotas de cierre históricas de <b>football-data.co.uk</b> (unas 40 ligas, dos temporadas) y las cuotas que la app guarda en cada actualización (todas las ligas, se va llenando).</li>
+      <li><b>Habilidad 1X2</b>: cuánto mejor acierta el modelo el ganador que las casas sin margen. Usa cuotas de cierre históricas de <b>football-data.co.uk</b> (38 ligas, dos temporadas, se renuevan solas cada lunes) y las cuotas que la app guarda en cada actualización (todas las ligas, se va llenando).</li>
       <li><b>Habilidad en goles</b>: cuánto mejor acierta la cantidad de goles que decir siempre el promedio de la liga. Sale del historial, así que ya tiene datos en todas las ligas.</li>
       <li><b>ECE</b>: calibración. Si dice 60%, ¿pasa el 60% de las veces? Menos de 3% es bueno.</li>
-      <li><b>Verde</b> = acierta mejor → podés usar ese tipo de mercado en esa liga. <b>Gris</b> = no. <b>⏳</b> = menos de 30 partidos: todavía puede ser suerte.</li>
+      <li><b>Verde</b> = acierta mejor → podés usar «Del modelo» en ese tipo de mercado y liga. <b>Gris</b> = no. <b>⏳</b> = menos de 30 partidos: todavía puede ser suerte.</li>
+      <li>Ganarle a las casas en 1X2 es muy difícil (a Alpha también le da negativo en casi todas las ligas). Por eso, para 1X2 y hándicap conviene <b>De las casas</b>.</li>
       <li>Todo se juzga con lo que el modelo sabía <b>antes</b> de cada partido: nunca mira el resultado.</li>
     </ul>
 
-    <h3>Actualizar todo, paso a paso</h3>
-    <p>Partidos y cuotas de hoy y mañana → historial de cada liga (la primera vez en cada dispositivo es lo que más consume; después se renueva una vez por día) → xG que falta (hasta 150 consultas por vez, se cambia en ⚙︎) → mercados y edge → cuotas de los últimos 7 días (la API las borra después de una semana) → resultados → Precisión → se guarda en tu cuenta.</p>
+    <h3>Actualizar todo: qué hace y cuánto gasta</h3>
+    <p>Partidos y cuotas de hoy y mañana → historial de cada liga → xG que falta → mercados y edge → cuotas de los últimos 7 días (la API las borra después de una semana) → resultados → Precisión → se guarda en tu cuenta.</p>
+    <ul>
+      <li>La <b>primera vez en cada dispositivo</b> es la que más consultas gasta (unos cientos), por el historial de las ligas. Después se renueva una vez por día y gasta mucho menos.</li>
+      <li>El xG se baja de a poco: hasta 150 consultas por vez (se cambia en ⚙︎).</li>
+      <li>Tocalo <b>al menos una vez por semana</b>, para no perder cuotas para Precisión.</li>
+    </ul>
 
-    <h3>Varios dispositivos</h3>
-    <p>Entrá con <b>☁︎</b> en cada uno. Lo que actualizás en uno (partidos, Precisión, xG, Favoritos) aparece en los demás sin gastar consultas. Para actualizar desde un dispositivo, cargá tu clave de API en ⚙︎.</p>
+    <h3>Varios dispositivos (☁︎)</h3>
+    <ul>
+      <li>Tocá <b>☁︎ Entrar</b> (arriba a la derecha) y elegí tu cuenta de Google, en cada dispositivo.</li>
+      <li>Lo que actualizás en uno (partidos, Precisión, xG, Favoritos) aparece en los demás al abrir la app, sin gastar consultas.</li>
+      <li>En <b>⚙︎ → Sincronización</b>: <b>Subir ahora a mi cuenta</b> (sin volver a actualizar) y <b>Bajar lo último de mi cuenta</b>.</li>
+      <li>Para <b>actualizar</b> desde un dispositivo, cargá tu clave de API en ⚙︎. Para solo mirar, no hace falta.</li>
+    </ul>
+
+    <h3>Ajustes (⚙︎)</h3>
+    <ul>
+      <li><b>Clave de API-Football</b>: se guarda solo en ese dispositivo.</li>
+      <li><b>xG</b>: cuántas consultas usar para bajar xG en cada actualización.</li>
+      <li><b>Datos guardados</b>: cuántas ligas, partidos con xG y predicciones tiene ese dispositivo. «Borrar» los quita (la clave se mantiene).</li>
+    </ul>
 
     <h3>Diferencias con Alpha</h3>
     <table>
@@ -240,14 +280,15 @@ details.guide th{color:var(--muted);font-weight:600}
       <tr><td>Modelo</td><td>Poisson con ataque/defensa y «correlación» (Dixon-Coles), entrenado con ~9 años. No publica la fórmula.</td><td>Poisson con ataque/defensa + Dixon-Coles por liga + xG (de la API o aproximado). Temporada actual y anterior.</td></tr>
       <tr><td>Ajustes extra</td><td>Clima (altitud, temperatura, viento…)</td><td>No usa clima.</td></tr>
       <tr><td>Ligas</td><td>Las que elige Alpha</td><td>Todas las que trae tu API-Football</td></tr>
-      <tr><td>Edge y score</td><td>Fórmula propia (suma los EV de todos los mercados con valor, pesando las cuotas bajas)</td><td>Fórmula propia parecida: combina los dos grupos con más valor (no suma líneas casi iguales para no inflar el número). Los números no son comparables 1 a 1.</td></tr>
       <tr><td>Cuota justa</td><td>Del modelo</td><td>Elegís: de las casas (sin margen), del modelo, o cuando coinciden</td></tr>
+      <tr><td>Edge y score</td><td>Fórmula propia (suma los EV de todos los mercados con valor, pesando las cuotas bajas)</td><td>Fórmula propia parecida: combina los dos grupos con más valor (no suma líneas casi iguales para no inflar el número). Los números no son comparables 1 a 1.</td></tr>
+      <tr><td>Filtros</td><td>Liga, match score mínimo, horario</td><td>Lo mismo + buscar equipo, cuota justa y solo ligas en verde</td></tr>
       <tr><td>Cuotas</td><td>«Lectura» en Inicial / 4 h / 1 h, sellada</td><td>La mejor cuota de cada actualización; ▲▼ contra la primera lectura.</td></tr>
       <tr><td>Precisión</td><td>Solo con lecturas guardadas desde junio 2026</td><td>Historial (goles) + cuotas de cierre históricas y guardadas (1X2). Tiene datos desde el primer día.</td></tr>
       <tr><td>Estudio</td><td>Distribución de goles, timeline por minuto, clima</td><td>Goles esperados, resultado, contexto de liga, matriz de marcadores y ratings.</td></tr>
       <tr><td>Costo</td><td>Tokens</td><td>Tus consultas de API-Football</td></tr>
     </table>
-    <p class="small">Ninguna de las dos garantiza ganancia: un EV positivo solo sirve si el modelo acierta en esa liga, y eso es lo que mide Precisión.</p>
+    <p class="small">Nada garantiza ganancia. Con «De las casas», la ventaja viene de encontrar una casa que paga más que el precio justo del mercado; con «Del modelo», solo existe si el modelo acierta en esa liga, y eso es lo que mide Precisión. Las rachas malas son normales: apostá montos chicos y parejos.</p>
   </details>
   <div class="row">
     <div class="seg"><button data-day="0">Hoy</button><button data-day="1">Mañana</button><button data-day="fav">★ Favoritos</button></div>
@@ -1042,6 +1083,8 @@ $$('.seg [data-day]').forEach(b=>b.addEventListener('click',()=>{location.hash=b
 $('#btnUpdate').addEventListener('click',updateAll);
 ['q','minEdge','onlyGreen','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'||id==='minEdge'?'input':'change',()=>{showAllLeagues=false;if(id==='minEdge')LS.set('tg:minEdge',$('#minEdge').value);renderDash()}));
 $('#minEdge').value=LS.get('tg:minEdge','0');
+$('#onlyGreen').checked=!!LS.get('tg:green',false);
+$('#onlyGreen').addEventListener('change',()=>LS.set('tg:green',$('#onlyGreen').checked));
 $('#src').addEventListener('click',e=>{const b=e.target.closest('[data-src]');if(!b)return;LS.set('tg:src',b.dataset.src);showAllLeagues=false;renderDash()});
 $('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
 $('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
