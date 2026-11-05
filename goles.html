@@ -153,7 +153,10 @@ svg text{fill:var(--muted);font:11px var(--mono)}
 .fl-h{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
 .fl-h .mono{color:var(--acc);font-weight:700}
 input[type=range]{width:100%;accent-color:var(--acc)}
-#slot button{padding:7px 12px;font-size:14px}
+#slot button,#src button,#msrc button{padding:7px 12px;font-size:14px}
+.ev small{display:block;font-weight:400;color:var(--dim);font-size:11px}
+#cloudBtn{white-space:nowrap}
+@media (max-width:560px){.brand{font-size:12px;letter-spacing:.06em}nav a{padding:6px 7px}#cloudBtn{max-width:96px;overflow:hidden;text-overflow:ellipsis}}
 details.guide{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:6px 0 12px}
 details.guide summary{cursor:pointer;font-weight:700}
 details.guide h3{font-size:15px;margin:16px 0 6px;color:var(--acc)}
@@ -190,15 +193,20 @@ details.guide th{color:var(--muted);font-weight:600}
       <li>Tocá <b>↻ Actualizar todo</b> una o dos veces por día (a la mañana y antes de los partidos de la tarde/noche).</li>
       <li>Filtrá: <b>Edge mínimo</b> (empezá por 55+), <b>Horario</b> y, si querés, <b>Solo ligas en verde</b>.</li>
       <li>Tocá un partido. En cada grupo de mercados mirá la primera fila: es la de mayor <b>Score</b>.</li>
-      <li>Apostá solo si el grupo dice <b>✓</b> (la liga está aprobada para ese tipo de mercado) y tu casa paga igual o más que la cuota que muestra la app.</li>
+      <li>Con <b>De las casas</b>, apostá si tu casa paga igual o más que la cuota que muestra la app (y en la casa que dice ahí). Con <b>Del modelo</b>, además el grupo tiene que decir <b>✓</b> (liga aprobada para ese mercado).</li>
       <li>Guardá con la <b>☆</b> los que sigas: aparecen en <b>★ Favoritos</b>.</li>
     </ol>
 
     <h3>Qué significa cada número</h3>
     <ul>
       <li><b>Cuota</b>: la mejor entre las casas (descarta las que se alejan mucho del resto, casi siempre cuotas viejas). ▲▼ = cómo se movió desde la primera lectura.</li>
-      <li><b>Cuota justa</b>: 1 ÷ la probabilidad del modelo. Si la casa paga más, hay valor.</li>
-      <li><b>EV</b>: probabilidad del modelo × cuota − 1. +10% = en promedio ganarías $10 por cada $100, si el modelo acierta la probabilidad.</li>
+      <li><b>Cuota justa</b>: 1 ÷ la probabilidad. Elegís de dónde sale (arriba, en los filtros, y en cada partido):
+        <ul>
+          <li><b>De las casas</b> (recomendado): el precio justo según las propias casas, Pinnacle o la mediana, sin su margen. Si otra casa paga más, hay valor. <b>No depende del modelo</b>, así que sirve en todas las ligas. Es la ventaja más probada, porque las casas comunes tardan en mover sus cuotas. Los EV son chicos (1-5%), pero reales.</li>
+          <li><b>Del modelo</b>: el precio según nuestro modelo, como Alpha. Los EV salen más grandes, pero solo valen en las ligas en verde.</li>
+          <li><b>Coinciden</b>: solo apuestas con valor según las dos. Salen menos, pero son las más sólidas.</li>
+        </ul></li>
+      <li><b>EV</b>: probabilidad × cuota − 1. +5% = en promedio ganarías $5 por cada $100. Abajo, en chico, el EV según la otra fuente.</li>
       <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras). 0 si no hay valor.</li>
       <li><b>Edge del partido (0-100)</b>: el número de la lista. Combina el mejor score de los dos grupos de mercados con más valor. 65+ = buenas oportunidades.</li>
     </ul>
@@ -233,6 +241,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <tr><td>Ajustes extra</td><td>Clima (altitud, temperatura, viento…)</td><td>No usa clima.</td></tr>
       <tr><td>Ligas</td><td>Las que elige Alpha</td><td>Todas las que trae tu API-Football</td></tr>
       <tr><td>Edge y score</td><td>Fórmula propia (suma los EV de todos los mercados con valor, pesando las cuotas bajas)</td><td>Fórmula propia parecida: combina los dos grupos con más valor (no suma líneas casi iguales para no inflar el número). Los números no son comparables 1 a 1.</td></tr>
+      <tr><td>Cuota justa</td><td>Del modelo</td><td>Elegís: de las casas (sin margen), del modelo, o cuando coinciden</td></tr>
       <tr><td>Cuotas</td><td>«Lectura» en Inicial / 4 h / 1 h, sellada</td><td>La mejor cuota de cada actualización; ▲▼ contra la primera lectura.</td></tr>
       <tr><td>Precisión</td><td>Solo con lecturas guardadas desde junio 2026</td><td>Historial (goles) + cuotas de cierre históricas y guardadas (1X2). Tiene datos desde el primer día.</td></tr>
       <tr><td>Estudio</td><td>Distribución de goles, timeline por minuto, clima</td><td>Goles esperados, resultado, contexto de liga, matriz de marcadores y ratings.</td></tr>
@@ -248,9 +257,10 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="status" id="uStatus"></div>
   <div class="filters box">
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
+    <div class="fl" style="margin-top:4px"><div class="fl-h"><b>Cuota justa</b> <button class="info" data-tip="src">i</button></div><div class="seg" id="src"><button data-src="mkt">De las casas</button><button data-src="model">Del modelo</button><button data-src="both">Coinciden</button></div><div class="small" id="srcHint" style="margin-top:6px"></div></div>
     <div class="fl"><div class="fl-h"><b>Edge mínimo</b> <button class="info" data-tip="edge">i</button> <span class="mono" id="minEdgeVal">0+</span></div><input type="range" id="minEdge" min="0" max="95" step="5" value="0"></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
-    <label class="small row" style="gap:6px;margin-top:10px"><input type="checkbox" id="onlyGreen" style="accent-color:var(--acc)"> Solo ligas en verde (donde el modelo acierta)</label>
+    <label class="small row" id="greenWrap" style="gap:6px;margin-top:10px"><input type="checkbox" id="onlyGreen" style="accent-color:var(--acc)"> Solo ligas en verde (donde el modelo acierta; no aplica con «De las casas»)</label>
   </div>
   <div id="dList"></div>
 </section>
@@ -541,7 +551,7 @@ async function updateAll(){
               else{
                 const {rows}=F.matchMarkets(a.lam,o,{home:f.hn,away:f.an});
                 const fr=first[f.id]||(first[f.id]={ts:f.ts});
-                a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key]}});
+                a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt)}});
                 a.edge=F.matchEdge(rows);
                 a.edgeBy={};for(const g of ['high','low','home','away','other'])a.edgeBy[g]=Math.max(0,...rows.filter(r=>r.group===g).map(r=>r.score));
                 const m1x2=F.market1x2(o);
@@ -629,10 +639,10 @@ function parseKey(k){
 }
 const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
 function packDay(day){
-  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0]);return o})};
+  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m]);return o})};
 }
 function unpackDay(d){
-  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0])=>{const bet=parseKey(k);return {k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0}});return o})};
+  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m])=>{const bet=parseKey(k);return {k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m}});return o})};
 }
 function mergeReg(local,cloud){
   for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
@@ -761,9 +771,26 @@ function edgeHtml(v){
   const c=v>=65?'g':v>=35?'m':'d';
   return `<span class="edge"><span class="bar"><i class="bg-${c}" style="width:${Math.max(3,v)}%"></i></span><b class="c-${c}">${v}</b></span>`;
 }
-function edgeOf(a,allowed){
-  if(!a.edgeBy)return 0;
-  const top=Object.entries(a.edgeBy).filter(([g])=>!allowed||allowed.has(g)).map(([,s])=>s).sort((x,y)=>y-x).slice(0,2);
+// De dónde sale la cuota justa: 'mkt' = de las casas (Pinnacle o mediana, sin margen), 'model' = del modelo,
+// 'both' = solo cuando hay valor según las dos.
+const SRC_NAME={mkt:'De las casas',model:'Del modelo',both:'Coinciden'};
+const srcNow=()=>LS.get('tg:src','mkt');
+function view(r,src){
+  const mk=r.m>0?{fair:1/r.m,ev:r.m*r.pr-1}:null;
+  if(mk)mk.score=F.betScore(mk.ev,r.m);
+  const md={fair:r.f,ev:r.ev,score:r.s};
+  if(src==='model')return Object.assign({},md,{alt:mk});
+  if(src==='mkt')return mk?Object.assign({},mk,{alt:md}):{fair:null,ev:null,score:0,alt:md};
+  if(!mk)return {fair:null,ev:null,score:0,alt:md};
+  const ok=mk.ev>=0.005&&md.ev>=0.005;
+  return {fair:mk.fair,ev:mk.ev,score:ok?Math.min(mk.score,md.score):0,alt:md,both:ok};
+}
+const hasValue=(v,src)=>src==='both'?!!v.both:Number.isFinite(v.ev)&&v.ev>=0.005;
+function edgeOf(a,allowed,src){
+  if(!a.rows)return 0;
+  const best={};
+  for(const r of a.rows){if(allowed&&!allowed.has(r.g))continue;const v=view(r,src||srcNow());if(hasValue(v,src||srcNow())&&v.score>(best[r.g]||0))best[r.g]=v.score}
+  const top=Object.values(best).sort((x,y)=>y-x).slice(0,2);
   return top.length?Math.round(100*(1-top.reduce((acc,s)=>acc*(1-s/100),1))):0;
 }
 let showAllLeagues=false;
@@ -787,7 +814,10 @@ async function renderDash(){
     fx=d.fx;
   }
   const q=$('#q').value.trim().toLowerCase(), minE=Number($('#minEdge').value), onlyGreen=$('#onlyGreen').checked, fv=favs();
-  const lgSel=$('#lg').value, slot=LS.get('tg:slot','all');
+  const lgSel=$('#lg').value, slot=LS.get('tg:slot','all'), src=srcNow();
+  $$('#src [data-src]').forEach(b=>b.classList.toggle('on',b.dataset.src===src));
+  $('#greenWrap').style.opacity=src==='mkt'?.45:1;
+  $('#srcHint').textContent=src==='mkt'?'Precio justo de las casas (Pinnacle o la mediana, sin margen). No depende del modelo: sirve en todas las ligas.':src==='model'?'Precio justo de nuestro modelo. Confiá solo en las ligas en verde.':'Solo apuestas con valor contra las casas y también según el modelo. Menos apuestas, más sólidas.';
   $('#minEdgeVal').textContent=minE+'+';
   $$('#slot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===slot));
   // Lista de ligas del día para el filtro.
@@ -799,9 +829,10 @@ async function renderDash(){
     if(q&&!(a.hn+' '+a.an+' '+a.ln+' '+a.lc).toLowerCase().includes(q))continue;
     if(lgSel&&String(a.lid)!==lgSel)continue;
     if(!inSlot(a))continue;
-    const allowed=onlyGreen?allowedGroups(a.lid):null;
-    if(onlyGreen&&!allowed.size)continue;
-    const e=a.rows?edgeOf(a,allowed):0;
+    // Las ligas en verde solo importan cuando la cuota justa sale del modelo.
+    const allowed=onlyGreen&&src!=='mkt'?allowedGroups(a.lid):null;
+    if(allowed&&!allowed.size)continue;
+    const e=a.rows?edgeOf(a,allowed,src):0;
     if(minE&&e<minE)continue;
     if(!groups.has(a.lid))groups.set(a.lid,{best:0,list:[]});
     const g=groups.get(a.lid);g.list.push({a,e});g.best=Math.max(g.best,e);
@@ -835,21 +866,27 @@ async function renderMatch(id){
   if(!a){body.innerHTML='<div class="empty" style="margin-top:16px">No encuentro este partido. Volvé a <a href="#/hoy">Partidos</a> y tocá Actualizar todo.</div>';return}
   state.prec=state.prec||await DB.get('prec');
   const s=leagueStatus(a.lid), fv=favs();
-  let h=`<div class="row" style="margin-top:10px"><span>${flag(a.lc)}</span><span class="small">${esc(a.lc)} · ${esc(a.ln)} · ${fmtTime(a.iso)}</span>${a.rows?edgeHtml(a.edge):''}<button class="info" data-tip="edge">i</button><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" style="margin-left:auto">${fv[a.id]?'★':'☆'}</button></div>`;
+  let h=`<div class="row" style="margin-top:10px"><span>${flag(a.lc)}</span><span class="small">${esc(a.lc)} · ${esc(a.ln)} · ${fmtTime(a.iso)}</span>${a.rows?edgeHtml(edgeOf(a,null,srcNow())):''}<button class="info" data-tip="edge">i</button><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" style="margin-left:auto">${fv[a.id]?'★':'☆'}</button></div>`;
   h+=`<div class="mh">${esc(a.hn)} <span>vs</span> ${esc(a.an)}</div><div class="small">Última lectura ${ago(a.readAt)}</div>`;
   if(!a.lam){body.innerHTML=h+`<div class="empty" style="margin-top:14px">Sin análisis disponible: ${esc(a.reason||'')}</div>`;return}
   h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}</div>`;
   h+=`<div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">${open.has('study')?'Ocultar estudio':'Ver estudio del partido'}</button></div>`;
   if(open.has('study'))h+=studyHtml(a);
   if(!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
+  const src=srcNow();
+  h+=`<div class="fl"><div class="fl-h"><b>Cuota justa</b> <button class="info" data-tip="src">i</button></div><div class="seg" id="msrc">${Object.entries(SRC_NAME).map(([k,n])=>`<button data-msrc="${k}" class="${k===src?'on':''}">${n}</button>`).join('')}</div></div>`;
+  if(src!=='model'&&!a.rows.some(r=>r.m>0))h+=`<div class="none" style="margin-top:10px">Este análisis es anterior a la cuota justa de las casas. Tocá ↻ Actualizar todo para verla.</div>`;
   for(const g of F.GROUPS){
-    const rows=a.rows.filter(r=>r.g===g.id);if(!rows.length)continue;
+    const rows=a.rows.filter(r=>r.g===g.id).map(r=>Object.assign({},r,{v:view(r,src)})).sort((x,y)=>y.v.score-x.v.score||(y.v.ev||-9)-(x.v.ev||-9));if(!rows.length)continue;
     const st=g.kind==='goals'?s.goals:s.res;
-    const val=rows.filter(r=>r.ev>=0.005),all=open.has(g.id),show=all?rows:val;
+    const val=rows.filter(r=>hasValue(r.v,src)),all=open.has(g.id),show=all?rows:val;
     h+=`<div class="grp"><div class="grp-h"><span class="n">${esc(g.title.replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${rows.length})</span>${statusChip(st,g.kind==='goals'?'Goles en esta liga':'1X2 en esta liga')}</div>`;
     if(show.length){
       h+=`<table class="mk"><thead><tr><th>Mercado</th><th>Cuota</th><th>Justa <button class="info" data-tip="fair">i</button></th><th>EV <button class="info" data-tip="ev">i</button></th><th>Score <button class="info" data-tip="score">i</button></th></tr></thead><tbody>`;
-      for(const r of show)h+=`<tr><td>${esc(r.l)}</td><td class="num">${arrow(r)}${dec(r.pr)}<span class="bk">${esc(r.bk)}</span></td><td class="num">${dec(r.f)}</td><td class="ev ${r.ev>=0.005?'c-m':'c-d'}">${spct(r.ev)}</td><td>${scoreHtml(r.s)}</td></tr>`;
+      for(const r of show){
+        const v=r.v,alt=v.alt&&Number.isFinite(v.alt.ev)?`<small>${src==='model'?'casas':'modelo'} ${spct(v.alt.ev)}</small>`:'';
+        h+=`<tr><td>${esc(r.l)}</td><td class="num">${arrow(r)}${dec(r.pr)}<span class="bk">${esc(r.bk)}</span></td><td class="num">${dec(v.fair)}</td><td class="ev ${hasValue(v,src)?'c-m':'c-d'}">${spct(v.ev)}${alt}</td><td>${scoreHtml(v.score)}</td></tr>`;
+      }
       h+='</tbody></table>';
     }else h+='<div class="none">No hay mercados con valor en este grupo</div>';
     if(rows.length>val.length||all)h+=`<button class="more" data-more="${g.id}">${all?'Mostrar solo los que tienen valor':'Mostrar todos los mercados ('+rows.length+')'}</button>`;
@@ -958,11 +995,12 @@ $('#btnWipe').addEventListener('click',async()=>{
 const TIPS={
   update:['Actualizar todo','Hace lo mismo que haría un robot: trae los partidos y las cuotas de hoy y mañana de todas las ligas, baja el xG que falta, calcula los mercados, guarda las cuotas de la última semana y recalcula la Precisión. Tocalo una o dos veces por día. Si pasás más de 7 días sin tocarlo, esos días no entran en la Precisión de 1X2.'],
   edge:['Edge del partido (0-100)','Junta el valor de todos los mercados del partido donde la cuota paga más que la cuota justa, dando más peso a las cuotas bajas. 0 = sin valor. 65 o más = hay buenas oportunidades.'],
-  fair:['Cuota justa','La cuota que debería pagar según nuestro modelo (1 ÷ probabilidad). Si la casa paga más que esto, hay valor.'],
-  ev:['EV','Probabilidad del modelo × cuota − 1. Cuánto ganarías en promedio por cada $100 si apostaras muchas veces así. Confiá en él solo en las ligas en verde.'],
+  fair:['Cuota justa','La cuota que debería pagar (1 ÷ probabilidad), según la fuente elegida arriba: las casas sin margen o nuestro modelo. Si la casa paga más que esto, hay valor.'],
+  ev:['EV','Probabilidad × cuota − 1, con la fuente elegida (casas o modelo). Cuánto ganarías en promedio por cada $100 si apostaras muchas veces así. Abajo, en chico, el EV según la otra fuente.'],
   score:['Score (0-100)','Ordena las apuestas: sube con el EV y premia las cuotas bajas, que son más seguras. Verde (65+) = de las mejores.'],
   lam:['Goles esperados','Cuántos goles esperamos de cada equipo según el ataque y la defensa de los dos en esta liga (temporada actual y anterior, con más peso a lo reciente). Si la liga usa xG, mezcla goles con xG.'],
   skill1x2:['Habilidad 1X2','Cuánto mejor acierta el modelo el ganador (local, empate, visitante) que las casas sin margen, en los mismos partidos. Positivo = mejor que las casas. Usa las cuotas de cierre históricas de football-data.co.uk (unas 40 ligas, dos temporadas) más las cuotas que la app guarda en cada actualización (todas las ligas).'],
+  src:['Cuota justa: de dónde sale','«De las casas»: el precio justo según las propias casas (Pinnacle, o la mediana de todas), sin su margen. Si una casa paga más que eso, hay valor. No depende del modelo: es la ventaja más probada y sirve en todas las ligas. «Del modelo»: el precio según nuestro modelo; confiá solo en ligas en verde. «Coinciden»: solo cuando hay valor según las dos; el EV y la cuota justa que se ven son los de las casas.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
   skillGoals:['Habilidad en goles','Cuánto mejor acierta el modelo la cantidad de goles de cada partido que decir siempre el promedio de la liga. Positivo = distingue partidos de muchos y pocos goles.'],
   ece:['Calibración (ECE)','Si el modelo dice 60%, ¿pasa el 60% de las veces? Es la diferencia promedio. Menos de 3% es bueno.'],
@@ -1004,6 +1042,7 @@ $$('.seg [data-day]').forEach(b=>b.addEventListener('click',()=>{location.hash=b
 $('#btnUpdate').addEventListener('click',updateAll);
 ['q','minEdge','onlyGreen','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'||id==='minEdge'?'input':'change',()=>{showAllLeagues=false;if(id==='minEdge')LS.set('tg:minEdge',$('#minEdge').value);renderDash()}));
 $('#minEdge').value=LS.get('tg:minEdge','0');
+$('#src').addEventListener('click',e=>{const b=e.target.closest('[data-src]');if(!b)return;LS.set('tg:src',b.dataset.src);showAllLeagues=false;renderDash()});
 $('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
 $('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
 if(LS.get('tg:guide',true))$('#guide').open=true;
@@ -1013,6 +1052,7 @@ $('#pBody').addEventListener('change',e=>{if(e.target.id==='psort'){precSort=e.t
 $('#mBody').addEventListener('click',e=>{
   const m=e.target.closest('[data-more]'),r=route();
   if(m){const g=m.dataset.more;open.has(g)?open.delete(g):open.add(g);renderMatch(r.id);return}
+  const ms=e.target.closest('[data-msrc]');if(ms){LS.set('tg:src',ms.dataset.msrc);renderMatch(r.id);return}
   if(e.target.closest('#btnStudy')){open.has('study')?open.delete('study'):open.add('study');renderMatch(r.id)}
 });
 if(!state.key&&!location.hash)location.hash='#/ajustes';
