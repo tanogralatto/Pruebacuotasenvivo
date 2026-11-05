@@ -130,7 +130,10 @@
       W[i] += m.w; W[j] += m.w; N[i]++; N[j]++;
     });
 
-    const att = new Float64Array(n).fill(1), def = new Float64Array(n).fill(1);
+    // Media del prior de cada equipo: 1 (equipo promedio) salvo que se indique otra (p. ej. recién ascendidos).
+    const pmA = new Float64Array(n).fill(1), pmD = new Float64Array(n).fill(1);
+    if (o.priorMean) ids.forEach((id, t) => { const pm = o.priorMean[id]; if (pm) { if (pm.attack > 0) pmA[t] = pm.attack; if (pm.defence > 0) pmD[t] = pm.defence; } });
+    const att = Float64Array.from(pmA), def = Float64Array.from(pmD);
     const Ea = new Float64Array(n), Ed = new Float64Array(n);
     let iterations = 0;
     for (let it = 0; it < o.iterations; it++) {
@@ -143,7 +146,7 @@
       });
       let change = 0;
       for (let t = 0; t < n; t++) {
-        const v = (kappa + Sa[t]) / (kappa + Ea[t]);
+        const v = (kappa * pmA[t] + Sa[t]) / (kappa + Ea[t]);
         change = Math.max(change, Math.abs(v - att[t]));
         att[t] = v;
       }
@@ -154,7 +157,7 @@
         Ed[j] += m.w * muH * att[i];
       });
       for (let t = 0; t < n; t++) {
-        const v = (kappa + Sd[t]) / (kappa + Ed[t]);
+        const v = (kappa * pmD[t] + Sd[t]) / (kappa + Ed[t]);
         change = Math.max(change, Math.abs(v - def[t]));
         def[t] = v;
       }

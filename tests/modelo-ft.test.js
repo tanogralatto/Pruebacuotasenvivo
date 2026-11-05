@@ -182,3 +182,20 @@ test('valor: casas que pagan más que el precio justo, Kelly y liquidación', ()
   assert.deepEqual(F.settle({ type: 'ah', side: 'home', line: -0.25 }, 1, 1, 2), { r: -0.5, profit: -0.5 });
   assert.deepEqual(F.settle({ type: 'total', side: 'over', line: 2.5 }, 2, 1, 1.9), { r: 1, profit: 0.8999999999999999 });
 });
+
+test('recién llegados: clasificación con la tabla anterior y prior más débil para el ascendido', () => {
+  const tabla = (lid, rows) => ({ league: { id: lid, standings: [rows.map(([id, rank]) => ({ team: { id }, rank, all: { played: 30 } }))] } });
+  const grupo = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6], [7, 7], [8, 8]];
+  assert.equal(F.classifyNewcomer([tabla(99, grupo)], 2, 62), 'up', 'segundo de otra liga: subió');
+  assert.equal(F.classifyNewcomer([tabla(99, grupo)], 7, 62), 'down', 'anteúltimo de otra liga: bajó');
+  assert.equal(F.classifyNewcomer([tabla(62, grupo)], 7, 62), 'same', 'ya jugaba esta liga');
+  assert.equal(F.classifyNewcomer([], 7, 62), null);
+  // Liga simétrica: el recién llegado con prior de ascendido queda por debajo de uno con prior promedio.
+  const g = [];let ts = 1e9;
+  for (let r = 0; r < 4; r++) for (const [h, a] of [['A', 'B'], ['B', 'C'], ['C', 'D'], ['D', 'A'], ['A', 'C'], ['B', 'D']]) g.push({ h, a, hg: 1, ag: 1, w: 1, ts: ts++ });
+  const base = T.fitLeague(g, { priorMatches: 5, minFitMatches: 10 });
+  const nuevo = T.fitLeague(g, { priorMatches: 5, minFitMatches: 10, priorMean: F.newcomerPriorMean({ D: 'up' }) });
+  assert.ok(nuevo.teams.D.attack < base.teams.D.attack && nuevo.teams.D.defence > base.teams.D.defence);
+  const r = F.rescaleTotal(1.2, 0.8, 3);
+  close(r.lh + r.la, 3); close(r.lh / r.la, 1.5);
+});

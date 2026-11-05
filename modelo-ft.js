@@ -376,23 +376,65 @@
   // Backtest honesto de una liga: cada partido se pronostica con el modelo ajustado SOLO con partidos anteriores
   // (se reajusta una vez por semana). T = modelo-poisson.js. games = partidos con goles finales en hg/ag
   // (y xG en xh/xa si hay). Devuelve los goles esperados de cada partido; withProbs arma las probabilidades.
+  // Regresión a la media del modelo del partido completo (en «partidos equivalentes de un equipo promedio»).
+  // Con datos reales (38 ligas, ~18.000 partidos, contra las cuotas de cierre) rinde mejor separar las dos cosas:
+  // la forma del partido (quién es mejor: 1X2, hándicap) con poca regresión (5) y el total de goles con más (20).
+  const FT_PRIOR = Object.freeze({ shape: 5, total: 20 });
+  // Punto de partida de los recién llegados a una liga: un ascendido suele ser más débil que el promedio y un
+  // descendido, más fuerte. Medido con los mismos datos: baja ~20% el error contra el mercado en esos partidos.
+  const NEWCOMER_PRIOR = Object.freeze({ up: Object.freeze({ attack: 0.85, defence: 1.15 }), down: Object.freeze({ attack: 1.1, defence: 0.9 }) });
+  function newcomerPriorMean(classes) {
+    const out = {};
+    for (const [team, c] of Object.entries(classes || {})) if (NEWCOMER_PRIOR[c]) out[team] = NEWCOMER_PRIOR[c];
+    return out;
+  }
+  // Clasifica a un recién llegado con su tabla de la temporada anterior (/standings?team=…&season=…):
+  // en la mitad de arriba de otra liga → subió ('up'); en la mitad de abajo → bajó ('down').
+  // 'same' = jugó esta misma liga (no es nuevo de verdad); null = la API no tiene su tabla (suele venir de una
+  // división chica sin cobertura, o sea que subió).
+  function classifyNewcomer(standingsResponse, teamId, leagueId) {
+    let best = null;
+    for (const item of standingsResponse || []) {
+      const lg = item && item.league;
+      for (const group of (lg && lg.standings) || []) {
+        const row = (group || []).find(r => r && r.team && String(r.team.id) === String(teamId));
+        if (!row || !isNum(row.rank) || !group.length) continue;
+        const played = row.all && isNum(row.all.played) ? row.all.played : 0;
+        if (!best || played > best.played) best = { league: lg.id, rank: row.rank, size: group.length, played };
+      }
+    }
+    if (!best || best.size < 4) return null;
+    if (String(best.league) === String(leagueId)) return 'same';
+    return best.rank <= best.size / 2 ? 'up' : 'down';
+  }
+  // Lleva los goles esperados de la «forma» al total de goles del otro ajuste, sin cambiar la proporción.
+  function rescaleTotal(lh, la, total) {
+    const s = lh + la;
+    if (!(s > 0) || !(total > 0)) return { lh, la };
+    return { lh: lh * total / s, la: la * total / s };
+  }
+
   function backtestLeague(games, T, opts) {
     const o = Object.assign({ batchDays: 7, minHistory: 40, xgWeight: 0 }, opts || {});
     const list = (games || []).filter(g => g && isNum(g.ts) && g.h != null && g.a != null && isNum(g.hg) && isNum(g.ag)).slice().sort((a, b) => a.ts - b.ts);
     const rows = [];
     if (list.length <= o.minHistory) return rows;
-    let fit = null, fitAt = -Infinity;
+    let fit = null, fitT = null, fitAt = -Infinity;
     for (let idx = o.minHistory; idx < list.length; idx++) {
       const g = list[idx];
       if (g.ts - fitAt >= o.batchDays * 86400 || !fit) {
         const fm = T.buildFitMatches(list, { cutoffTs: g.ts, currentSeason: g.season, goals: 'ft', halfLifeDays: o.halfLifeDays || 240, xgWeight: o.xgWeight });
-        fit = T.fitLeague(fm, { priorMatches: o.priorMatches || 14 });
+        const priorMean = typeof o.priorMean === 'function' ? o.priorMean(g.season) : o.priorMean;
+        fit = T.fitLeague(fm, { priorMatches: o.priorMatches || 14, priorMean });
+        fitT = o.totalPriorMatches ? T.fitLeague(fm, { priorMatches: o.totalPriorMatches, priorMean }) : null;
         fitAt = g.ts;
       }
       if (!fit || !fit.ok) continue;
       const pr = T.predictMatch(fit, g.h, g.a, {});
       if (!pr.ok) continue;
-      rows.push({ id: g.id, ts: g.ts, h: g.h, a: g.a, hg: g.hg, ag: g.ag, lh: pr.lambdaHome, la: pr.lambdaAway, muH: fit.muH, muA: fit.muA });
+      let lh = pr.lambdaHome, la = pr.lambdaAway;
+      if (fitT && fitT.ok) { const pt = T.predictMatch(fitT, g.h, g.a, {}); if (pt.ok) ({ lh, la } = rescaleTotal(lh, la, pt.lambdaTotal)); }
+      rows.push({ id: g.id, ts: g.ts, h: g.h, a: g.a, hg: g.hg, ag: g.ag, lh, la, muH: fit.muH, muA: fit.muA });
     }
     return rows;
   }
@@ -563,7 +605,8 @@
     kelly, settle, nameSim, matchFd, dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
     poissonPmf, scoreMatrix, summarize, lineParts, lineResult, betResult, betProbs, betScore, evaluate,
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
-    rps, outcome1x2, goalsRps, ece, backtestLeague, goalsSkill, marketSkill
+    rps, outcome1x2, goalsRps, ece, backtestLeague, goalsSkill, marketSkill,
+    FT_PRIOR, NEWCOMER_PRIOR, newcomerPriorMean, classifyNewcomer, rescaleTotal
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoFT = api;

@@ -285,6 +285,8 @@ details.guide th{color:var(--muted);font-weight:600}
     <ul>
       <li><b>Poisson con ataque y defensa</b> de cada equipo, ajustado con toda la liga (temporada actual y anterior, con más peso a lo reciente). De ahí salen los goles esperados de cada equipo y la matriz de marcadores; de la matriz, todos los mercados.</li>
       <li><b>Corrección Dixon-Coles</b>: ajusta los marcadores bajos (0-0, 1-0, 0-1, 1-1). Se calcula por liga.</li>
+      <li><b>Dos ajustes</b>: quién es mejor (1X2, hándicap) se calcula con poca regresión a la media, y el total de goles con más. Probado con ~18.000 partidos de 38 ligas contra las cuotas de cierre: acierta mejor que un solo ajuste.</li>
+      <li><b>Ascendidos y descendidos</b>: un equipo que no jugó la temporada anterior en la liga no arranca como «equipo promedio». Si subió, parte más débil; si bajó, más fuerte. Con cada partido pesan más sus resultados reales. En la ficha dice «(ascendido)» o «(descendido)».</li>
       <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
       <li>Cada liga usa la combinación (con o sin xG, con o sin corrección) que <b>mejor acertó</b> en su historial.</li>
     </ul>
@@ -589,10 +591,49 @@ async function refitProxy(leagues){
   XGCOEF=F.fitProxy(samples);await DB.set('xgcoef',XGCOEF);
 }
 
+/* ---------------- recién llegados (ascendidos y descendidos) ---------------- */
+// NC[lid] = {season, cls:{equipo:'up'|'down'}}. Un equipo que no jugó la temporada anterior de la liga arranca
+// con el nivel típico de un ascendido (más débil) o de un descendido (más fuerte), no con el de un equipo promedio.
+let NC=null,NCT=null;
+async function loadNc(){if(!NC){NC=(await DB.get('nc'))||{};NCT=(await DB.get('ncTeams'))||{}}return NC}
+function ncMean(lid,season){const x=NC&&NC[lid];return x&&String(x.season)===String(season)?F.newcomerPriorMean(x.cls):null}
+async function updateNewcomers(leagues,maxCalls){
+  await loadNc();
+  const todo=[];
+  for(const L of leagues){
+    const cur=new Set(),prev=new Set();
+    for(const r of L.raw){if(String(r[6])===String(L.season)){cur.add(r[2]);cur.add(r[3])}else if(String(r[6])===String(L.season-1)){prev.add(r[2]);prev.add(r[3])}}
+    if(prev.size<6||cur.size<6){delete NC[L.lid];continue}
+    const nw=[...cur].filter(t=>!prev.has(t));
+    NC[L.lid]={season:L.season,teams:nw,cls:{}};
+    for(const t of nw)if(!((t+':'+L.season) in NCT))todo.push({t,L});
+  }
+  let calls=0;
+  await pool(todo.slice(0,maxCalls).map(({t,L})=>async()=>{
+    try{const j=await api('/standings',{team:t,season:L.season-1});calls++;NCT[t+':'+L.season]=F.classifyNewcomer(j.response,t,L.lid)}
+    catch(e){if(e.fatal)throw e}
+  }));
+  for(const L of leagues){const x=NC[L.lid];if(!x||!x.teams)continue;
+    for(const t of x.teams){const k=t+':'+L.season;if(!(k in NCT))continue;const c=NCT[k]===null?'up':NCT[k];if(c==='up'||c==='down')x.cls[t]=c}}
+  await DB.set('nc',NC);await DB.set('ncTeams',NCT);
+  return calls;
+}
+
 /* ---------------- modelo por liga ---------------- */
+// Dos ajustes con los mismos partidos: uno para la forma del partido (quién es mejor) y otro para el total de goles.
 function fitLeagueAt(games,cutoff,season,cfg){
   const fm=T.buildFitMatches(games,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:240,xgWeight:cfg&&cfg.xg?0.5:0});
-  return T.fitLeague(fm,{priorMatches:14});
+  const priorMean=games.length?ncMean(games[0].leagueId,season):null;
+  const fit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.shape,priorMean});
+  if(fit.ok)fit.totalFit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.total,priorMean});
+  return fit;
+}
+function predictFt(fit,h,a){
+  const pr=T.predictMatch(fit,h,a,{});
+  if(!pr.ok||!fit.totalFit||!fit.totalFit.ok)return pr;
+  const pt=T.predictMatch(fit.totalFit,h,a,{});if(!pt.ok)return pr;
+  const r=F.rescaleTotal(pr.lambdaHome,pr.lambdaAway,pt.lambdaTotal);
+  return Object.assign({},pr,{lambdaHome:r.lh,lambdaAway:r.la,lambdaTotal:r.lh+r.la});
 }
 function leagueStats(games){
   const n=games.length;let g=0,h=0,d=0,b=0,o=0;
@@ -612,7 +653,7 @@ function leagueCfg(lid,games,season){
   if(c)return c;
   const fit=fitLeagueAt(games,Date.now()/1000,season,{xg:false});
   if(!fit.ok)return {xg:false,rho:-0.06};
-  const rows=[];for(const g of games){const p=T.predictMatch(fit,g.h,g.a,{});if(p.ok)rows.push({lh:p.lambdaHome,la:p.lambdaAway,hg:g.hg,ag:g.ag});}
+  const rows=[];for(const g of games){const p=predictFt(fit,g.h,g.a);if(p.ok)rows.push({lh:p.lambdaHome,la:p.lambdaAway,hg:g.hg,ag:g.ag});}
   return {xg:false,rho:F.fitRho(rows).rho};
 }
 
@@ -689,6 +730,8 @@ async function updateAll(){
     // 3) xG (de la API o aproximado con los tiros).
     const budget=Number(LS.get('tg:xgBudget',150));
     try{await fetchXg([...leagues.values()],budget,t=>{say(t);});await refitProxy([...leagues.values()])}catch(e){if(e.fatal)throw e;warn.push('xG: '+e.message)}
+    // Recién llegados: una consulta por equipo nuevo, una sola vez (queda guardado).
+    try{say('Revisando ascendidos y descendidos…');const n=await updateNewcomers([...leagues.values()],400);if(n)say(`Ascendidos y descendidos: ${n} equipos revisados`)}catch(e){if(e.fatal)throw e;warn.push('Ascendidos: '+e.message)}
     prog(5,8);
     // 4) Análisis de cada partido con cuotas.
     say('Calculando mercados…');
@@ -708,12 +751,13 @@ async function updateAll(){
           const a=Object.assign({},f,{readAt:Date.now()});
           if(!fit||!fit.ok)a.reason='La liga tiene pocos partidos en la API para calcular.';
           else{
-            const pr=T.predictMatch(fit,f.hid,f.aid,{});
+            const pr=predictFt(fit,f.hid,f.aid);
             if(!pr.ok)a.reason=/no tiene partidos previos/.test(pr.reason)?'Un equipo no tiene partidos previos en esta liga.':'Todavía hay pocos partidos de estos equipos.';
             else{
               const o=F.parseOdds(odds[d].get(String(f.id)));
               a.lam={home:pr.lambdaHome,away:pr.lambdaAway,rho:cfg.rho};a.xg=!!cfg.xg;
               a.n={home:pr.nHome,away:pr.nAway};a.ls=ls;
+              const nc=NC&&NC[lid]&&String(NC[lid].season)===String(fxs[0].season)?NC[lid].cls:{};a.nc={home:nc[f.hid]||null,away:nc[f.aid]||null};
               a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
               if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
               else{
@@ -759,7 +803,7 @@ async function updateAll(){
           const ck=L.lid+':'+Math.floor(r[1]/86400);
           let fit=fitCache.get(ck);if(!fit){fit=fitLeagueAt(games,r[1]-3600,r[6],cfg);fitCache.set(ck,fit)}
           if(!fit.ok)continue;
-          const pr=T.predictMatch(fit,r[2],r[3],{});if(!pr.ok)continue;
+          const pr=predictFt(fit,r[2],r[3]);if(!pr.ok)continue;
           const s=F.summarize(F.scoreMatrix(pr.lambdaHome,pr.lambdaAway,cfg.rho));
           reg[id]={lid:L.lid,ts:r[1],p1x2:[s.home,s.draw,s.away].map(v=>+v.toFixed(4)),m1x2:m1x2.map(v=>+v.toFixed(4)),hg:r[4],ag:r[5]};
         }
@@ -897,6 +941,7 @@ async function loadFd(){
   return FD;
 }
 async function computePrecision(leagues,reg,status){
+  await loadNc();
   const fd=await loadFd();
   const names=LS.get('tg:lnames',{})||{};
   for(const d of Object.values(state.days))for(const f of (d&&d.fx)||[])names[f.lid]=[f.ln,f.lc];
@@ -912,8 +957,9 @@ async function computePrecision(leagues,reg,status){
     if(games.length<60)continue;
     // Variantes: con o sin xG (si la liga tiene xG en al menos la mitad de los partidos), con o sin corrección.
     const withXg=games.filter(g=>g.xh!=null).length>=games.length*0.5;
-    const variants=[{xg:false,rows:F.backtestLeague(games,T,{xgWeight:0})}];
-    if(withXg)variants.push({xg:true,rows:F.backtestLeague(games,T,{xgWeight:0.5})});
+    const bo={priorMatches:F.FT_PRIOR.shape,totalPriorMatches:F.FT_PRIOR.total,priorMean:s=>ncMean(L.lid,s)};
+    const variants=[{xg:false,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0},bo))}];
+    if(withXg)variants.push({xg:true,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0.5},bo))});
     let best=null;
     for(const v of variants){
       if(v.rows.length<20)continue;
@@ -1120,6 +1166,11 @@ async function renderMatch(id){
   h+=`<p class="small" style="margin-top:20px">Cuota = la mejor entre las casas que informa API-Football. ▲▼ = cómo se movió desde la primera lectura. Antes de apostar, fijate que tu casa pague igual o más.</p>`;
   body.innerHTML=h;
 }
+const ncTag=c=>c==='up'?' (ascendido)':c==='down'?' (descendido)':'';
+function ncNote(a){
+  const t=[[a.hn,a.nc&&a.nc.home],[a.an,a.nc&&a.nc.away]].filter(x=>x[1]).map(([n,c])=>esc(n)+(c==='up'?' subió: el modelo lo arranca más débil que un equipo promedio':' bajó: el modelo lo arranca más fuerte que un equipo promedio'));
+  return t.length?'<div class="small">'+t.join(' · ')+'. Con cada partido pesan más sus resultados reales.</div>':'';
+}
 function studyHtml(a){
   const m=F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho), s=F.summarize(m), lg=a.ls;
   const mx=Math.max(a.lam.home,a.lam.away,2.5);
@@ -1127,7 +1178,7 @@ function studyHtml(a){
   h+=`<div class="box"><h3>Goles esperados <button class="info" data-tip="lam">i</button></h3>
     <div class="lamrow"><span class="nm">${esc(a.hn)}</span><span class="bar"><i style="width:${a.lam.home/mx*100}%;background:var(--acc)"></i></span><b>${dec(a.lam.home)}</b></div>
     <div class="lamrow"><span class="nm">${esc(a.an)}</span><span class="bar"><i style="width:${a.lam.away/mx*100}%;background:var(--info)"></i></span><b>${dec(a.lam.away)}</b></div>
-    <div class="small">En total esperamos ~${dec(a.lam.home+a.lam.away)} goles. Datos: ${esc(a.hn)} ${a.n.home} partidos · ${esc(a.an)} ${a.n.away} partidos.</div></div>`;
+    <div class="small">En total esperamos ~${dec(a.lam.home+a.lam.away)} goles. Datos: ${esc(a.hn)} ${a.n.home} partidos${ncTag(a.nc&&a.nc.home)} · ${esc(a.an)} ${a.n.away} partidos${ncTag(a.nc&&a.nc.away)}.</div>${ncNote(a)}</div>`;
   h+=`<div class="box"><h3>Resultado del partido</h3><div class="res3"><div style="width:${s.home*100}%;background:var(--acc)">${pct(s.home,0)}</div><div style="width:${s.draw*100}%;background:#9aa4ae">${pct(s.draw,0)}</div><div style="width:${s.away*100}%;background:var(--info)">${pct(s.away,0)}</div></div><div class="legend"><span>${esc(a.hn)}</span><span>Empate</span><span>${esc(a.an)}</span></div></div>`;
   if(lg){
     const row=(n,l,v,isPct)=>{const d=v-l;const c=Math.abs(d)<(isPct?0.02:0.1)?'c-d':d>0?'c-g':'c-b';return `<tr><td>${n}</td><td class="mono muted">${isPct?pct(l):dec(l)}</td><td class="mono"><b>${isPct?pct(v):dec(v)}</b></td><td class="mono ${c}">${isPct?(d>0?'+':'−')+Math.abs(d*100).toFixed(1)+' pp':(d>0?'+':'−')+Math.abs(d).toFixed(2)}</td></tr>`};
