@@ -381,7 +381,7 @@
       if (!fit || !fit.ok) continue;
       const pr = T.predictMatch(fit, g.h, g.a, {});
       if (!pr.ok) continue;
-      rows.push({ id: g.id, ts: g.ts, hg: g.hg, ag: g.ag, lh: pr.lambdaHome, la: pr.lambdaAway, muH: fit.muH, muA: fit.muA });
+      rows.push({ id: g.id, ts: g.ts, h: g.h, a: g.a, hg: g.hg, ag: g.ag, lh: pr.lambdaHome, la: pr.lambdaAway, muH: fit.muH, muA: fit.muA });
     }
     return rows;
   }
@@ -496,8 +496,47 @@
     return { n, skill: 1 - m / k, rpsModel: m / n, rpsMarket: k / n };
   }
 
+  /* ------------------------------------------------------------------ */
+  /* 7. Cuotas históricas de football-data.co.uk                        */
+  /* ------------------------------------------------------------------ */
+  // Nombres de equipos comparables entre fuentes («Ind. Rivadavia» ~ «Independiente Rivadavia»).
+  const STOP = new Set(['fc', 'cf', 'afc', 'sc', 'ac', 'cd', 'ca', 'club', 'de', 'del', 'la', 'el', 'the', 'fk', 'sk', 'if', 'bk', 'us', 'as', 'ssc', 'sv', 'vfl', 'vfb', 'tsg', 'rc', 'rcd', 'ud', 'sd', 'cp', 'ec', 'se', 'cr', 'atletico', 'atl']);
+  function nameTokens(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(t => t && !STOP.has(t));
+  }
+  function nameSim(a, b) {
+    const A = nameTokens(a), B = nameTokens(b);
+    if (!A.length || !B.length) return 0;
+    let hit = 0;
+    for (const x of A) if (B.some(y => y === x || (x.length >= 3 && y.length >= 3 && (y.startsWith(x) || x.startsWith(y))))) hit++;
+    return hit / Math.max(A.length, B.length);
+  }
+  // Empareja filas del backtest (id, ts, h, a, hg, ag) con partidos de football-data
+  // ([día, gl, gv, pL, pE, pV, local, visitante]): misma fecha (±1 día por el huso horario) y mismo resultado;
+  // si hay más de uno, deciden los nombres. Devuelve Map(id -> [pL, pE, pV]).
+  function matchFd(rows, fd, names) {
+    const byDay = new Map();
+    (fd || []).forEach((r, i) => { if (!byDay.has(r[0])) byDay.set(r[0], []); byDay.get(r[0]).push(i); });
+    const used = new Set(), out = new Map();
+    for (const r of rows || []) {
+      const d = Math.floor(r.ts / 86400), cand = [];
+      for (const k of [d, d - 1, d + 1]) for (const i of byDay.get(k) || []) if (!used.has(i) && fd[i][1] === r.hg && fd[i][2] === r.ag) cand.push(i);
+      let pick = null;
+      const hn = names && names[r.h], an = names && names[r.a];
+      if (hn && an) {
+        let best = -1, second = -1;
+        for (const i of cand) { const sc = nameSim(hn, fd[i][6]) + nameSim(an, fd[i][7]); if (sc > best) { second = best; best = sc; pick = i; } else if (sc > second) second = sc; }
+        if (best < 0.5 || best - second < 0.25) pick = cand.length === 1 && best >= 0.5 ? cand[0] : null;
+      } else if (cand.length === 1) pick = cand[0];
+      if (pick === null) continue;
+      used.add(pick);
+      out.set(r.id, [fd[pick][3] / 1000, fd[pick][4] / 1000, fd[pick][5] / 1000]);
+    }
+    return out;
+  }
+
   const api = {
-    dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
+    nameSim, matchFd, dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
     poissonPmf, scoreMatrix, summarize, lineParts, lineResult, betResult, betProbs, betScore, evaluate,
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
     rps, outcome1x2, goalsRps, ece, backtestLeague, goalsSkill, marketSkill

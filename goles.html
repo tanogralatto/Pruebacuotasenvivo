@@ -148,6 +148,19 @@ svg text{fill:var(--muted);font:11px var(--mono)}
 .fxw .fx{flex:1;min-width:0}
 .model{font-size:12px;color:var(--muted);margin-top:4px}
 .more-leagues{display:block;width:100%;margin:14px 0}
+.filters{margin:10px 0}
+.fl{margin-top:12px}
+.fl-h{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
+.fl-h .mono{color:var(--acc);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--acc)}
+#slot button{padding:7px 12px;font-size:14px}
+details.guide{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:6px 0 12px}
+details.guide summary{cursor:pointer;font-weight:700}
+details.guide h3{font-size:15px;margin:16px 0 6px;color:var(--acc)}
+details.guide p,details.guide li{font-size:14px;color:#c7d0d9}
+details.guide table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+details.guide th,details.guide td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+details.guide th{color:var(--muted);font-weight:600}
 </style>
 </head>
 <body>
@@ -166,16 +179,78 @@ svg text{fill:var(--muted);font:11px var(--mono)}
 <!-- ============ PARTIDOS ============ -->
 <section id="v-dash" class="hidden">
   <h1>Partidos</h1>
+  <details class="guide" id="guide">
+    <summary>📘 Cómo funciona la app (y en qué se diferencia de Alpha)</summary>
+
+    <h3>Qué hace</h3>
+    <p>Busca apuestas donde la cuota de las casas <b>paga más de lo que debería</b> según nuestro modelo. Cubre todas las ligas que trae API-Football, con mercados de partido completo: goles (más/menos, ambos marcan), 1X2, doble oportunidad y hándicap asiático. La estrategia de +0,5 goles en el 1T sigue en la otra app.</p>
+
+    <h3>Uso diario</h3>
+    <ol>
+      <li>Tocá <b>↻ Actualizar todo</b> una o dos veces por día (a la mañana y antes de los partidos de la tarde/noche).</li>
+      <li>Filtrá: <b>Edge mínimo</b> (empezá por 55+), <b>Horario</b> y, si querés, <b>Solo ligas en verde</b>.</li>
+      <li>Tocá un partido. En cada grupo de mercados mirá la primera fila: es la de mayor <b>Score</b>.</li>
+      <li>Apostá solo si el grupo dice <b>✓</b> (la liga está aprobada para ese tipo de mercado) y tu casa paga igual o más que la cuota que muestra la app.</li>
+      <li>Guardá con la <b>☆</b> los que sigas: aparecen en <b>★ Favoritos</b>.</li>
+    </ol>
+
+    <h3>Qué significa cada número</h3>
+    <ul>
+      <li><b>Cuota</b>: la mejor entre las casas (descarta las que se alejan mucho del resto, casi siempre cuotas viejas). ▲▼ = cómo se movió desde la primera lectura.</li>
+      <li><b>Cuota justa</b>: 1 ÷ la probabilidad del modelo. Si la casa paga más, hay valor.</li>
+      <li><b>EV</b>: probabilidad del modelo × cuota − 1. +10% = en promedio ganarías $10 por cada $100, si el modelo acierta la probabilidad.</li>
+      <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras). 0 si no hay valor.</li>
+      <li><b>Edge del partido (0-100)</b>: el número de la lista. Combina el mejor score de los dos grupos de mercados con más valor. 65+ = buenas oportunidades.</li>
+    </ul>
+
+    <h3>Cómo calcula la probabilidad (el modelo)</h3>
+    <ul>
+      <li><b>Poisson con ataque y defensa</b> de cada equipo, ajustado con toda la liga (temporada actual y anterior, con más peso a lo reciente). De ahí salen los goles esperados de cada equipo y la matriz de marcadores; de la matriz, todos los mercados.</li>
+      <li><b>Corrección Dixon-Coles</b>: ajusta los marcadores bajos (0-0, 1-0, 0-1, 1-1). Se calcula por liga.</li>
+      <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
+      <li>Cada liga usa la combinación (con o sin xG, con o sin corrección) que <b>mejor acertó</b> en su historial. Lo ves en el estudio del partido («Modelo: …») y en Precisión («usa xG»).</li>
+    </ul>
+
+    <h3>Precisión: en qué ligas confiar</h3>
+    <ul>
+      <li><b>Habilidad 1X2</b>: cuánto mejor acierta el modelo el ganador que las casas sin margen. Usa cuotas de cierre históricas de <b>football-data.co.uk</b> (unas 40 ligas, dos temporadas) y las cuotas que la app guarda en cada actualización (todas las ligas, se va llenando).</li>
+      <li><b>Habilidad en goles</b>: cuánto mejor acierta la cantidad de goles que decir siempre el promedio de la liga. Sale del historial, así que ya tiene datos en todas las ligas.</li>
+      <li><b>ECE</b>: calibración. Si dice 60%, ¿pasa el 60% de las veces? Menos de 3% es bueno.</li>
+      <li><b>Verde</b> = acierta mejor → podés usar ese tipo de mercado en esa liga. <b>Gris</b> = no. <b>⏳</b> = menos de 30 partidos: todavía puede ser suerte.</li>
+      <li>Todo se juzga con lo que el modelo sabía <b>antes</b> de cada partido: nunca mira el resultado.</li>
+    </ul>
+
+    <h3>Actualizar todo, paso a paso</h3>
+    <p>Partidos y cuotas de hoy y mañana → historial de cada liga (la primera vez en cada dispositivo es lo que más consume; después se renueva una vez por día) → xG que falta (hasta 150 consultas por vez, se cambia en ⚙︎) → mercados y edge → cuotas de los últimos 7 días (la API las borra después de una semana) → resultados → Precisión → se guarda en tu cuenta.</p>
+
+    <h3>Varios dispositivos</h3>
+    <p>Entrá con <b>☁︎</b> en cada uno. Lo que actualizás en uno (partidos, Precisión, xG, Favoritos) aparece en los demás sin gastar consultas. Para actualizar desde un dispositivo, cargá tu clave de API en ⚙︎.</p>
+
+    <h3>Diferencias con Alpha</h3>
+    <table>
+      <tr><th></th><th>Alpha</th><th>TanoApp Goles</th></tr>
+      <tr><td>Modelo</td><td>Poisson con ataque/defensa y «correlación» (Dixon-Coles), entrenado con ~9 años. No publica la fórmula.</td><td>Poisson con ataque/defensa + Dixon-Coles por liga + xG (de la API o aproximado). Temporada actual y anterior.</td></tr>
+      <tr><td>Ajustes extra</td><td>Clima (altitud, temperatura, viento…)</td><td>No usa clima.</td></tr>
+      <tr><td>Ligas</td><td>Las que elige Alpha</td><td>Todas las que trae tu API-Football</td></tr>
+      <tr><td>Edge y score</td><td>Fórmula propia (suma los EV de todos los mercados con valor, pesando las cuotas bajas)</td><td>Fórmula propia parecida: combina los dos grupos con más valor (no suma líneas casi iguales para no inflar el número). Los números no son comparables 1 a 1.</td></tr>
+      <tr><td>Cuotas</td><td>«Lectura» en Inicial / 4 h / 1 h, sellada</td><td>La mejor cuota de cada actualización; ▲▼ contra la primera lectura.</td></tr>
+      <tr><td>Precisión</td><td>Solo con lecturas guardadas desde junio 2026</td><td>Historial (goles) + cuotas de cierre históricas y guardadas (1X2). Tiene datos desde el primer día.</td></tr>
+      <tr><td>Estudio</td><td>Distribución de goles, timeline por minuto, clima</td><td>Goles esperados, resultado, contexto de liga, matriz de marcadores y ratings.</td></tr>
+      <tr><td>Costo</td><td>Tokens</td><td>Tus consultas de API-Football</td></tr>
+    </table>
+    <p class="small">Ninguna de las dos garantiza ganancia: un EV positivo solo sirve si el modelo acierta en esa liga, y eso es lo que mide Precisión.</p>
+  </details>
   <div class="row">
     <div class="seg"><button data-day="0">Hoy</button><button data-day="1">Mañana</button><button data-day="fav">★ Favoritos</button></div>
   </div>
   <div class="upd"><span class="small" id="updWhen">Todavía no se actualizó.</span><button class="info" data-tip="update">i</button><button class="btn pri" id="btnUpdate">↻ Actualizar todo</button></div>
   <div class="prog hidden" id="uProg"><i></i></div>
   <div class="status" id="uStatus"></div>
-  <div class="tools">
-    <input type="search" id="q" placeholder="Buscar equipo o liga">
-    <select id="minEdge"><option value="0">Todos</option><option value="35">Edge 35+</option><option value="65">Edge 65+</option></select>
-    <label class="small row" style="gap:6px"><input type="checkbox" id="onlyGreen" style="accent-color:var(--acc)"> Solo ligas en verde</label>
+  <div class="filters box">
+    <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
+    <div class="fl"><div class="fl-h"><b>Edge mínimo</b> <button class="info" data-tip="edge">i</button> <span class="mono" id="minEdgeVal">0+</span></div><input type="range" id="minEdge" min="0" max="95" step="5" value="0"></div>
+    <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
+    <label class="small row" style="gap:6px;margin-top:10px"><input type="checkbox" id="onlyGreen" style="accent-color:var(--acc)"> Solo ligas en verde (donde el modelo acierta)</label>
   </div>
   <div id="dList"></div>
 </section>
@@ -310,23 +385,25 @@ async function allPages(path,params,maxPages=150){
 const DONE=['FT','AET','PEN'];
 async function seasonGames(lid,season,isCurrent){
   const k='lg:'+lid+':'+season, c=await DB.get(k), ttl=isCurrent?20*3600e3:30*864e5;
-  if(c&&Array.isArray(c.g)&&Date.now()-c.ts<ttl)return c.g;
+  if(c&&Array.isArray(c.g)&&Date.now()-c.ts<ttl)return c;
   try{
     const j=await api('/fixtures',{league:lid,season,status:'FT-AET-PEN',timezone:TZ});
-    const g=[];
+    const g=[],t={};
     for(const f of j.response||[]){
       const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
       const hg=Number.isInteger(ft.home)?ft.home:gl.home, ag=Number.isInteger(ft.away)?ft.away:gl.away;
       if(!DONE.includes(f.fixture.status.short)||!Number.isInteger(hg)||!Number.isInteger(ag))continue;
       g.push([f.fixture.id,Math.floor(new Date(f.fixture.date).getTime()/1000),f.teams.home.id,f.teams.away.id,hg,ag,season]);
+      t[f.teams.home.id]=f.teams.home.name;t[f.teams.away.id]=f.teams.away.name;
     }
-    await DB.set(k,{ts:Date.now(),g});
-    return g;
-  }catch(e){if(e.fatal)throw e;if(c&&Array.isArray(c.g))return c.g;await DB.set(k,{ts:Date.now(),g:[]});return []}
+    const entry={ts:Date.now(),g,t};
+    await DB.set(k,entry);
+    return entry;
+  }catch(e){if(e.fatal)throw e;if(c&&Array.isArray(c.g))return c;const empty={ts:Date.now(),g:[],t:{}};await DB.set(k,empty);return empty}
 }
 async function loadLeague(lid,season){
   const [cur,prev]=await Promise.all([seasonGames(lid,season,true),seasonGames(lid,Number(season)-1,false)]);
-  return {lid,season,raw:[...prev,...cur]};
+  return {lid,season,raw:[...prev.g,...cur.g],names:Object.assign({},prev.t||{},cur.t||{})};
 }
 // xG de cada partido: [xg local, xg visitante, fuente (1 = API, 2 = aproximado, 0 = sin datos), tiros…]
 let XG=null, XGCOEF=null;
@@ -534,7 +611,7 @@ async function knownLeagues(loaded){
     if(out.has(lid))continue;
     const cur=await DB.get('lg:'+lid+':'+season),prev=await DB.get('lg:'+lid+':'+(season-1));
     const raw=[...(prev&&prev.g||[]),...(cur&&cur.g||[])];
-    if(raw.length)out.set(lid,{lid,season,raw});
+    if(raw.length)out.set(lid,{lid,season,raw,names:Object.assign({},prev&&prev.t||{},cur&&cur.t||{})});
   }
   return out;
 }
@@ -602,7 +679,15 @@ $('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
 
 /* ---------------- precisión ---------------- */
+// Cuotas de cierre históricas (football-data.co.uk), en data/fd-1x2.json del repo; se renuevan cada semana.
+let FD=null;
+async function loadFd(){
+  if(FD)return FD;
+  try{const r=await fetch('./data/fd-1x2.json',{cache:'no-cache'});FD=r.ok?await r.json():{leagues:{}}}catch(e){FD={leagues:{}}}
+  return FD;
+}
 async function computePrecision(leagues,reg,status){
+  const fd=await loadFd();
   const names=LS.get('tg:lnames',{})||{};
   for(const d of Object.values(state.days))for(const f of (d&&d.fx)||[])names[f.lid]=[f.ln,f.lc];
   LS.set('tg:lnames',names);
@@ -610,7 +695,7 @@ async function computePrecision(leagues,reg,status){
   // solo se reemplazan las ligas que este dispositivo pudo recalcular.
   const prev=state.prec||{};
   const out={ts:Date.now(),leagues:Object.assign({},prev.leagues||{}),cfg:Object.assign({},prev.cfg||{})};
-  const allRows=[];let i=0;
+  const allRows=[],allMarket=[];let i=0;
   for(const L of leagues.values()){
     i++;if(i%5===0){status&&status(`Precisión: ${i} de ${leagues.size} ligas…`);await sleep(0)}
     const games=modelGames(L);
@@ -628,19 +713,29 @@ async function computePrecision(leagues,reg,status){
     if(!best)continue;
     out.cfg[L.lid]={xg:best.xg,rho:best.rho};
     const gs=F.goalsSkill(best.pr);
-    const settled=Object.values(reg).filter(r=>r.lid===L.lid&&Number.isFinite(r.hg)&&r.m1x2);
-    const ms=F.marketSkill(settled);
+    // 1X2 contra las casas: lo guardado por la app antes de cada partido + cuotas de cierre históricas.
+    const mrows=[],seen=new Set();
+    for(const [id,r] of Object.entries(reg))if(r.lid===L.lid&&Number.isFinite(r.hg)&&r.m1x2){mrows.push(r);seen.add(String(id))}
+    let nFd=0;
+    const fdl=fd.leagues&&fd.leagues[L.lid];
+    if(fdl){
+      const m=F.matchFd(best.pr,fdl,L.names);
+      for(const r of best.pr){const q=m.get(r.id);if(q&&!seen.has(String(r.id))){mrows.push({p1x2:r.p1x2,m1x2:q,hg:r.hg,ag:r.ag});nFd++}}
+    }
+    for(const r of mrows)allMarket.push(r);
+    const ms=F.marketSkill(mrows);
     const e=F.ece(best.pr.slice(-500));
     const nm=names[L.lid]||[('Liga '+L.lid),''];
     if(nm[0].startsWith('Liga ')&&prev.leagues&&prev.leagues[L.lid])nm[0]=prev.leagues[L.lid].name,nm[1]=prev.leagues[L.lid].country;
-    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,rho:best.rho};
+    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,rho:best.rho,fd:nFd};
     for(const r of best.pr.slice(-400))allRows.push(r);
   }
-  const settledAll=Object.values(reg).filter(r=>Number.isFinite(r.hg)&&r.m1x2);
   const g=F.goalsSkill(allRows),c=F.ece(allRows);
   // Si este dispositivo tiene menos ligas que la precisión anterior, el resumen de goles y calibración se conserva.
   const keepOld=prev.summary&&prev.summary.goals&&prev.summary.goals.n>g.n;
-  out.summary={market:F.marketSkill(settledAll),goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,leagues:Object.keys(out.leagues).length};
+  // Ligas que este dispositivo no recalculó: su 1X2 se conserva de la precisión anterior.
+  const mk=F.marketSkill(allMarket),keepMk=prev.summary&&prev.summary.market&&prev.summary.market.n>mk.n;
+  out.summary={market:keepMk?prev.summary.market:mk,goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,leagues:Object.keys(out.leagues).length};
   state.prec=out;await DB.set('prec',out);
 }
 function leagueStatus(lid){
@@ -692,9 +787,18 @@ async function renderDash(){
     fx=d.fx;
   }
   const q=$('#q').value.trim().toLowerCase(), minE=Number($('#minEdge').value), onlyGreen=$('#onlyGreen').checked, fv=favs();
+  const lgSel=$('#lg').value, slot=LS.get('tg:slot','all');
+  $('#minEdgeVal').textContent=minE+'+';
+  $$('#slot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===slot));
+  // Lista de ligas del día para el filtro.
+  const lgs=new Map();for(const a of fx)if(a.rows)lgs.set(String(a.lid),a.lc+' · '+a.ln);
+  $('#lg').innerHTML='<option value="">Todas las ligas</option>'+[...lgs].sort((x,y)=>x[1].localeCompare(y[1])).map(([id,n])=>`<option value="${id}"${id===lgSel?' selected':''}>${esc(n)}</option>`).join('');
+  const inSlot=a=>{if(slot==='all')return true;const h=Number(fmtTime(a.iso).slice(0,2));return slot==='m'?h<12:slot==='t'?h>=12&&h<19:h>=19};
   const groups=new Map();
   for(const a of fx){
     if(q&&!(a.hn+' '+a.an+' '+a.ln+' '+a.lc).toLowerCase().includes(q))continue;
+    if(lgSel&&String(a.lid)!==lgSel)continue;
+    if(!inSlot(a))continue;
     const allowed=onlyGreen?allowedGroups(a.lid):null;
     if(onlyGreen&&!allowed.size)continue;
     const e=a.rows?edgeOf(a,allowed):0;
@@ -858,7 +962,8 @@ const TIPS={
   ev:['EV','Probabilidad del modelo × cuota − 1. Cuánto ganarías en promedio por cada $100 si apostaras muchas veces así. Confiá en él solo en las ligas en verde.'],
   score:['Score (0-100)','Ordena las apuestas: sube con el EV y premia las cuotas bajas, que son más seguras. Verde (65+) = de las mejores.'],
   lam:['Goles esperados','Cuántos goles esperamos de cada equipo según el ataque y la defensa de los dos en esta liga (temporada actual y anterior, con más peso a lo reciente). Si la liga usa xG, mezcla goles con xG.'],
-  skill1x2:['Habilidad 1X2','Cuánto mejor acierta el modelo el ganador (local, empate, visitante) que las casas sin margen, en los mismos partidos. Positivo = mejor que las casas. Usa cuotas de antes de cada partido, guardadas en cada actualización.'],
+  skill1x2:['Habilidad 1X2','Cuánto mejor acierta el modelo el ganador (local, empate, visitante) que las casas sin margen, en los mismos partidos. Positivo = mejor que las casas. Usa las cuotas de cierre históricas de football-data.co.uk (unas 40 ligas, dos temporadas) más las cuotas que la app guarda en cada actualización (todas las ligas).'],
+  slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
   skillGoals:['Habilidad en goles','Cuánto mejor acierta el modelo la cantidad de goles de cada partido que decir siempre el promedio de la liga. Positivo = distingue partidos de muchos y pocos goles.'],
   ece:['Calibración (ECE)','Si el modelo dice 60%, ¿pasa el 60% de las veces? Es la diferencia promedio. Menos de 3% es bueno.'],
   table:['Cómo leer la tabla','Habilidad 1X2 = ganador, doble oportunidad y hándicap. Habilidad en goles = más/menos goles y ambos marcan. Verde = podés usar esos mercados en esa liga. Lecturas = partidos que respaldan el número de goles. «usa xG» = en esa liga el modelo acierta mejor mezclando xG.'],
@@ -897,7 +1002,11 @@ function go(){
 window.addEventListener('hashchange',go);
 $$('.seg [data-day]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.dataset.day==='1'?'#/manana':b.dataset.day==='fav'?'#/favoritos':'#/hoy'}));
 $('#btnUpdate').addEventListener('click',updateAll);
-['q','minEdge','onlyGreen'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',()=>{showAllLeagues=false;renderDash()}));
+['q','minEdge','onlyGreen','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'||id==='minEdge'?'input':'change',()=>{showAllLeagues=false;if(id==='minEdge')LS.set('tg:minEdge',$('#minEdge').value);renderDash()}));
+$('#minEdge').value=LS.get('tg:minEdge','0');
+$('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
+$('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
+if(LS.get('tg:guide',true))$('#guide').open=true;
 $('#dList').addEventListener('click',e=>{if(e.target.closest('#btnMoreLeagues')){showAllLeagues=true;renderDash()}});
 $('#pBody').addEventListener('input',e=>{if(e.target.id==='pq'){precQ=e.target.value;renderPrec().then(()=>{const i=$('#pq');i.focus();i.setSelectionRange(i.value.length,i.value.length)})}});
 $('#pBody').addEventListener('change',e=>{if(e.target.id==='psort'){precSort=e.target.value;renderPrec()}});

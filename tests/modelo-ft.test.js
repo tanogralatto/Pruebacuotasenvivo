@@ -150,3 +150,21 @@ test('xG: lee el xG de la API y los tiros; el aproximado sale de los tiros', () 
   const k = F.fitProxy(samples);
   assert.ok(k.fitted && Math.abs(k.c - 0.2) < 0.05 && Math.abs(k.a - 0.05) < 0.03, JSON.stringify(k));
 });
+
+test('football-data: empareja por fecha y resultado; los nombres desempatan', () => {
+  assert.ok(F.nameSim('Independiente Rivadavia', 'Ind. Rivadavia') >= 0.5);
+  assert.ok(F.nameSim('Manchester City', 'Man City') >= 0.5);
+  assert.ok(F.nameSim('Boca Juniors', 'River Plate') === 0);
+  const day = 20000, ts = day * 86400 + 20 * 3600;
+  const fd = [[day, 1, 0, 500, 300, 200, 'River Plate', 'Boca Juniors'], [day, 1, 0, 400, 300, 300, 'Racing Club', 'Independiente'], [day + 1, 2, 2, 300, 400, 300, 'Lanus', 'Talleres']];
+  const rows = [{ id: 1, ts, h: 10, a: 20, hg: 1, ag: 0 }, { id: 2, ts, h: 30, a: 40, hg: 1, ag: 0 }, { id: 3, ts, h: 50, a: 60, hg: 2, ag: 2 }, { id: 4, ts, h: 70, a: 80, hg: 5, ag: 5 }];
+  const names = { 10: 'River Plate', 20: 'Boca Juniors', 30: 'Racing Club', 40: 'CA Independiente', 50: 'Lanús', 60: 'Talleres Córdoba' };
+  const m = F.matchFd(rows, fd, names);
+  assert.deepEqual(m.get(1), [0.5, 0.3, 0.2]);
+  assert.deepEqual(m.get(2), [0.4, 0.3, 0.3]);
+  assert.ok(m.get(3), 'un día de diferencia por el huso horario');
+  assert.ok(!m.has(4));
+  // Sin nombres: solo si el resultado es único ese día.
+  const m2 = F.matchFd(rows, fd, null);
+  assert.ok(!m2.has(1) && !m2.has(2) && m2.has(3));
+});
