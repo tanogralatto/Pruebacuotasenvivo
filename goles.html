@@ -158,6 +158,7 @@ svg text{fill:var(--muted);font:11px var(--mono)}
     <a href="#/precision" data-nav="prec">Precisión</a>
     <a href="#/ajustes" data-nav="cfg" aria-label="Ajustes">⚙︎</a>
   </nav>
+  <button class="btn" id="cloudBtn" style="padding:6px 10px;font-size:13px" title="Sincronizar con tu cuenta de Google">☁︎ Entrar</button>
 </div></header>
 
 <main class="wrap">
@@ -202,6 +203,9 @@ svg text{fill:var(--muted);font:11px var(--mono)}
   <h2>xG</h2>
   <div class="field"><label class="small" for="xgBudget" style="align-self:center">Consultas para bajar xG en cada actualización (cada consulta trae 20 partidos)</label><input id="xgBudget" type="number" min="0" max="2000" step="10" style="max-width:120px"></div>
   <p class="small">Más consultas = el xG llega antes a todas las ligas. Con 150 por actualización, en pocos días están todas las ligas que se juegan.</p>
+  <h2>Sincronización</h2>
+  <div class="small" id="cloudInfo">Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.</div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="btnCloudPull">Bajar lo último de mi cuenta</button><button class="btn hidden" id="btnLogout">Salir de la cuenta</button></div>
   <h2>Datos guardados</h2>
   <div class="small" id="dbInfo">—</div>
   <div class="row" style="margin-top:8px"><button class="btn" id="btnWipe">Borrar todos los datos guardados</button></div>
@@ -408,7 +412,8 @@ async function updateAll(){
   try{
     await loadXg();
     state.prec=state.prec||await DB.get('prec');
-    const reg=state.reg=state.reg||(await DB.get('reg'))||{};
+    let reg=state.reg=state.reg||(await DB.get('reg'))||{};
+    reg=state.reg=await cloudMergeReg(reg);
     const dates=[dayStr(0),dayStr(1)];
     // 1) Partidos y cuotas de hoy y mañana (todas las ligas).
     const fixtures={},odds={};
@@ -513,6 +518,7 @@ async function updateAll(){
     // 7) Precisión de todas las ligas con historial.
     await computePrecision(allLeagues,reg,t=>say(t));
     LS.set('tg:updated',Date.now());
+    try{await cloudPush()}catch(e){warn.push('No se pudo guardar en tu cuenta: '+e.message)}
     say(`Listo · ${state.calls} consultas a la API`+(warn.length?' · avisos: '+warn.slice(0,2).join(' | '):''));
   }catch(e){say(e.message,true)}
   prog(1,1);state.running=false;$('#btnUpdate').disabled=false;renderDash();
@@ -531,6 +537,55 @@ async function knownLeagues(loaded){
   }
   return out;
 }
+
+/* ---------------- sincronización con la cuenta (ver el módulo de Firebase al final) ---------------- */
+// En la nube no se guardan historiales ni xG (se vuelven a bajar): solo lo que se ve en pantalla.
+function parseKey(k){
+  const [t,a,b]=k.split(':');
+  if(t==='1x2')return {type:'1x2',pick:a};
+  if(t==='dc')return {type:'dc',pick:a};
+  if(t==='btts')return {type:'btts',pick:a};
+  if(t==='total')return {type:'total',side:a,line:Number(b)};
+  if(t==='ah')return {type:'ah',side:a,line:Number(b)};
+  return null;
+}
+const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
+function packDay(day){
+  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0]);return o})};
+}
+function unpackDay(d){
+  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0])=>{const bet=parseKey(k);return {k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0}});return o})};
+}
+function mergeReg(local,cloud){
+  for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
+  return local;
+}
+async function cloudPush(){
+  const C=window.tgCloud;if(!C||!C.user)return;
+  say('Guardando en tu cuenta…');
+  const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
+  await C.pushAll({days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:LS.get('tg:updated',0),bf:LS.get('tg:bf',{})});
+}
+// Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
+async function cloudPull(force){
+  const C=window.tgCloud;if(!C||!C.user||state.running)return false;
+  const got=await C.pullIfNewer(force?0:LS.get('tg:updated',0),[dayStr(-1),dayStr(0),dayStr(1)]);
+  if(!got)return false;
+  for(const [d,x] of Object.entries(got.days||{})){const day=unpackDay(x);await DB.set('day:'+d,day);state.days[d]=day}
+  if(got.prec){state.prec=got.prec;await DB.set('prec',got.prec)}
+  if(got.fav)LS.set('tg:fav',got.fav);
+  if(got.bf)LS.set('tg:bf',Object.assign({},LS.get('tg:bf',{}),got.bf));
+  if(got.updated)LS.set('tg:updated',got.updated);
+  return true;
+}
+async function cloudMergeReg(reg){
+  const C=window.tgCloud;if(!C||!C.user)return reg;
+  try{say('Bajando las predicciones guardadas en tu cuenta…');return mergeReg(reg,await C.pullReg())}catch(e){return reg}
+}
+window.tgOnLogin=async()=>{try{if(await cloudPull())rerender()}catch(e){console.warn(e)}};
+function rerender(){const r=route();if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
+$('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
 
 /* ---------------- precisión ---------------- */
 async function computePrecision(leagues,reg,status){
@@ -797,7 +852,7 @@ document.addEventListener('click',e=>{
   const s=e.target.closest('[data-star]');if(!s)return;
   e.preventDefault();const id=s.dataset.star,f=favs();
   if(f[id])delete f[id];else f[id]=1;
-  LS.set('tg:fav',f);const r=route();if(r.v==='match')renderMatch(r.id);else renderDash();
+  LS.set('tg:fav',f);if(window.tgCloud&&window.tgCloud.user)window.tgCloud.pushFav(f).catch(()=>{});const r=route();if(r.v==='match')renderMatch(r.id);else renderDash();
 });
 
 /* ---------------- navegación ---------------- */
@@ -832,6 +887,96 @@ $('#mBody').addEventListener('click',e=>{
 });
 if(!state.key&&!location.hash)location.hash='#/ajustes';
 go();
+</script>
+<script type="module">
+// Misma cuenta y misma base que la app de +0,5 1T. Datos en tanoapp_v2_datos/{uid}/goles/…
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const cfg={apiKey:"AIzaSyDL0LkEW3IAdBZcOARMjzAewgB_lh1edjI",authDomain:"appuestasclaude.firebaseapp.com",projectId:"appuestasclaude",storageBucket:"appuestasclaude.firebasestorage.app",messagingSenderId:"1020425173076",appId:"1:1020425173076:web:4ca5edab0f72c92a7ad5c1"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
+provider.setCustomParameters({prompt:'select_account'});
+const $=s=>document.querySelector(s);
+const ref=id=>doc(db,'tanoapp_v2_datos',auth.currentUser.uid,'goles',id);
+const MAXC=700000; // cada documento guarda texto; se parte en pedazos para no pasar el límite de Firestore
+function friendly(e){
+  const c=(e&&e.code)||'';
+  if(c==='permission-denied'||/permission/i.test((e&&e.message)||''))return 'Firebase no deja guardar en tu cuenta (reglas de seguridad). Avisale a Claude.';
+  if(c==='auth/unauthorized-domain')return 'Este dominio no está autorizado en Firebase.';
+  if(c==='auth/network-request-failed')return 'Sin conexión.';
+  return (e&&e.message)||'Error desconocido.';
+}
+async function putText(id,obj){
+  const txt=JSON.stringify(obj),parts=[];
+  for(let i=0;i<txt.length;i+=MAXC)parts.push(txt.slice(i,i+MAXC));
+  for(let k=0;k<parts.length;k+=10){
+    const b=writeBatch(db);
+    parts.slice(k,k+10).forEach((p,j)=>b.set(ref(id+'~'+(k+j)),{v:p}));
+    await b.commit();
+  }
+  return parts.length;
+}
+async function getText(id,n){
+  let txt='';
+  for(let k=0;k<n;k++){const d=await getDoc(ref(id+'~'+k));if(!d.exists())return null;txt+=d.data().v}
+  return txt?JSON.parse(txt):null;
+}
+const C=window.tgCloud={user:null,
+  async pushAll({days,prec,reg,fav,updated,bf}){
+    const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
+    const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
+    for(const [d,x] of Object.entries(days))meta.days[d]=await putText('day_'+d,x);
+    if(prec)meta.prec=await putText('prec',prec);
+    const months={};
+    for(const [id,e] of Object.entries(reg)){const m=new Date(e.ts*1000).toISOString().slice(0,7);(months[m]=months[m]||{})[id]=e}
+    // Solo se reescriben los meses recientes (o los que la nube todavía no tiene).
+    const recent=new Date(Date.now()-40*864e5).toISOString().slice(0,7);
+    for(const [m,x] of Object.entries(months))if(m>=recent||!meta.regMonths[m])meta.regMonths[m]=await putText('reg_'+m,x);
+    await setDoc(ref('fav'),{v:JSON.stringify(fav||{}),ts:Date.now()});
+    await setDoc(ref('meta'),{v:JSON.stringify(meta)});
+    status();
+  },
+  async pullIfNewer(localUpdated,dates){
+    const m=await getDoc(ref('meta'));if(!m.exists())return null;
+    const meta=JSON.parse(m.data().v);
+    const out={updated:meta.updated,bf:meta.bf};
+    const f=await getDoc(ref('fav'));if(f.exists())out.fav=JSON.parse(f.data().v);
+    if(!(meta.updated>localUpdated))return out.fav?{fav:out.fav}:null;
+    out.days={};
+    for(const d of dates)if(meta.days&&meta.days[d]){const x=await getText('day_'+d,meta.days[d]);if(x)out.days[d]=x}
+    if(meta.prec)out.prec=await getText('prec',meta.prec);
+    return out;
+  },
+  async pullReg(){
+    const m=await getDoc(ref('meta'));if(!m.exists())return {};
+    const meta=JSON.parse(m.data().v),out={};
+    for(const [mo,n] of Object.entries(meta.regMonths||{})){const x=await getText('reg_'+mo,n);if(x)Object.assign(out,x)}
+    return out;
+  },
+  async pushFav(fav){await setDoc(ref('fav'),{v:JSON.stringify(fav||{}),ts:Date.now()})}
+};
+function status(msg){
+  const u=auth.currentUser,b=$('#cloudBtn'),i=$('#cloudInfo');
+  b.textContent=u?'☁︎ '+(u.email||'').split('@')[0]:'☁︎ Entrar';
+  $('#btnLogout').classList.toggle('hidden',!u);
+  if(i)i.textContent=msg||(u?'Sincronizado con '+u.email+'. Lo que actualices en un dispositivo aparece en los demás.':'Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.');
+}
+onAuthStateChanged(auth,async u=>{
+  C.user=u||null;status();
+  if(u&&window.tgOnLogin){try{await window.tgOnLogin()}catch(e){status(friendly(e))}}
+});
+getRedirectResult(auth).catch(e=>status(friendly(e)));
+$('#cloudBtn').addEventListener('click',async()=>{
+  if(auth.currentUser){location.hash='#/ajustes';return}
+  try{await signInWithPopup(auth,provider)}
+  catch(e){
+    const c=e&&e.code;
+    if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return;
+    if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'||c==='auth/web-storage-unsupported'){try{await signInWithRedirect(auth,provider);return}catch(e2){e=e2}}
+    alert(friendly(e));
+  }
+});
+$('#btnLogout').addEventListener('click',()=>signOut(auth));
 </script>
 </body>
 </html>
