@@ -242,9 +242,16 @@
       const med = median(list.map(x => x.p));
       const ref = pin && (list.length < 3 || Math.abs(pin.p - med) <= MAX_GAP) ? pin.p : med;
       let best = null;
-      for (const x of list) if (Math.abs(x.p - ref) <= MAX_GAP && (!best || x.price > best.price)) best = { price: x.price, bookmaker: x.bk };
+      const offers = []; // casas que pagan más que el precio justo (para «Mis casas» y la pestaña Valor)
+      for (const x of list) {
+        if (Math.abs(x.p - ref) > MAX_GAP) continue;
+        if (!best || x.price > best.price) best = { price: x.price, bookmaker: x.bk };
+        if (x.price * ref - 1 > 0 && !/pinnacle/i.test(x.bk)) offers.push([x.bk, x.price]);
+      }
+      offers.sort((a, b) => b[1] - a[1]);
       const bet = perBook.get(list[0].bk).get(k).bet;
-      if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length });
+      const sharp = !!(pin && ref === pin.p);
+      if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length, sharp, offers });
     }
     // Doble oportunidad: precio sin margen sacado del 1X2; mejor cuota de las casas que la ofrecen.
     const h = out.get('1x2:home'), d = out.get('1x2:draw'), a = out.get('1x2:away');
@@ -254,14 +261,18 @@
       for (const pick of ['1X', 'X2', '12']) {
         const k = 'dc:' + pick;
         let best = null, n = 0;
+        const offers = [];
         for (const [bk, rec] of perBook) {
           const x = rec.get(k);
           if (!x) continue;
           n++;
           if (1 / x.price > ref[pick] + MAX_GAP || 1 / x.price < ref[pick] - MAX_GAP - 0.1) continue;
           if (!best || x.price > best.price) best = { price: x.price, bookmaker: bk };
+          if (x.price * ref[pick] - 1 > 0 && !/pinnacle/i.test(bk)) offers.push([bk, x.price]);
         }
-        if (best) out.set(k, { key: k, bet: { type: 'dc', pick }, best, mkt: ref[pick], books: n });
+        offers.sort((a, b) => b[1] - a[1]);
+        const sharp = !!(h.sharp && d.sharp && a.sharp);
+        if (best) out.set(k, { key: k, bet: { type: 'dc', pick }, best, mkt: ref[pick], books: n, sharp, offers });
       }
     }
     return out;
@@ -535,8 +546,21 @@
     return out;
   }
 
+  // Kelly fraccionado: parte de la banca a apostar con probabilidad p y cuota price (¼ por defecto, tope 3%).
+  function kelly(p, price, frac, cap) {
+    if (!isNum(p) || !(price > 1)) return 0;
+    const f = (p * price - 1) / (price - 1);
+    return f > 0 ? Math.min(cap == null ? 0.03 : cap, f * (frac == null ? 0.25 : frac)) : 0;
+  }
+  // Resultado por unidad de una apuesta ya jugada (1, 0,5, 0, −0,5, −1) y ganancia por unidad apostada.
+  function settle(bet, hg, ag, price) {
+    const r = betResult(bet, hg, ag);
+    if (r == null) return null;
+    return { r, profit: r > 0 ? r * (price - 1) : r };
+  }
+
   const api = {
-    nameSim, matchFd, dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
+    kelly, settle, nameSim, matchFd, dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
     poissonPmf, scoreMatrix, summarize, lineParts, lineResult, betResult, betProbs, betScore, evaluate,
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
     rps, outcome1x2, goalsRps, ece, backtestLeague, goalsSkill, marketSkill

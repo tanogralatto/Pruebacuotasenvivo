@@ -168,3 +168,17 @@ test('football-data: empareja por fecha y resultado; los nombres desempatan', ()
   const m2 = F.matchFd(rows, fd, null);
   assert.ok(!m2.has(1) && !m2.has(2) && m2.has(3));
 });
+
+test('valor: casas que pagan más que el precio justo, Kelly y liquidación', () => {
+  assert.deepEqual(F.parseOdds(oddsResponse).get('1x2:home').offers, [], 'Bet365 paga 2,20 y el justo es 2,201: no hay valor');
+  const resp = JSON.parse(JSON.stringify(oddsResponse));
+  resp[0].bookmakers[1].bets[0].values[0].odd = '2.30';
+  const o = F.parseOdds(resp), h = o.get('1x2:home');
+  assert.ok(h.sharp, 'la referencia es Pinnacle');
+  assert.deepEqual(h.offers, [['Bet365', 2.3]]);
+  assert.ok(!o.get('1x2:away').offers.length, 'nadie paga más que el justo del visitante');
+  close(F.kelly(0.5, 2.2), Math.min(0.03, ((0.5 * 2.2 - 1) / 1.2) * 0.25));
+  assert.equal(F.kelly(0.4, 2.2), 0);
+  assert.deepEqual(F.settle({ type: 'ah', side: 'home', line: -0.25 }, 1, 1, 2), { r: -0.5, profit: -0.5 });
+  assert.deepEqual(F.settle({ type: 'total', side: 'over', line: 2.5 }, 2, 1, 1.9), { r: 1, profit: 0.8999999999999999 });
+});

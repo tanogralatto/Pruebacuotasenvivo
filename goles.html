@@ -157,7 +157,16 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 #slot button,#src button,#msrc button{padding:7px 12px;font-size:14px}
 .ev small{display:block;font-weight:400;color:var(--dim);font-size:11px}
 #cloudBtn{white-space:nowrap}
-@media (max-width:560px){.brand{font-size:12px;letter-spacing:.06em}nav a{padding:6px 7px}#cloudBtn{max-width:96px;overflow:hidden;text-overflow:ellipsis}}
+@media (max-width:560px){.brand{font-size:12px;letter-spacing:.06em}nav{gap:0}nav a{padding:6px 6px;font-size:13.5px}#cloudBtn{max-width:64px;overflow:hidden;text-overflow:ellipsis;padding:6px 7px!important}}
+.vb{margin:8px 0}
+.vb-h{font-size:15px}
+.vb-h a{text-decoration:none;font-weight:700}
+.vb-m{margin:6px 0 4px;font-size:15px}
+.vb-g{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.vb-g .l{display:block;font-size:11px;color:var(--muted)}
+.vb-g b{font-size:14px}
+#vday button,#vevmin button,#vmax button{padding:7px 11px;font-size:14px}
+@media (max-width:560px){.vb-g{grid-template-columns:repeat(3,1fr)}}
 details.guide{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:6px 0 12px}
 details.guide summary{cursor:pointer;font-weight:700}
 details.guide h3{font-size:15px;margin:16px 0 6px;color:var(--acc)}
@@ -169,9 +178,10 @@ details.guide th{color:var(--muted);font-weight:600}
 </head>
 <body>
 <header><div class="wrap">
-  <div class="brand">TANO<b>APP</b> · GOLES</div>
+  <div class="brand">TANO<b>APP</b><span class="hide-s"> · GOLES</span></div>
   <nav>
     <a href="#/hoy" data-nav="dash">Partidos</a>
+    <a href="#/valor" data-nav="val">Valor</a>
     <a href="#/precision" data-nav="prec">Precisión</a>
     <a href="#/ajustes" data-nav="cfg" aria-label="Ajustes">⚙︎</a>
   </nav>
@@ -189,6 +199,19 @@ details.guide th{color:var(--muted);font-weight:600}
     <h3>Qué hace</h3>
     <p>Busca apuestas donde una casa <b>paga más de lo que debería</b>. Cubre todas las ligas que trae API-Football, con mercados de partido completo: goles (más/menos y ambos marcan), 1X2, doble oportunidad y hándicap asiático. La estrategia de +0,5 goles en el 1T sigue en la otra app.</p>
     <p>El «precio justo» con el que se compara cada cuota puede salir de dos lugares: de <b>las propias casas</b> (sin su margen) o de <b>nuestro modelo</b>. Lo elegís con <b>Cuota justa</b> (se explica abajo).</p>
+
+    <h3>La pestaña Valor (lo principal)</h3>
+    <p>Es una lista de <b>apuestas de valor</b>: casas que pagan <b>más que el precio justo del mercado</b> (Pinnacle sin margen), en todas las ligas y mercados. No depende del modelo: es el método que usan los apostadores profesionales.</p>
+    <ol>
+      <li>Una sola vez: en <b>⚙︎ → Mis casas</b> marcá las casas donde podés apostar, y cargá tu <b>Banca</b>.</li>
+      <li>Tocá <b>↻ Actualizar todo</b> (en Partidos).</li>
+      <li>En <b>Valor</b>, elegí Hoy o Mañana. Filtros: <b>EV mínimo</b> (2%), <b>Cuota máxima</b> (3,00) y <b>Solo con precio de Pinnacle</b>.</li>
+      <li>Cada tarjeta dice: <b>Casa</b>, <b>Cuota</b>, <b>Justa</b>, <b>EV</b> y <b>Monto</b> (¼ de Kelly sobre tu banca, tope 3%). Abajo: la cuota mínima a la que todavía conviene.</li>
+      <li>Abrí tu casa: si paga <b>igual o más</b> que esa cuota mínima, apostá el monto sugerido. Si no, salteala.</li>
+      <li>Tocá <b>Anotar apuesta</b> y escribí la cuota y el monto reales.</li>
+      <li>En <b>Mis apuestas</b> ves el resultado y el <b>CLV</b>: si en promedio es positivo, le estás ganando al mercado.</li>
+    </ol>
+    <p class="small">⚠︎ verificar = EV de más de 8%: casi siempre es una cuota vieja. Mirala en tu casa antes.</p>
 
     <h3>Uso diario (paso a paso)</h3>
     <ol>
@@ -294,6 +317,8 @@ details.guide th{color:var(--muted);font-weight:600}
 
     <h3>Ajustes (⚙︎)</h3>
     <ul>
+      <li><b>Mis casas</b>: las casas donde podés apostar. Todo el valor (Partidos y Valor) se calcula solo con sus cuotas. Sin ninguna marcada, usa todas.</li>
+      <li><b>Banca</b>: con ella se calcula el monto sugerido.</li>
       <li><b>Clave de API-Football</b>: se guarda solo en ese dispositivo.</li>
       <li><b>xG</b>: cuántas consultas usar para bajar xG en cada actualización.</li>
       <li><b>Datos guardados</b>: cuántas ligas, partidos con xG y predicciones tiene ese dispositivo. «Borrar» los quita (la clave se mantiene).</li>
@@ -347,12 +372,32 @@ details.guide th{color:var(--muted);font-weight:600}
   <div id="pBody"></div>
 </section>
 
+<!-- ============ VALOR ============ -->
+<section id="v-val" class="hidden">
+  <h1>Apuestas de valor</h1>
+  <p class="small" style="margin-top:-4px">Casas que pagan <b>más que el precio justo del mercado</b> (Pinnacle sin margen). No depende del modelo. Se actualiza con <b>↻ Actualizar todo</b> (en Partidos).</p>
+  <div class="row"><div class="seg" id="vday"><button data-vday="0">Hoy</button><button data-vday="1">Mañana</button><button data-vday="bets">Mis apuestas</button></div></div>
+  <div class="filters box" id="vFilters">
+    <div class="fl" style="margin-top:0"><div class="fl-h"><b>EV mínimo</b> <button class="info" data-tip="evmin">i</button></div><div class="seg" id="vevmin"><button data-ev="0.01">1%</button><button data-ev="0.02">2%</button><button data-ev="0.03">3%</button><button data-ev="0.05">5%</button></div></div>
+    <div class="fl"><div class="fl-h"><b>Cuota máxima</b> <button class="info" data-tip="maxodds">i</button></div><div class="seg" id="vmax"><button data-max="2">2,00</button><button data-max="3">3,00</button><button data-max="5">5,00</button><button data-max="99">Todas</button></div></div>
+    <label class="small row" style="gap:6px;margin-top:10px"><input type="checkbox" id="vSharp" style="accent-color:var(--acc)"> Solo con precio de Pinnacle (más confiable) <button class="info" data-tip="sharp">i</button></label>
+    <div class="small" id="vBooks" style="margin-top:8px"></div>
+  </div>
+  <div class="status" id="vStatus"></div>
+  <div id="vList"></div>
+</section>
+
 <!-- ============ AJUSTES ============ -->
 <section id="v-cfg" class="hidden">
   <h1>Ajustes</h1>
   <h2>Clave de API-Football</h2>
   <div class="field"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu clave (x-apisports-key)"><button class="btn pri" id="btnKey">Guardar y probar</button></div>
   <div class="status" id="kStatus"></div>
+  <h2>Mis casas</h2>
+  <p class="small">Marcá las casas donde podés apostar. La app calcula el valor solo con sus cuotas (en Partidos y en Valor). Sin ninguna marcada, usa todas. La lista se completa sola con cada actualización.</p>
+  <div class="lgl" id="booksList" style="max-height:300px"></div>
+  <h2>Banca</h2>
+  <div class="field"><label class="small" for="bank" style="align-self:center">Tu banca para apostar ($): con ella se calcula el monto sugerido</label><input id="bank" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000" style="max-width:160px"></div>
   <h2>xG</h2>
   <div class="field"><label class="small" for="xgBudget" style="align-self:center">Consultas para bajar xG en cada actualización (cada consulta trae 20 partidos)</label><input id="xgBudget" type="number" min="0" max="2000" step="10" style="max-width:120px"></div>
   <p class="small">Más consultas = el xG llega antes a todas las ligas. Con 150 por actualización, en pocos días están todas las ligas que se juegan.</p>
@@ -571,6 +616,30 @@ function leagueCfg(lid,games,season){
   return {xg:false,rho:F.fitRho(rows).rho};
 }
 
+/* ---------------- mis apuestas y casas vistas ---------------- */
+let BETS=[],betsDirty=false;
+const BOOKS=new Set(LS.get('tg:books',[])||[]);
+async function loadBets(){BETS=(await DB.get('bets'))||[];return BETS}
+async function saveBets(){await DB.set('bets',BETS);betsDirty=false}
+const bankroll=()=>Math.max(0,Number(LS.get('tg:bank',0))||0);
+// Liquida las apuestas ya jugadas (resultado final) y calcula el CLV contra la cuota de cierre.
+async function settleBets(){
+  const pend=BETS.filter(b=>!b.res&&b.kick*1000<Date.now()-2*3600e3);
+  for(let i=0;i<pend.length;i+=20){
+    const ids=[...new Set(pend.slice(i,i+20).map(b=>b.fid))];
+    try{
+      const j=await api('/fixtures',{ids:ids.join('-'),timezone:TZ});
+      for(const f of j.response||[]){
+        if(!DONE.includes(f.fixture.status.short))continue;
+        const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
+        const hg=Number.isInteger(ft.home)?ft.home:gl.home,ag=Number.isInteger(ft.away)?ft.away:gl.away;
+        if(!Number.isInteger(hg)||!Number.isInteger(ag))continue;
+        for(const b of BETS)if(String(b.fid)===String(f.fixture.id)&&!b.res){const bet=parseKey(b.k);const st=bet&&F.settle(bet,hg,ag,b.pr);if(st){b.res=st;b.hg=hg;b.ag=ag;betsDirty=true}}
+      }
+    }catch(e){if(e.fatal)throw e}
+  }
+}
+
 /* ---------------- filas de mercados de un partido ---------------- */
 // Con modelo: cuota, cuota justa y EV del modelo + precio de las casas. Sin modelo (por ejemplo, copas donde los
 // equipos jugaron poco en esa competencia): solo el precio de las casas, que alcanza para «Cuota justa: De las casas».
@@ -579,8 +648,11 @@ function buildRows(a,o,first){
   let rows;
   if(a.lam)rows=F.matchMarkets(a.lam,o,{home:a.hn,away:a.an}).rows;
   else rows=[...o.values()].map(x=>({key:x.key,group:F.groupOf(x.bet),label:F.betLabel(x.bet,a.hn,a.an),price:x.best.price,bookmaker:x.best.bookmaker,fair:null,p:null,ev:null,score:0,mkt:x.mkt}));
-  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt)}});
+  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(x.offers||[]).slice(0,6),sh:x.sharp?1:0}});
   a.edge=a.lam?F.matchEdge(rows):0;
+  // Cuota de cierre de mis apuestas: la última lectura antes del partido.
+  if(a.ts*1000>Date.now())for(const b of BETS)if(String(b.fid)===String(a.id)&&!b.res){const x=o.get(b.k);if(x&&x.mkt>0){b.mClose=x.mkt;b.closeAt=Date.now();betsDirty=true}}
+  for(const x of o.values()){BOOKS.add(x.best.bookmaker);for(const [bk] of x.offers||[])BOOKS.add(bk)}
 }
 
 /* ---------------- ACTUALIZAR TODO (lo mismo que haría el robot) ---------------- */
@@ -594,6 +666,7 @@ async function updateAll(){
     await loadXg();
     state.prec=state.prec||await DB.get('prec');
     await cloudMergeXg();
+    await loadBets();await cloudMergeBets();
     let reg=state.reg=state.reg||(await DB.get('reg'))||{};
     reg=state.reg=await cloudMergeReg(reg);
     const dates=[dayStr(0),dayStr(1)];
@@ -676,6 +749,8 @@ async function updateAll(){
         const items=await allPages('/odds',{date:d,timezone:TZ});
         const m=new Map();for(const it of items){const id=String(it.fixture&&it.fixture.id||'');if(id)m.set(id,(m.get(id)||[]).concat([it]))}
         const fitCache=new Map();
+        // Cuota de cierre de mis apuestas de ese día (la API guarda las cuotas una semana).
+        for(const b of BETS)if(m.has(String(b.fid))){const x=F.parseOdds(m.get(String(b.fid))).get(b.k);if(x&&x.mkt>0){b.mClose=x.mkt;b.closeAt=Date.now();b.closeFinal=1;betsDirty=true}}
         for(const [id,its] of m){
           if(reg[id]&&reg[id].m1x2)continue;
           const x=gameById.get(id);if(!x)continue;
@@ -691,6 +766,9 @@ async function updateAll(){
         bf[d]=1;LS.set('tg:bf',bf);
       }catch(e){if(e.fatal)throw e;warn.push('Cuotas del '+d+': '+e.message)}
     }
+    // Mis apuestas: resultado y CLV.
+    try{say('Liquidando tus apuestas…');await settleBets()}catch(e){if(e.fatal)throw e;warn.push('Apuestas: '+e.message)}
+    await saveBets();LS.set('tg:books',[...BOOKS].sort());
     // 6) Liquidar lo guardado antes de cada partido.
     for(const [id,r] of Object.entries(reg)){if(Number.isFinite(r.hg))continue;const x=gameById.get(id);if(x){r.hg=x.r[4];r.ag=x.r[5]}}
     const ids=Object.keys(reg);if(ids.length>40000)ids.sort((a,b)=>reg[a].ts-reg[b].ts).slice(0,ids.length-40000).forEach(k=>delete reg[k]);
@@ -736,10 +814,10 @@ function parseKey(k){
 }
 const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
 function packDay(day){
-  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m]);return o})};
+  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0]);return o})};
 }
 function unpackDay(d){
-  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m])=>{const bet=parseKey(k);return {k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m}});return o})};
+  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh])=>{const bet=parseKey(k);return {k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0}});return o})};
 }
 function mergeReg(local,cloud){
   for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
@@ -751,7 +829,8 @@ async function cloudPush(){
   say('Guardando en tu cuenta…');
   const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
   await loadXg();
-  await C.pushAll({xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{})});
+  await loadBets();
+  await C.pushAll({bets:BETS,xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{})});
 }
 // Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
 async function cloudPull(force){
@@ -764,6 +843,16 @@ async function cloudPull(force){
   if(got.bf)LS.set('tg:bf',Object.assign({},LS.get('tg:bf',{}),got.bf));
   if(got.updated)await setUpdated(got.updated);
   return true;
+}
+// Apuestas: se juntan las de la cuenta con las de este dispositivo (por id; gana la liquidada o la más nueva).
+async function cloudMergeBets(){
+  const C=window.tgCloud;if(!C||!C.user)return;
+  try{
+    const cloud=await C.pullBets();if(!Array.isArray(cloud))return;
+    const by=new Map(BETS.map(b=>[b.id,b]));
+    for(const b of cloud){const l=by.get(b.id);if(b.del&&!(l&&l.del)){by.set(b.id,b);continue}if(!l||(!l.res&&b.res)||((b.closeAt||0)>(l.closeAt||0)&&!l.res))by.set(b.id,Object.assign({},l||{},b))}
+    BETS=[...by.values()];await saveBets();
+  }catch(e){console.warn(e)}
 }
 async function cloudMergeXg(){
   const C=window.tgCloud;if(!C||!C.user)return;
@@ -782,6 +871,7 @@ async function cloudMergeReg(reg){
 }
 function syncLine(t,err){const el=$('#syncLine');if(!el)return;el.textContent=t||'';el.style.color=err?'var(--bad)':'var(--muted)';const i=$('#cloudInfo');if(i&&t)i.textContent=t}
 window.tgOnLogin=async()=>{
+  try{await loadBets();await cloudMergeBets()}catch(e){}
   if(state.running)return;
   if(!window.tgCloud||!window.tgCloud.user){syncLine('');return}
   syncLine('☁︎ Revisando tu cuenta…');
@@ -793,7 +883,7 @@ window.tgOnLogin=async()=>{
     else syncLine('☁︎ Al día con tu cuenta · última actualización guardada '+ago(meta.updated||meta.ts||0)+(changed?' (bajada recién)':''));
   }catch(e){syncLine('☁︎ No se pudo leer tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
 };
-function rerender(){const r=route();if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
+function rerender(){const r=route();if(r.v==='val')renderVal();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
 $('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
@@ -885,15 +975,31 @@ function edgeHtml(v){
 // 'both' = solo cuando hay valor según las dos.
 const SRC_NAME={mkt:'De las casas',model:'Del modelo',both:'Coinciden'};
 const srcNow=()=>LS.get('tg:src','mkt');
+// Casas donde podés apostar (⚙︎ → Mis casas). Vacío = todas.
+const myBooks=()=>new Set(LS.get('tg:mybooks',[])||[]);
+// Mejor cuota disponible para mí: con «Mis casas», la mejor de esas casas que paga más que el precio justo.
+function effPrice(r){
+  const mb=myBooks();
+  if(!mb.size)return {pr:r.pr,bk:r.bk};
+  if(mb.has(r.bk))return {pr:r.pr,bk:r.bk};
+  const x=(r.of||[]).find(([bk])=>mb.has(bk));
+  return x?{pr:x[1],bk:x[0]}:null;
+}
 function view(r,src){
-  const mk=r.m>0?{fair:1/r.m,ev:r.m*r.pr-1}:null;
+  const e=effPrice(r);
+  if(!e)return {fair:r.m>0?1/r.m:r.f,ev:null,score:0,alt:null,pr:null,bk:null};
+  const mk=r.m>0?{fair:1/r.m,ev:r.m*e.pr-1}:null;
   if(mk)mk.score=F.betScore(mk.ev,r.m);
-  const md={fair:r.f,ev:r.ev,score:r.s};
+  const md=r.f>0?{fair:r.f,ev:e.pr/r.f-1}:{fair:null,ev:null,score:0};
+  if(r.f>0)md.score=F.betScore(md.ev,1/r.f);
+  const out=(()=>{
   if(src==='model')return Object.assign({},md,{alt:mk});
   if(src==='mkt')return mk?Object.assign({},mk,{alt:md}):{fair:null,ev:null,score:0,alt:md};
   if(!mk)return {fair:null,ev:null,score:0,alt:md};
   const ok=mk.ev>=evMin()&&md.ev>=evMin();
   return {fair:mk.fair,ev:mk.ev,score:ok?Math.min(mk.score,md.score):0,alt:md,both:ok};
+  })();
+  return Object.assign(out,{pr:e.pr,bk:e.bk});
 }
 // EV mínimo para considerar que una apuesta tiene valor (filtro «EV mínimo»; 2% por defecto).
 const evMin=()=>Math.max(0.005,Number(LS.get('tg:evMin',0.02))||0);
@@ -1004,7 +1110,7 @@ async function renderMatch(id){
       h+=`<table class="mk"><thead><tr><th>Mercado</th><th>Cuota</th><th>Justa <button class="info" data-tip="fair">i</button></th><th>EV <button class="info" data-tip="ev">i</button></th><th>Score <button class="info" data-tip="score">i</button></th></tr></thead><tbody>`;
       for(const r of show){
         const v=r.v,alt=v.alt&&Number.isFinite(v.alt.ev)?`<small>${src==='model'?'casas':'modelo'} ${spct(v.alt.ev)}</small>`:'';
-        h+=`<tr><td>${esc(r.l)}</td><td class="num">${arrow(r)}${dec(r.pr)}<span class="bk">${esc(r.bk)}</span></td><td class="num">${dec(v.fair)}</td><td class="ev ${hasValue(v,src)?'c-m':'c-d'}">${spct(v.ev)}${alt}</td><td>${scoreHtml(v.score)}</td></tr>`;
+        h+=`<tr><td>${esc(r.l)}</td><td class="num">${v.pr?arrow(Object.assign({},r,{pr:v.pr}))+dec(v.pr):'—'}<span class="bk">${esc(v.bk||'no en tus casas')}</span></td><td class="num">${dec(v.fair)}</td><td class="ev ${hasValue(v,src)?'c-m':'c-d'}">${spct(v.ev)}${alt}</td><td>${scoreHtml(v.score)}</td></tr>`;
       }
       h+='</tbody></table>';
     }else h+='<div class="none">No hay mercados con valor en este grupo</div>';
@@ -1049,7 +1155,7 @@ async function refreshOdds(id){
       const o=F.parseOdds(j.response||[]);
       if(!o.size){if(msg())msg().textContent='La API no tiene cuotas nuevas para este partido.';return}
       const first=(await DB.get('first'))||{};
-      buildRows(a,o,first);a.readAt=Date.now();
+      await loadBets();buildRows(a,o,first);a.readAt=Date.now();if(betsDirty)await saveBets();
       await DB.set('first',first);await DB.set('day:'+d,day);state.days[d]=day;
       await renderMatch(id);
       if(msg())msg().textContent='Cuotas actualizadas recién (1 consulta). API-Football renueva las cuotas cada pocas horas: si tu casa muestra otra, manda la de tu casa.';
@@ -1057,6 +1163,85 @@ async function refreshOdds(id){
     }
   }catch(e){if(msg())msg().textContent=e.message}
 }
+
+/* ---------------- render: valor ---------------- */
+const vView=()=>LS.get('tg:vview','0');
+async function renderVal(){
+  const vv=vView(),list=$('#vList');
+  $$('#vday [data-vday]').forEach(b=>b.classList.toggle('on',b.dataset.vday===vv));
+  $('#vFilters').classList.toggle('hidden',vv==='bets');
+  if(vv==='bets'){await renderBets();return}
+  const em=Number(LS.get('tg:evMin',0.02)),mx=Number(LS.get('tg:vmax',3)),sharpOnly=LS.get('tg:vsharp',true);
+  $$('#vevmin [data-ev]').forEach(b=>b.classList.toggle('on',Math.abs(Number(b.dataset.ev)-em)<1e-9));
+  $$('#vmax [data-max]').forEach(b=>b.classList.toggle('on',Number(b.dataset.max)===mx));
+  $('#vSharp').checked=!!sharpOnly;
+  const mb=myBooks();
+  $('#vBooks').innerHTML=mb.size?`Mis casas: <b>${[...mb].map(esc).join(', ')}</b> · <a href="#/ajustes">cambiar</a>`:`Mostrando <b>todas las casas</b>. Marcá las tuyas en <a href="#/ajustes">⚙︎ → Mis casas</a>.`;
+  const d=await getDay(dayStr(Number(vv)));
+  if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para buscar valor.</div>';return}
+  await loadBets();
+  const bank=bankroll(),now=Date.now(),out=[];
+  for(const a of d.fx){
+    if(!a.rows||a.ts*1000<=now)continue;
+    for(const r of a.rows){
+      if(!(r.m>0)||(sharpOnly&&!r.sh))continue;
+      const e=effPrice(r);if(!e)continue;
+      const ev=r.m*e.pr-1;if(ev<Math.max(0.005,em)||e.pr>mx)continue;
+      out.push({a,r,pr:e.pr,bk:e.bk,ev,fair:1/r.m,k:F.kelly(r.m,e.pr)});
+    }
+  }
+  out.sort((x,y)=>y.ev-x.ev);
+  $('#vStatus').textContent=out.length?`${out.length} apuestas con valor · cuotas leídas ${ago(d.ts)}. Verificá la cuota en tu casa antes de apostar.`:'';
+  if(!out.length){list.innerHTML='<div class="empty">No hay apuestas con esos filtros. Probá bajar el EV mínimo, subir la cuota máxima o actualizar las cuotas.</div>';return}
+  const done=new Set(BETS.filter(b=>!b.del).map(b=>b.fid+':'+b.k));
+  list.innerHTML=out.slice(0,200).map(({a,r,pr,bk,ev,fair,k},i)=>{
+    const amt=bank&&k>0?' · $'+Math.round(bank*k).toLocaleString('es-AR'):'';
+    const sus=ev>0.08?'<span class="chip w" title="Puede ser una cuota vieja">⚠︎ verificar</span>':'';
+    return `<div class="vb box"><div class="vb-h"><span class="mono muted">${fmtTime(a.iso)}</span> <a href="#/partido/${a.id}">${esc(a.hn)} vs ${esc(a.an)}</a></div>
+      <div class="small">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)}</div>
+      <div class="vb-m"><b>${esc(r.l)}</b> ${sus}</div>
+      <div class="vb-g"><div><span class="l">Casa</span><b>${esc(bk)}</b></div><div><span class="l">Cuota</span><b class="mono">${dec(pr)}</b></div><div><span class="l">Justa</span><b class="mono">${dec(fair)}</b></div><div><span class="l">EV</span><b class="mono c-m">${spct(ev)}</b></div><div><span class="l">Monto</span><b class="mono">${k>0?pct(k,1):'—'}</b><span class="l">${amt}</span></div></div>
+      <div class="row" style="margin-top:8px"><button class="btn" data-anotar="${i}" ${done.has(a.id+':'+r.k)?'disabled':''}>${done.has(a.id+':'+r.k)?'✓ Anotada':'Anotar apuesta'}</button><span class="small">No apuestes por debajo de ${dec(fair*1.02)} (justa + 2%).</span></div></div>`;
+  }).join('');
+  list.onclick=async e=>{
+    const b=e.target.closest('[data-anotar]');if(!b)return;
+    const x=out[Number(b.dataset.anotar)];
+    const priceTxt=prompt(`¿A qué cuota apostaste «${x.r.l}» (${x.a.hn} vs ${x.a.an})?`,String(x.pr));if(priceTxt==null)return;
+    const price=Number(String(priceTxt).replace(',','.'));if(!(price>1)){alert('Cuota inválida.');return}
+    const sugg=bank&&x.k>0?Math.round(bank*F.kelly(x.r.m,price)):'';
+    const amtTxt=prompt('¿Cuánto apostaste ($)?',String(sugg));if(amtTxt==null)return;
+    const amount=Math.max(0,Number(String(amtTxt).replace(',','.'))||0);
+    BETS.push({id:x.a.id+':'+x.r.k+':'+Date.now(),fid:x.a.id,k:x.r.k,l:x.r.l,hn:x.a.hn,an:x.a.an,ln:x.a.ln,lc:x.a.lc,kick:x.a.ts,bk:x.bk,pr:price,m:x.r.m,amount,at:Date.now()});
+    await saveBets();renderVal();
+    if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{});
+  };
+}
+async function renderBets(){
+  await loadBets();
+  const list=$('#vList'),bets=BETS.filter(b=>!b.del).sort((a,b)=>b.at-a.at);
+  $('#vStatus').textContent='';
+  if(!bets.length){list.innerHTML='<div class="empty">Todavía no anotaste apuestas. En Hoy o Mañana, tocá «Anotar apuesta» en las que hagas.</div>';return}
+  const st=bets.filter(b=>b.res),clv=bets.filter(b=>b.mClose>0);
+  const staked=st.reduce((s,b)=>s+(b.amount||0),0),profit=st.reduce((s,b)=>s+(b.amount||0)*b.res.profit,0),units=st.reduce((s,b)=>s+b.res.profit,0);
+  const avgClv=clv.length?clv.reduce((s,b)=>s+(b.pr*b.mClose-1),0)/clv.length:null,beat=clv.filter(b=>b.pr*b.mClose>1).length;
+  let h=`<div class="tiles"><div class="tile"><div class="l">CLV promedio <button class="info" data-tip="clv">i</button></div><div class="v ${avgClv>0?'c-g':avgClv<0?'c-b':''}">${avgClv==null?'—':spct(avgClv)}</div><div class="small">${clv.length} con cierre · le ganás al cierre en ${clv.length?Math.round(beat*100/clv.length):0}%</div></div>
+    <div class="tile"><div class="l">Resultado</div><div class="v ${profit>0?'c-g':profit<0?'c-b':''}">${staked?(profit>=0?'+':'−')+'$'+Math.abs(Math.round(profit)).toLocaleString('es-AR'):(units>=0?'+':'−')+Math.abs(units).toFixed(2)+' u'}</div><div class="small">${st.length} liquidadas</div></div>
+    <div class="tile"><div class="l">ROI</div><div class="v">${staked?spct(profit/staked):st.length?spct(units/st.length):'—'}</div><div class="small">${bets.length-st.length} pendientes</div></div></div>`;
+  h+=`<p class="small">Con menos de 50 apuestas, el resultado es casi pura suerte. El <b>CLV</b> te dice antes si el método funciona.</p>`;
+  h+=`<table class="lg"><thead><tr><th>Apuesta</th><th>Cuota</th><th>CLV</th><th>Resultado</th></tr></thead><tbody>`;
+  for(const b of bets){
+    const c=b.mClose>0?b.pr*b.mClose-1:null;
+    const res=!b.res?'<span class="muted">pendiente</span>':b.res.r>0?`<span class="c-g">${b.res.r<1?'½ ':''}ganada</span>`:b.res.r<0?`<span class="c-b">${b.res.r>-1?'½ ':''}perdida</span>`:'devuelta';
+    h+=`<tr><td>${esc(b.l)}<span class="cn">${esc(b.hn)} vs ${esc(b.an)} · ${esc(b.bk)}${b.amount?' · $'+Math.round(b.amount).toLocaleString('es-AR'):''} <button class="info" data-delbet="${esc(b.id)}" title="Borrar">×</button></span></td><td>${dec(b.pr)}</td><td class="${c>0?'c-g':c<0?'c-b':''}">${c==null?'—':spct(c)}${c!=null&&!b.closeFinal&&!b.res?'<span class="cn">provisorio</span>':''}</td><td>${res}${b.res?'<span class="cn">'+b.hg+'-'+b.ag+'</span>':''}</td></tr>`;
+  }
+  h+='</tbody></table><p class="small">El resultado y el CLV se completan con ↻ Actualizar todo.</p>';
+  list.innerHTML=h;
+  list.onclick=async e=>{const d=e.target.closest('[data-delbet]');if(!d)return;if(!confirm('¿Borrar esta apuesta del registro?'))return;const b=BETS.find(x=>x.id===d.dataset.delbet);if(b){b.del=1;b.closeAt=Date.now()}await saveBets();renderBets();if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{})};
+}
+$('#vday').addEventListener('click',e=>{const b=e.target.closest('[data-vday]');if(!b)return;LS.set('tg:vview',b.dataset.vday);renderVal()});
+$('#vevmin').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b)return;LS.set('tg:evMin',Number(b.dataset.ev));renderVal()});
+$('#vmax').addEventListener('click',e=>{const b=e.target.closest('[data-max]');if(!b)return;LS.set('tg:vmax',Number(b.dataset.max));renderVal()});
+$('#vSharp').addEventListener('change',e=>{LS.set('tg:vsharp',e.target.checked);renderVal()});
 
 /* ---------------- render: precisión ---------------- */
 function skillCell(sk,n){
@@ -1107,7 +1292,9 @@ async function renderPrec(){
 
 /* ---------------- ajustes ---------------- */
 async function renderCfg(){
-  $('#key').value=state.key;$('#xgBudget').value=LS.get('tg:xgBudget',150);
+  $('#key').value=state.key;$('#xgBudget').value=LS.get('tg:xgBudget',150);$('#bank').value=bankroll()||'';
+  const mb=myBooks(),all=[...new Set([...BOOKS,...mb])].sort((a,b)=>a.localeCompare(b));
+  $('#booksList').innerHTML=all.length?all.map(b=>`<label><input type="checkbox" data-book="${esc(b)}" ${mb.has(b)?'checked':''}><span>${esc(b)}</span></label>`).join(''):'<div class="small" style="padding:10px">Tocá ↻ Actualizar todo una vez y aparecen las casas.</div>';
   try{
     const keys=await DB.keys(),xg=await loadXg(),reg=state.reg||(await DB.get('reg'))||{};
     const nl=new Set(keys.filter(k=>String(k).startsWith('lg:')).map(k=>String(k).split(':')[1])).size;
@@ -1116,6 +1303,8 @@ async function renderCfg(){
     $('#dbInfo').textContent=`${nl} ligas con historial · ${nx} partidos con xG · ${Object.keys(reg).length} predicciones guardadas`+(est?` · ${(est.usage/1048576).toFixed(1)} MB usados`:'');
   }catch(e){$('#dbInfo').textContent='No se pudo leer la base de datos del navegador: '+e.message}
 }
+$('#bank').addEventListener('change',e=>LS.set('tg:bank',Math.max(0,Number(e.target.value)||0)));
+$('#booksList').addEventListener('change',e=>{const cb=e.target.closest('[data-book]');if(!cb)return;const s=myBooks();cb.checked?s.add(cb.dataset.book):s.delete(cb.dataset.book);LS.set('tg:mybooks',[...s])});
 $('#xgBudget').addEventListener('change',e=>LS.set('tg:xgBudget',Math.max(0,Number(e.target.value)||0)));
 $('#btnKey').addEventListener('click',async()=>{
   state.key=$('#key').value.trim();LS.set('o05:key',state.key);
@@ -1141,6 +1330,9 @@ const TIPS={
   src:['Cuota justa: de dónde sale','«De las casas»: el precio justo según las propias casas (Pinnacle, o la mediana de todas), sin su margen. Si una casa paga más que eso, hay valor. No depende del modelo: es la ventaja más probada y sirve en todas las ligas. «Del modelo»: el precio según nuestro modelo; confiá solo en ligas en verde. «Coinciden»: solo cuando hay valor según las dos; el EV y la cuota justa que se ven son los de las casas.'],
   evmin:['EV mínimo','Las apuestas con menos valor que esto no se muestran ni cuentan para el edge. Con «De las casas», 2% es un buen piso: por debajo, el valor puede desaparecer con el mínimo movimiento de la cuota. «Todos» muestra desde 0,5%.'],
   pick:['¿Qué apuesta elegir?','La de mayor Score (la primera fila), no la de mayor EV: el Score combina el valor con la chance de ganar. El EV más alto suele estar en cuotas altas, que se pierden seguido. Una sola apuesta por partido: líneas parecidas (Hándicap −0,5 y −0,75, Más de 2,5 y Más de 3) son casi la misma apuesta. Nunca grupos opuestos. Antes de apostar, tocá «↻ Cuotas de este partido» y fijate que tu casa pague más que la cuota justa.'],
+  maxodds:['Cuota máxima','Oculta las apuestas con cuotas más altas. Las cuotas altas tienen más varianza (se pierden seguido) y su precio justo es menos preciso. Para empezar, 3,00.'],
+  sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
+  clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
   skillGoals:['Habilidad en goles','Cuánto mejor acierta el modelo la cantidad de goles de cada partido que decir siempre el promedio de la liga. Positivo = distingue partidos de muchos y pocos goles.'],
   ece:['Calibración (ECE)','Si el modelo dice 60%, ¿pasa el 60% de las veces? Es la diferencia promedio. Menos de 3% es bueno.'],
@@ -1165,6 +1357,7 @@ function route(){
   if(h.startsWith('partido/'))return {v:'match',id:h.split('/')[1]};
   if(h==='precision')return {v:'prec'};
   if(h==='ajustes')return {v:'cfg'};
+  if(h==='valor')return {v:'val'};
   return {v:'dash',view:h==='manana'?'1':h==='favoritos'?'fav':'0'};
 }
 function go(){
@@ -1175,6 +1368,7 @@ function go(){
   if(r.v==='dash'){$('#v-dash').classList.remove('hidden');state.view=r.view;showAllLeagues=false;renderDash()}
   if(r.v==='match'){$('#v-match').classList.remove('hidden');$('#mBack').href=state.view==='1'?'#/manana':state.view==='fav'?'#/favoritos':'#/hoy';open.clear();renderMatch(r.id);window.scrollTo(0,0)}
   if(r.v==='prec'){$('#v-prec').classList.remove('hidden');renderPrec()}
+  if(r.v==='val'){$('#v-val').classList.remove('hidden');renderVal()}
   if(r.v==='cfg'){$('#v-cfg').classList.remove('hidden');renderCfg()}
 }
 window.addEventListener('hashchange',go);
@@ -1236,11 +1430,13 @@ async function getText(id,n){
   return txt?JSON.parse(txt):null;
 }
 const C=window.tgCloud={user:null,
-  async pushAll({xg,days,prec,reg,fav,updated,bf}){
+  async pushAll({bets,xg,days,prec,reg,fav,updated,bf}){
     const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
     const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
     for(const [d,x] of Object.entries(days))meta.days[d]=await putText('day_'+d,x);
     if(prec)meta.prec=await putText('prec',prec);
+    if(bets)meta.bets=await putText('bets',bets);
+    else if(prevMeta.bets)meta.bets=prevMeta.bets;
     // xG compacto: [xg local, xg visitante, fuente, tiros…] por partido (los que no tienen datos van como 0).
     if(xg){const map={};for(const [id,r] of Object.entries(xg.map||{}))map[id]=r[2]?r:0;meta.xg=await putText('xg',{map,coef:xg.coef})}
     else if(prevMeta.xg)meta.xg=prevMeta.xg;
@@ -1266,6 +1462,10 @@ const C=window.tgCloud={user:null,
     return out;
   },
   async peek(){const m=await getDoc(ref('meta'));return m.exists()?JSON.parse(m.data().v):null},
+  async pullBets(){
+    const m=await getDoc(ref('meta'));if(!m.exists())return null;
+    const meta=JSON.parse(m.data().v);return meta.bets?await getText('bets',meta.bets):null;
+  },
   async pullXg(){
     const m=await getDoc(ref('meta'));if(!m.exists())return null;
     const meta=JSON.parse(m.data().v);if(!meta.xg)return null;
