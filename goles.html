@@ -205,7 +205,7 @@ svg text{fill:var(--muted);font:11px var(--mono)}
   <p class="small">Más consultas = el xG llega antes a todas las ligas. Con 150 por actualización, en pocos días están todas las ligas que se juegan.</p>
   <h2>Sincronización</h2>
   <div class="small" id="cloudInfo">Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.</div>
-  <div class="row" style="margin-top:8px"><button class="btn" id="btnCloudPull">Bajar lo último de mi cuenta</button><button class="btn hidden" id="btnLogout">Salir de la cuenta</button></div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="btnCloudPush">Subir ahora a mi cuenta</button><button class="btn" id="btnCloudPull">Bajar lo último de mi cuenta</button><button class="btn hidden" id="btnLogout">Salir de la cuenta</button></div>
   <h2>Datos guardados</h2>
   <div class="small" id="dbInfo">—</div>
   <div class="row" style="margin-top:8px"><button class="btn" id="btnWipe">Borrar todos los datos guardados</button></div>
@@ -598,6 +598,7 @@ async function cloudMergeReg(reg){
 window.tgOnLogin=async()=>{try{if(await cloudPull())rerender()}catch(e){console.warn(e)}};
 function rerender(){const r=route();if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
+$('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.'}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
 
 /* ---------------- precisión ---------------- */
