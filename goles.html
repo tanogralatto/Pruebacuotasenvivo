@@ -218,7 +218,7 @@ const T=window.TanoPoissonModel, F=window.TanoFT;
 const API='https://v3.football.api-sports.io';
 const TZ='America/Argentina/Buenos_Aires';
 const MIN_N=30;          // partidos mínimos para pintar una liga de verde o gris
-const CONC=4;            // consultas en paralelo
+const CONC=2;            // consultas en paralelo (más que esto choca con el límite por minuto de la API)
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -258,12 +258,20 @@ async function api(path,params){
   if(!state.key){const e=new Error('Falta tu clave de API-Football. Cargala en Ajustes (⚙︎).');e.fatal=true;throw e}
   const url=new URL(API+path);
   for(const [k,v] of Object.entries(params||{}))url.searchParams.set(k,v);
-  for(let attempt=0;attempt<5;attempt++){
+  const what=path+(params&&params.page>1?' pág. '+params.page:'')+(params&&params.date?' '+params.date:'')+(params&&params.league?' liga '+params.league:'');
+  let netFails=0;
+  for(let attempt=0;attempt<8;attempt++){
     let res;
+    // Si la API frena por exceso de consultas, a veces el navegador lo ve como «sin conexión»: se espera y se reintenta.
     try{res=await fetch(url,{headers:{'x-apisports-key':state.key}})}
-    catch(e){const er=new Error('No se pudo conectar con API-Football. Revisá la conexión.');er.fatal=true;throw er}
+    catch(e){
+      netFails++;
+      if(netFails<=4){say(`La API no respondió (${what}). Reintento en ${netFails*10} s…`);await sleep(netFails*10000);continue}
+      const er=new Error('No se pudo conectar con API-Football ('+what+'). Revisá la conexión y volvé a tocar Actualizar todo: lo ya bajado queda guardado.');er.fatal=true;throw er;
+    }
     state.calls++;
-    if(res.status===429){await sleep(7000);continue}
+    if(res.status===429){say('La API pidió esperar un poco (límite por minuto)…');await sleep(15000);continue}
+    if(res.status>=500){await sleep(5000);continue}
     let j;try{j=await res.json()}catch(e){throw new Error('Respuesta inválida de la API (HTTP '+res.status+').')}
     const errs=j.errors,has=errs&&(Array.isArray(errs)?errs.length>0:Object.keys(errs).length>0);
     if(has){
@@ -278,7 +286,7 @@ async function api(path,params){
 // Corre tareas con CONC en paralelo. Un error fatal (clave, límite diario) corta todo.
 async function pool(tasks,onDone){
   let i=0,done=0,fatal=null;
-  const worker=async()=>{while(i<tasks.length&&!fatal){const t=tasks[i++];try{await t()}catch(e){if(e.fatal)fatal=e}done++;onDone&&onDone(done,tasks.length)}};
+  const worker=async()=>{while(i<tasks.length&&!fatal){const t=tasks[i++];try{await t()}catch(e){if(e.fatal)fatal=e}done++;onDone&&onDone(done,tasks.length);await sleep(250)}};
   await Promise.all(Array.from({length:Math.min(CONC,tasks.length)},worker));
   if(fatal)throw fatal;
 }
