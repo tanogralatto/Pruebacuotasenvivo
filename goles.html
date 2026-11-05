@@ -412,6 +412,7 @@ async function updateAll(){
   try{
     await loadXg();
     state.prec=state.prec||await DB.get('prec');
+    await cloudMergeXg();
     let reg=state.reg=state.reg||(await DB.get('reg'))||{};
     reg=state.reg=await cloudMergeReg(reg);
     const dates=[dayStr(0),dayStr(1)];
@@ -564,7 +565,8 @@ async function cloudPush(){
   const C=window.tgCloud;if(!C||!C.user)return;
   say('Guardando en tu cuenta…');
   const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
-  await C.pushAll({days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:LS.get('tg:updated',0),bf:LS.get('tg:bf',{})});
+  await loadXg();
+  await C.pushAll({xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:LS.get('tg:updated',0),bf:LS.get('tg:bf',{})});
 }
 // Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
 async function cloudPull(force){
@@ -577,6 +579,17 @@ async function cloudPull(force){
   if(got.bf)LS.set('tg:bf',Object.assign({},LS.get('tg:bf',{}),got.bf));
   if(got.updated)LS.set('tg:updated',got.updated);
   return true;
+}
+async function cloudMergeXg(){
+  const C=window.tgCloud;if(!C||!C.user)return;
+  try{
+    say('Bajando el xG guardado en tu cuenta…');
+    const x=await C.pullXg();if(!x)return;
+    await loadXg();let n=0;
+    for(const [id,r] of Object.entries(x.map||{}))if(!XG[id]||(!XG[id][2]&&r[2])){XG[id]=r;n++}
+    if(n)await DB.set('xg',XG);
+    if(x.coef&&x.coef.fitted&&!(XGCOEF&&XGCOEF.fitted&&XGCOEF.n>=x.coef.n)){XGCOEF=x.coef;await DB.set('xgcoef',XGCOEF)}
+  }catch(e){console.warn(e)}
 }
 async function cloudMergeReg(reg){
   const C=window.tgCloud;if(!C||!C.user)return reg;
@@ -592,7 +605,10 @@ async function computePrecision(leagues,reg,status){
   const names=LS.get('tg:lnames',{})||{};
   for(const d of Object.values(state.days))for(const f of (d&&d.fx)||[])names[f.lid]=[f.ln,f.lc];
   LS.set('tg:lnames',names);
-  const out={ts:Date.now(),leagues:{},cfg:{}};
+  // Se parte de la precisión anterior (por ejemplo, la que vino de otro dispositivo con más ligas):
+  // solo se reemplazan las ligas que este dispositivo pudo recalcular.
+  const prev=state.prec||{};
+  const out={ts:Date.now(),leagues:Object.assign({},prev.leagues||{}),cfg:Object.assign({},prev.cfg||{})};
   const allRows=[];let i=0;
   for(const L of leagues.values()){
     i++;if(i%5===0){status&&status(`Precisión: ${i} de ${leagues.size} ligas…`);await sleep(0)}
@@ -615,11 +631,15 @@ async function computePrecision(leagues,reg,status){
     const ms=F.marketSkill(settled);
     const e=F.ece(best.pr.slice(-500));
     const nm=names[L.lid]||[('Liga '+L.lid),''];
+    if(nm[0].startsWith('Liga ')&&prev.leagues&&prev.leagues[L.lid])nm[0]=prev.leagues[L.lid].name,nm[1]=prev.leagues[L.lid].country;
     out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,rho:best.rho};
     for(const r of best.pr.slice(-400))allRows.push(r);
   }
   const settledAll=Object.values(reg).filter(r=>Number.isFinite(r.hg)&&r.m1x2);
-  out.summary={market:F.marketSkill(settledAll),goals:F.goalsSkill(allRows),calib:F.ece(allRows),leagues:Object.keys(out.leagues).length};
+  const g=F.goalsSkill(allRows),c=F.ece(allRows);
+  // Si este dispositivo tiene menos ligas que la precisión anterior, el resumen de goles y calibración se conserva.
+  const keepOld=prev.summary&&prev.summary.goals&&prev.summary.goals.n>g.n;
+  out.summary={market:F.marketSkill(settledAll),goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,leagues:Object.keys(out.leagues).length};
   state.prec=out;await DB.set('prec',out);
 }
 function leagueStatus(lid){
@@ -922,11 +942,14 @@ async function getText(id,n){
   return txt?JSON.parse(txt):null;
 }
 const C=window.tgCloud={user:null,
-  async pushAll({days,prec,reg,fav,updated,bf}){
+  async pushAll({xg,days,prec,reg,fav,updated,bf}){
     const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
     const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
     for(const [d,x] of Object.entries(days))meta.days[d]=await putText('day_'+d,x);
     if(prec)meta.prec=await putText('prec',prec);
+    // xG compacto: [xg local, xg visitante, fuente, tiros…] por partido (los que no tienen datos van como 0).
+    if(xg){const map={};for(const [id,r] of Object.entries(xg.map||{}))map[id]=r[2]?r:0;meta.xg=await putText('xg',{map,coef:xg.coef})}
+    else if(prevMeta.xg)meta.xg=prevMeta.xg;
     const months={};
     for(const [id,e] of Object.entries(reg)){const m=new Date(e.ts*1000).toISOString().slice(0,7);(months[m]=months[m]||{})[id]=e}
     // Solo se reescriben los meses recientes (o los que la nube todavía no tiene).
@@ -946,6 +969,13 @@ const C=window.tgCloud={user:null,
     for(const d of dates)if(meta.days&&meta.days[d]){const x=await getText('day_'+d,meta.days[d]);if(x)out.days[d]=x}
     if(meta.prec)out.prec=await getText('prec',meta.prec);
     return out;
+  },
+  async pullXg(){
+    const m=await getDoc(ref('meta'));if(!m.exists())return null;
+    const meta=JSON.parse(m.data().v);if(!meta.xg)return null;
+    const x=await getText('xg',meta.xg);if(!x)return null;
+    for(const id of Object.keys(x.map))if(x.map[id]===0)x.map[id]=[null,null,0];
+    return x;
   },
   async pullReg(){
     const m=await getDoc(ref('meta'));if(!m.exists())return {};
