@@ -294,6 +294,7 @@ details.guide th{color:var(--muted);font-weight:600}
     <div class="seg"><button data-day="0">Hoy</button><button data-day="1">Mañana</button><button data-day="fav">★ Favoritos</button></div>
   </div>
   <div class="upd"><span class="small" id="updWhen">Todavía no se actualizó.</span><button class="info" data-tip="update">i</button><button class="btn pri" id="btnUpdate">↻ Actualizar todo</button></div>
+  <div class="small" id="syncLine" style="margin:-4px 0 6px"></div>
   <div class="prog hidden" id="uProg"><i></i></div>
   <div class="status" id="uStatus"></div>
   <div class="filters box">
@@ -647,7 +648,7 @@ async function updateAll(){
     // 7) Precisión de todas las ligas con historial.
     await computePrecision(allLeagues,reg,t=>say(t));
     LS.set('tg:updated',Date.now());
-    try{await cloudPush()}catch(e){warn.push('No se pudo guardar en tu cuenta: '+e.message)}
+    try{await cloudPush();if(window.tgCloud&&window.tgCloud.user)syncLine('☁︎ Guardado en tu cuenta recién: tus otros dispositivos ya lo pueden ver.')}catch(e){warn.push('No se pudo guardar en tu cuenta: '+e.message);syncLine('☁︎ No se pudo guardar en tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
     say(`Listo · ${state.calls} consultas a la API`+(warn.length?' · avisos: '+warn.slice(0,2).join(' | '):''));
   }catch(e){say(e.message,true)}
   prog(1,1);state.running=false;$('#btnUpdate').disabled=false;renderDash();
@@ -690,7 +691,8 @@ function mergeReg(local,cloud){
   return local;
 }
 async function cloudPush(){
-  const C=window.tgCloud;if(!C||!C.user)return;
+  const C=window.tgCloud;
+  if(!C||!C.user){syncLine('☁︎ No estás conectado: lo actualizado quedó solo en este dispositivo. Tocá ☁︎ Entrar arriba.',true);return}
   say('Guardando en tu cuenta…');
   const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
   await loadXg();
@@ -723,10 +725,22 @@ async function cloudMergeReg(reg){
   const C=window.tgCloud;if(!C||!C.user)return reg;
   try{say('Bajando las predicciones guardadas en tu cuenta…');return mergeReg(reg,await C.pullReg())}catch(e){return reg}
 }
-window.tgOnLogin=async()=>{try{if(await cloudPull())rerender()}catch(e){console.warn(e)}};
+function syncLine(t,err){const el=$('#syncLine');if(!el)return;el.textContent=t||'';el.style.color=err?'var(--bad)':'var(--muted)';const i=$('#cloudInfo');if(i&&t)i.textContent=t}
+window.tgOnLogin=async()=>{
+  if(state.running)return;
+  if(!window.tgCloud||!window.tgCloud.user){syncLine('');return}
+  syncLine('☁︎ Revisando tu cuenta…');
+  try{
+    const C=window.tgCloud,meta=C&&C.user?await C.peek():null;
+    const changed=await cloudPull();
+    if(changed)rerender();
+    if(!meta)syncLine('☁︎ Tu cuenta todavía no tiene datos guardados. Actualizá en algún dispositivo con ☁︎ conectado, o usá ⚙︎ → «Subir ahora a mi cuenta».',true);
+    else syncLine('☁︎ Al día con tu cuenta · última actualización guardada '+ago(meta.updated||meta.ts||0)+(changed?' (bajada recién)':''));
+  }catch(e){syncLine('☁︎ No se pudo leer tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
+};
 function rerender(){const r=route();if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
-$('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.'}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
+$('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
 
 /* ---------------- precisión ---------------- */
@@ -1163,6 +1177,7 @@ const C=window.tgCloud={user:null,
     if(meta.prec)out.prec=await getText('prec',meta.prec);
     return out;
   },
+  async peek(){const m=await getDoc(ref('meta'));return m.exists()?JSON.parse(m.data().v):null},
   async pullXg(){
     const m=await getDoc(ref('meta'));if(!m.exists())return null;
     const meta=JSON.parse(m.data().v);if(!meta.xg)return null;
