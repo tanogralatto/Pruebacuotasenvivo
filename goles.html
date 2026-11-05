@@ -230,6 +230,8 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>Cuota justa</b>: el mismo selector que en la lista; cambiarlo acá también lo cambia allá.</li>
       <li>Grupos: <b>Muchos goles</b>, <b>Pocos goles</b>, <b>Gana local</b>, <b>Gana visitante</b> y <b>Otros</b>. Al lado de cada uno, si la liga está aprobada para ese mercado: ✓ sí, ✕ no, ⏳ faltan partidos.</li>
       <li>Solo se ven los mercados con valor; <b>Mostrar todos</b> abre el resto.</li>
+      <li><b>↻ Cuotas de este partido</b>: pide las cuotas de ese partido solo (1 consulta), sin actualizar todo. API-Football renueva las cuotas cada pocas horas, así que pueden diferir de las que ves en tu casa en este momento: manda siempre la de tu casa.</li>
+      <li>Si un partido dice <b>Sin modelo</b> (pasa en copas, donde los equipos jugaron poco en esa competencia), igual se puede usar con <b>Cuota justa: De las casas</b>.</li>
       <li><b>Ver estudio del partido</b>: goles esperados, resultado (local, empate, visitante), contexto de liga, matriz de marcadores y ratings de ataque y defensa.</li>
     </ul>
 
@@ -545,6 +547,18 @@ function leagueCfg(lid,games,season){
   return {xg:false,rho:F.fitRho(rows).rho};
 }
 
+/* ---------------- filas de mercados de un partido ---------------- */
+// Con modelo: cuota, cuota justa y EV del modelo + precio de las casas. Sin modelo (por ejemplo, copas donde los
+// equipos jugaron poco en esa competencia): solo el precio de las casas, que alcanza para «Cuota justa: De las casas».
+function buildRows(a,o,first){
+  const fr=first[a.id]||(first[a.id]={ts:a.ts});
+  let rows;
+  if(a.lam)rows=F.matchMarkets(a.lam,o,{home:a.hn,away:a.an}).rows;
+  else rows=[...o.values()].map(x=>({key:x.key,group:F.groupOf(x.bet),label:F.betLabel(x.bet,a.hn,a.an),price:x.best.price,bookmaker:x.best.bookmaker,fair:null,p:null,ev:null,score:0,mkt:x.mkt}));
+  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt)}});
+  a.edge=a.lam?F.matchEdge(rows):0;
+}
+
 /* ---------------- ACTUALIZAR TODO (lo mismo que haría el robot) ---------------- */
 function prog(done,total){const p=$('#uProg');p.classList.toggle('hidden',!total||done>=total);p.querySelector('i').style.width=(total?done*100/total:0)+'%'}
 function say(t,err){const s=$('#uStatus');s.textContent=t;s.classList.toggle('err',!!err)}
@@ -606,11 +620,7 @@ async function updateAll(){
               a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
               if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
               else{
-                const {rows}=F.matchMarkets(a.lam,o,{home:f.hn,away:f.an});
-                const fr=first[f.id]||(first[f.id]={ts:f.ts});
-                a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt)}});
-                a.edge=F.matchEdge(rows);
-                a.edgeBy={};for(const g of ['high','low','home','away','other'])a.edgeBy[g]=Math.max(0,...rows.filter(r=>r.group===g).map(r=>r.score));
+                buildRows(a,o,first);
                 const m1x2=F.market1x2(o);
                 if(m1x2&&f.ts*1000>Date.now()&&!(reg[f.id]&&Number.isFinite(reg[f.id].hg))){
                   const s=F.summarize(F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho));
@@ -619,6 +629,8 @@ async function updateAll(){
               }
             }
           }
+          // Sin modelo, igual se muestran los mercados con el precio de las casas.
+          if(!a.lam){const o=F.parseOdds(odds[d].get(String(f.id)));if(o.size){a.noModel=a.reason;buildRows(a,o,first)}}
           day.fx.push(a);
         }
         await sleep(0);
@@ -942,10 +954,15 @@ async function renderMatch(id){
   const s=leagueStatus(a.lid), fv=favs();
   let h=`<div class="row" style="margin-top:10px"><span>${flag(a.lc)}</span><span class="small">${esc(a.lc)} · ${esc(a.ln)} · ${fmtTime(a.iso)}</span>${a.rows?edgeHtml(edgeOf(a,null,srcNow())):''}<button class="info" data-tip="edge">i</button><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" style="margin-left:auto">${fv[a.id]?'★':'☆'}</button></div>`;
   h+=`<div class="mh">${esc(a.hn)} <span>vs</span> ${esc(a.an)}</div><div class="small">Última lectura ${ago(a.readAt)}</div>`;
-  if(!a.lam){body.innerHTML=h+`<div class="empty" style="margin-top:14px">Sin análisis disponible: ${esc(a.reason||'')}</div>`;return}
-  h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}</div>`;
-  h+=`<div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">${open.has('study')?'Ocultar estudio':'Ver estudio del partido'}</button></div>`;
-  if(open.has('study'))h+=studyHtml(a);
+  const upcoming=a.ts*1000>Date.now();
+  const refresh=upcoming&&state.key?`<button class="btn" id="btnOdds">↻ Cuotas de este partido</button>`:'';
+  if(!a.lam&&!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">Sin análisis disponible: ${esc(a.reason||'')}</div>`+(refresh?`<div class="row" style="margin-top:10px">${refresh}</div><div class="small" id="oddsMsg"></div>`:'');return}
+  if(a.lam){
+    h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}</div>`;
+    h+=`<div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">${open.has('study')?'Ocultar estudio':'Ver estudio del partido'}</button>${refresh}</div>`;
+  }else h+=`<div class="none" style="margin-top:10px;text-align:left">Sin modelo para este partido (${esc(a.noModel||a.reason||'')}). Se puede usar igual con <b>Cuota justa: De las casas</b>.</div><div class="row" style="margin-top:10px">${refresh}</div>`;
+  h+=`<div class="small" id="oddsMsg" style="margin-top:6px"></div>`;
+  if(a.lam&&open.has('study'))h+=studyHtml(a);
   if(!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
   const src=srcNow();
   h+=`<div class="fl"><div class="fl-h"><b>Cuota justa</b> <button class="info" data-tip="src">i</button></div><div class="seg" id="msrc">${Object.entries(SRC_NAME).map(([k,n])=>`<button data-msrc="${k}" class="${k===src?'on':''}">${n}</button>`).join('')}</div></div>`;
@@ -992,6 +1009,25 @@ function studyHtml(a){
     h+=`<div class="box"><h3>Ratings de equipos</h3>${bar('Ataque',a.rt.ah,a.rt.aa)}${a.rt.dh&&a.rt.da?bar('Defensa',a.rt.dh,a.rt.da):''}</div>`;
   }
   return h+'</div>';
+}
+
+async function refreshOdds(id){
+  const msg=()=>$('#oddsMsg');
+  try{
+    if(msg())msg().textContent='Pidiendo cuotas a API-Football…';
+    for(const off of [0,1,-1]){
+      const d=dayStr(off),day=await getDay(d);const a=day&&day.fx.find(x=>String(x.id)===String(id));if(!a)continue;
+      const j=await api('/odds',{fixture:id,timezone:TZ});
+      const o=F.parseOdds(j.response||[]);
+      if(!o.size){if(msg())msg().textContent='La API no tiene cuotas nuevas para este partido.';return}
+      const first=(await DB.get('first'))||{};
+      buildRows(a,o,first);a.readAt=Date.now();
+      await DB.set('first',first);await DB.set('day:'+d,day);state.days[d]=day;
+      await renderMatch(id);
+      if(msg())msg().textContent='Cuotas actualizadas recién (1 consulta). API-Football renueva las cuotas cada pocas horas: si tu casa muestra otra, manda la de tu casa.';
+      return;
+    }
+  }catch(e){if(msg())msg().textContent=e.message}
 }
 
 /* ---------------- render: precisión ---------------- */
@@ -1128,6 +1164,7 @@ $('#pBody').addEventListener('change',e=>{if(e.target.id==='psort'){precSort=e.t
 $('#mBody').addEventListener('click',e=>{
   const m=e.target.closest('[data-more]'),r=route();
   if(m){const g=m.dataset.more;open.has(g)?open.delete(g):open.add(g);renderMatch(r.id);return}
+  if(e.target.closest('#btnOdds')){refreshOdds(r.id);return}
   const ms=e.target.closest('[data-msrc]');if(ms){LS.set('tg:src',ms.dataset.msrc);renderMatch(r.id);return}
   if(e.target.closest('#btnStudy')){open.has('study')?open.delete('study'):open.add('study');renderMatch(r.id)}
 });
