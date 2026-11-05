@@ -186,6 +186,9 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .result-expanded .cell .pct{font-size:28px}
 .result-expanded .cell .cnt{font-size:13px}
 .result-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.alert-move-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 12px;padding:12px 14px;border:1px dashed currentColor;border-radius:10px}
+.alert-move-bar span{font-weight:600;flex:1 1 220px}
+.alert-move-one{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
 .fav-legacy{padding:14px 16px}
 .fav-legacy .fav-summary{display:flex;align-items:center;gap:12px;justify-content:space-between}
 .fav-legacy .fav-info{min-width:0;flex:1}
@@ -3046,7 +3049,12 @@ function startAlertHistory() {
       won: ['Ganada', 'won'], lost: ['Perdida', 'lost'], push: ['Anulada', 'push'],
       pending: ['Pendiente', 'pending'], unavailable: ['Sin resultado', 'unavailable']
     };
-    list.innerHTML = monthAlerts.map(a => {
+    // En «VIP anteriores» se pueden reasignar las alertas a AEG o dataGol (todas las del mes o una por una).
+    const moveBar = activeGroup === 'vip_legacy'
+      ? '<div class="alert-move-bar"><span>Pasar las ' + monthAlerts.length + ' alertas de ' + esc(selectedMonth) + ' a:</span>'
+        + '<button type="button" data-move-all="aeg">💎 AEG</button><button type="button" data-move-all="datagol">💎 dataGol</button></div>'
+      : '';
+    list.innerHTML = moveBar + monthAlerts.map(a => {
       const status = outcome[a.result_status] || (!a.result_status ? ['Pendiente', 'pending'] : ['Sin resultado', 'unavailable']);
       const marketLabel = a.market_type === 'over05' ? 'Más de 0,5 goles · 1T' : a.market_type === 'over10' ? 'Más de 1,0 goles · 1T' : (a.market || a.market_type || 'Mercado');
       const match = (a.home || 'Local') + ' ' + (a.score_at_alert || '—') + ' ' + (a.away || 'Visitante');
@@ -3064,6 +3072,7 @@ function startAlertHistory() {
         + '<label>Stake<input type="text" value="1 unidad (' + esc(unitValue.toLocaleString('es-AR')) + ' ARS)" readonly></label>'
         + '<button type="button" data-save-bet="' + esc(a.id) + '">Guardar cuota real</button></div>'
         + (a.result_note ? '<div class="small">' + esc(a.result_note) + '</div>' : '')
+        + (activeGroup === 'vip_legacy' ? '<div class="alert-move-one"><span class="small">Pasar esta alerta a:</span><button type="button" data-move-one="aeg" data-move-id="' + esc(a.id) + '">AEG</button><button type="button" data-move-one="datagol" data-move-id="' + esc(a.id) + '">dataGol</button></div>' : '')
         + '</article>';
     }).join('');
     list.querySelectorAll('[data-save-bet]').forEach(button => {
@@ -3086,6 +3095,30 @@ function startAlertHistory() {
           button.disabled = false;
         }
       };
+    });
+    const strategyName = { aeg: 'AEG', datagol: 'dataGol' };
+    const moveAlerts = async (ids, strategy, buttons) => {
+      if (!ids.length) return;
+      if (ids.length > 1 && !confirm('¿Pasar ' + ids.length + ' alertas de VIP anteriores (' + selectedMonth + ') a ' + strategyName[strategy] + '?')) return;
+      buttons.forEach(b => { b.disabled = true; });
+      try {
+        for (let i = 0; i < ids.length; i += 400) {
+          const batch = writeBatch(db);
+          ids.slice(i, i + 400).forEach(id => batch.update(doc(db, 'tanoapp_telegram_alerts', id), { vip_strategy: strategy, vip_strategy_reassigned_at: serverTimestamp() }));
+          await batch.commit();
+        }
+        unitStatus.textContent = ids.length + (ids.length === 1 ? ' alerta pasada' : ' alertas pasadas') + ' a ' + strategyName[strategy] + '.';
+      } catch (e) {
+        unitStatus.textContent = 'No se pudieron mover las alertas. Hay que habilitar en las reglas de Firebase la edición del campo vip_strategy.';
+        console.error('No se pudo reasignar la estrategia VIP', e);
+        buttons.forEach(b => { b.disabled = false; });
+      }
+    };
+    list.querySelectorAll('[data-move-all]').forEach(button => {
+      button.onclick = () => moveAlerts(monthAlerts.map(a => a.id), button.dataset.moveAll, [...list.querySelectorAll('[data-move-all]')]);
+    });
+    list.querySelectorAll('[data-move-one]').forEach(button => {
+      button.onclick = () => moveAlerts([button.dataset.moveId], button.dataset.moveOne, [...button.parentElement.querySelectorAll('button')]);
     });
     moreButton.classList.toggle('hidden', !hasMore);
     moreButton.disabled = loadingMore;
