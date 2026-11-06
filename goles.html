@@ -106,6 +106,13 @@ table.ctx td:first-child,table.ctx th:first-child{text-align:left}
 .rate{position:relative;height:10px;background:var(--line);border-radius:10px;margin:18px 0 4px}
 .rate .dot{position:absolute;top:-3px;width:16px;height:16px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--bg)}
 .rate .mid{position:absolute;top:-4px;width:2px;height:18px;background:var(--muted);left:50%}
+.sig{margin-top:12px}
+.sig-h{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.sig-h b{font-weight:600}
+.sig-bar{position:relative;height:10px;background:var(--line);border-radius:10px;margin-top:6px}
+.sig-bar i{position:absolute;top:0;height:10px;border-radius:10px}
+.sig-bar .mid{position:absolute;top:-3px;width:2px;height:16px;background:var(--muted);left:50%}
+.sig-total{margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-size:14px;line-height:1.45}
 /* precisión */
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
@@ -640,6 +647,12 @@ function leagueStats(games){
   for(const x of games){g+=x.hg+x.ag;if(x.hg>x.ag)h++;else if(x.hg===x.ag)d++;if(x.hg>0&&x.ag>0)b++;if(x.hg+x.ag>=3)o++;}
   return n?{n,goals:g/n,home:h/n,draw:d/n,away:(n-h-d)/n,btts:b/n,o25:o/n}:null;
 }
+// Últimos n partidos de un equipo antes de ts: [goles a favor, goles en contra] del más viejo al más nuevo.
+function lastN(games,teamId,ts,n=5){
+  const out=[];
+  for(let k=games.length-1;k>=0&&out.length<n;k--){const g=games[k];if(g.ts>=ts)continue;if(String(g.h)===String(teamId))out.push([g.hg,g.ag]);else if(String(g.a)===String(teamId))out.push([g.ag,g.hg])}
+  return out.reverse();
+}
 function topPct(fit,teamId,field,better){
   const vals=Object.values(fit.teams).filter(t=>t.nEff>=3).map(t=>t[field]);
   const v=fit.teams[String(teamId)]&&fit.teams[String(teamId)][field];
@@ -758,6 +771,7 @@ async function updateAll(){
               a.lam={home:pr.lambdaHome,away:pr.lambdaAway,rho:cfg.rho};a.xg=!!cfg.xg;
               a.n={home:pr.nHome,away:pr.nAway};a.ls=ls;
               const nc=NC&&NC[lid]&&String(NC[lid].season)===String(fxs[0].season)?NC[lid].cls:{};a.nc={home:nc[f.hid]||null,away:nc[f.aid]||null};
+              a.form={home:lastN(games,f.hid,f.ts),away:lastN(games,f.aid,f.ts)};a.hadv=fit.muH/fit.muA;
               a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
               if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
               else{
@@ -1171,10 +1185,43 @@ function ncNote(a){
   const t=[[a.hn,a.nc&&a.nc.home],[a.an,a.nc&&a.nc.away]].filter(x=>x[1]).map(([n,c])=>esc(n)+(c==='up'?' subió: el modelo lo arranca más débil que un equipo promedio':' bajó: el modelo lo arranca más fuerte que un equipo promedio'));
   return t.length?'<div class="small">'+t.join(' · ')+'. Con cada partido pesan más sus resultados reales.</div>':'';
 }
+// «Qué mueve el partido»: hacia qué lado empuja cada señal (+1 = local, −1 = visitante).
+function signalsHtml(a,s){
+  const cl=x=>Math.max(-1,Math.min(1,x));
+  const ppg=f=>f&&f.length?f.reduce((t,[x,y])=>t+(x>y?3:x===y?1:0),0)/f.length:null;
+  const gd=f=>f&&f.length?f.reduce((t,[x,y])=>t+x-y,0)/f.length:null;
+  const str=f=>f&&f.length?f.map(([x,y])=>x>y?'G':x===y?'E':'P').join(''):'';
+  const sig=[];
+  const two=(x,y)=>`${a.hn}: ${x} · ${a.an}: ${y}`;
+  if(a.rt&&a.rt.ah&&a.rt.aa)sig.push(['Ataque',cl((a.rt.ah.pos-a.rt.aa.pos)*1.5),two('top '+a.rt.ah.top+'% de la liga','top '+a.rt.aa.top+'%')]);
+  if(a.rt&&a.rt.dh&&a.rt.da)sig.push(['Defensa',cl((a.rt.dh.pos-a.rt.da.pos)*1.5),two('top '+a.rt.dh.top+'% de la liga','top '+a.rt.da.top+'%')]);
+  const fh=a.form&&a.form.home,fa=a.form&&a.form.away;
+  if(ppg(fh)!=null&&ppg(fa)!=null)sig.push(['Forma (últimos 5)',cl((ppg(fh)-ppg(fa))/2),two(str(fh),str(fa))]);
+  if(gd(fh)!=null&&gd(fa)!=null)sig.push(['Goles recientes (diferencia)',cl((gd(fh)-gd(fa))/2.5),two((gd(fh)>0?'+':'')+dec(gd(fh)),(gd(fa)>0?'+':'')+dec(gd(fa))+' por partido')]);
+  if(Number.isFinite(a.hadv))sig.push(['Ventaja de local en esta liga',cl((a.hadv-1)/0.5),`el local hace ${Math.round((a.hadv-1)*100)}% más goles`]);
+  if(!sig.length)return '';
+  let h=`<div class="box"><h3>Qué mueve el partido <button class="info" data-tip="sig">i</button></h3><div class="small">Hacia qué lado empuja cada señal: <span style="color:var(--acc)">■</span> ${esc(a.hn)} · <span style="color:var(--info)">■</span> ${esc(a.an)}</div>`;
+  for(const [n,v,det] of sig){
+    const side=Math.abs(v)<0.12?'Parejo':v>0?esc(a.hn):esc(a.an);
+    const w=Math.abs(v)*50,st=v>=0?`left:50%;width:${w}%;background:var(--acc)`:`left:${50-w}%;width:${w}%;background:var(--info)`;
+    h+=`<div class="sig"><div class="sig-h"><b>${n}</b><span class="${Math.abs(v)<0.12?'muted':''}">${side}</span></div><div class="sig-bar"><span class="mid"></span>${Math.abs(v)>=0.02?`<i style="${st}"></i>`:''}</div><div class="small">${esc(det)}</div></div>`;
+  }
+  // Resumen: el precio justo de las casas (Pinnacle sin margen) manda; el modelo, como referencia.
+  // r.m = probabilidad sin margen de las casas (Pinnacle o mediana).
+  const mk=k=>{const r=a.rows&&a.rows.find(x=>x.k===k);return r&&r.m>0&&r.m<1?r.m:null};
+  const raw=[mk('1x2:home'),mk('1x2:draw'),mk('1x2:away')],has=raw.every(Boolean),tot=has?raw[0]+raw[1]+raw[2]:1;
+  const mq=has?raw.map(x=>1/(x/tot)):[],mp=[s.home,s.draw,s.away];
+  const k=has?[0,2].sort((x,y)=>mq[x]-mq[y])[0]:(s.home>=s.away?0:2);
+  const lbl=k===0?'victoria de '+esc(a.hn):'victoria de '+esc(a.an);
+  let t=has?`Pinnacle sin margen da <b>${pct(1/mq[k],0)}</b> a la ${lbl}: hay valor si tu casa paga <b>más de ${dec(mq[k])}</b>. El modelo dice ${pct(mp[k],0)}.`
+           :`El modelo da <b>${pct(mp[k],0)}</b> a la ${lbl} (cuota justa ${dec(1/mp[k])}). Sin precio de las casas todavía: tocá ↻ Cuotas de este partido.`;
+  if(has&&Math.abs(mp[k]-1/mq[k])>=0.05)t+=` <span class="muted">Difieren ${Math.round(Math.abs(mp[k]-1/mq[k])*100)} puntos: en el historial, cuando pasa eso, casi siempre acierta Pinnacle.</span>`;
+  return h+`<div class="sig-total">${t}</div></div>`;
+}
 function studyHtml(a){
   const m=F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho), s=F.summarize(m), lg=a.ls;
   const mx=Math.max(a.lam.home,a.lam.away,2.5);
-  let h='<div class="study">';
+  let h='<div class="study">'+signalsHtml(a,s);
   h+=`<div class="box"><h3>Goles esperados <button class="info" data-tip="lam">i</button></h3>
     <div class="lamrow"><span class="nm">${esc(a.hn)}</span><span class="bar"><i style="width:${a.lam.home/mx*100}%;background:var(--acc)"></i></span><b>${dec(a.lam.home)}</b></div>
     <div class="lamrow"><span class="nm">${esc(a.an)}</span><span class="bar"><i style="width:${a.lam.away/mx*100}%;background:var(--info)"></i></span><b>${dec(a.lam.away)}</b></div>
@@ -1376,6 +1423,7 @@ const TIPS={
   fair:['Cuota justa','La cuota que debería pagar (1 ÷ probabilidad), según la fuente elegida arriba: las casas sin margen o nuestro modelo. Si la casa paga más que esto, hay valor.'],
   ev:['EV','Probabilidad × cuota − 1, con la fuente elegida (casas o modelo). Cuánto ganarías en promedio por cada $100 si apostaras muchas veces así. Abajo, en chico, el EV según la otra fuente.'],
   score:['Score (0-100)','Ordena las apuestas: sube con el EV y premia las cuotas bajas, que son más seguras. Verde (65+) = de las mejores.'],
+  sig:['Qué mueve el partido','Cada barra muestra hacia qué equipo empuja una señal: ataque y defensa (comparados con el resto de la liga), forma y diferencia de goles de los últimos 5 partidos, y la ventaja de local de esta liga. Es para entender el partido, no una recomendación. El historial cara a cara no se usa: con tan pocos partidos es más ruido que señal. Abajo, la referencia para apostar es Pinnacle sin margen: en ~18.000 partidos, cuando el modelo y Pinnacle difieren 5 puntos o más, casi siempre acierta Pinnacle.'],
   lam:['Goles esperados','Cuántos goles esperamos de cada equipo según el ataque y la defensa de los dos en esta liga (temporada actual y anterior, con más peso a lo reciente). Si la liga usa xG, mezcla goles con xG.'],
   skill1x2:['Habilidad 1X2','Cuánto mejor acierta el modelo el ganador (local, empate, visitante) que las casas sin margen, en los mismos partidos. Positivo = mejor que las casas. Usa las cuotas de cierre históricas de football-data.co.uk (unas 40 ligas, dos temporadas) más las cuotas que la app guarda en cada actualización (todas las ligas).'],
   src:['Cuota justa: de dónde sale','«De las casas»: el precio justo según las propias casas (Pinnacle, o la mediana de todas), sin su margen. Si una casa paga más que eso, hay valor. No depende del modelo: es la ventaja más probada y sirve en todas las ligas. «Del modelo»: el precio según nuestro modelo; confiá solo en ligas en verde. «Coinciden»: solo cuando hay valor según las dos; el EV y la cuota justa que se ven son los de las casas.'],
