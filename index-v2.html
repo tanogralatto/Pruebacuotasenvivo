@@ -1701,7 +1701,10 @@ function isEvPlus(r){if(state.market==='ah'){const b=ahBest(r);return !!b&&b.ev>
 function sorted(){
   const m=parseInt($('#minAvg').value,10)||0, s=$('#sort').value;
   const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, onlyEv=!!($('#onlyEv')&&$('#onlyEv').checked), now=Date.now();
-  const beat=$('#onlyBeatMkt')&&$('#onlyBeatMkt').checked&&window.tanoBeatsMarketLeagues?window.tanoBeatsMarketLeagues(state.market):null;
+  // El filtro «Solo ligas donde le gana a las casas» está oculto: si el navegador restauró la casilla marcada,
+  // filtraba todos los partidos sin que se viera por qué. Solo cuenta cuando la casilla está visible.
+  const beatBox=$('#onlyBeatMkt'), beatOn=!!beatBox&&beatBox.checked&&!beatBox.closest('label.hidden');
+  const beat=beatOn&&window.tanoBeatsMarketLeagues?window.tanoBeatsMarketLeagues(state.market):null;
   const list=state.results.filter(r=>(!only||(isFutureFixture(r.fx,now)&&(r.fx.st==='NS'||r.fx.st==='TBD')))&&(!apply||passesCriteria(r))&&(!onlyEv||isEvPlus(r))&&(!beat||beat.has(String(r.fx.lid)))&&(m===0||state.market==='ah'||(r.avg!==null&&r.avg>=m)));
   const nv=x=>x===null?-1:x;
   if(s==='ev') list.sort((a,b)=>(evOf(b)===null?-9:evOf(b))-(evOf(a)===null?-9:evOf(a))||nv(b.avg)-nv(a.avg));
@@ -1710,12 +1713,21 @@ function sorted(){
   else list.sort((a,b)=>nv(b.avg)-nv(a.avg)||nv(b.min)-nv(a.min));
   return list;
 }
+// Dice qué filtro dejó la lista vacía, en lugar de culpar siempre al promedio mínimo.
+function emptyResultsHtml(){
+  const why=[];
+  if($('#onlyNS').checked) why.push('«Solo partidos sin empezar»');
+  if($('#applyCriteria').checked) why.push('«Aplicar criterios»');
+  if($('#onlyEv')&&$('#onlyEv').checked) why.push('«Solo EV+ (Poisson)»');
+  if((parseInt($('#minAvg').value,10)||0)>0&&state.market!=='ah') why.push('el promedio mínimo de '+$('#minAvg').value+'%');
+  return '<div class="empty">Ningún partido de los '+state.results.length+' analizados pasa los filtros'+(why.length?' activos: '+why.join(', ')+'. Desmarcá alguno para verlos.':'.')+'</div>';
+}
 function renderResults(){
   const box=$('#results'), has=state.results.length>0;
   $('#resTools').classList.toggle('hidden',!has);
   if(!has){return}
   const list=sorted();
-  box.innerHTML=list.length?list.map(r=>cardHtml(r,state.results.indexOf(r))).join(''):'<div class="empty">Ningún partido llega al promedio mínimo elegido.</div>';
+  box.innerHTML=list.length?list.map(r=>cardHtml(r,state.results.indexOf(r))).join(''):emptyResultsHtml();
   const notes=[];
   const only=$('#onlyNS').checked;
   const shownResults=state.results.filter(r=>!only||(isFutureFixture(r.fx)&&(r.fx.st==='NS'||r.fx.st==='TBD')));
