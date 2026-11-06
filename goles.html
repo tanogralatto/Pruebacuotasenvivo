@@ -53,6 +53,7 @@ h2{font-size:15px;color:var(--muted);margin:22px 0 8px;font-weight:700}
 .fx .teams div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fx .teams .vs{color:var(--dim);font-size:12px}
 .fx .na{font-size:12.5px;color:var(--dim);text-align:right}
+.fx .teams .dl{font-size:12.5px;color:var(--muted);margin-top:3px}
 .fx .go{flex:none;color:var(--dim);font-size:18px}
 .edge{display:flex;align-items:center;gap:6px;flex:none}
 .bar{width:46px;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
@@ -1162,11 +1163,21 @@ function marketLines(a,tab){
 // Cuota mínima que tiene que pagar tu casa: la más alta entre la justa del modelo y la de Pinnacle, + 2%.
 const minOdd=(p,pm)=>{const f=[p,pm].filter(x=>x>0).map(x=>1/x);return f.length?Math.max(...f)*1.02:null};
 const ptsTxt=d=>(d>0?'+':d<0?'−':'')+Math.abs(Math.round(d*100));
+// Columna de Precisión que corresponde a cada tipo de apuesta (para el ✓ de esa línea).
+const stKey=k=>{const t=k.split(':')[0];return t==='total'?'goals':t==='btts'?'btts':t==='tt'?'team':t==='c'?'corners':'res'};
+// Diferencia modelo − Pinnacle: ⚠︎ si pasa de 10 puntos (casi siempre error del modelo); verde solo si la liga
+// tiene ✓ en ese mercado; gris si no; rojo si el modelo ve menos que Pinnacle.
+function diffHtml(d,st){
+  if(d==null)return '<span class="c-d">—</span>';
+  if(d>0.10)return `<span class="c-m" title="Diferencia muy grande: casi siempre es error del modelo">⚠︎ ${ptsTxt(d)}</span>`;
+  if(d>0.02)return `<span class="${st==='g'?'c-g':'c-d'}">${ptsTxt(d)}</span>`;
+  return `<span class="${d<-0.02?'c-b':'c-d'}">${ptsTxt(d)}</span>`;
+}
 function linesTable(a,lines,withAdd){
   let h=`<div class="xs"><table class="mk"><thead><tr><th>Mercado</th><th>Modelo</th><th>Pinnacle</th><th>Dif. <button class="info" data-tip="dif">i</button></th><th>Mínima <button class="info" data-tip="minodd">i</button></th>${withAdd?'<th></th>':''}</tr></thead><tbody>`;
   for(const x of lines){
     const d=x.p>0&&x.pm>0?x.p-x.pm:null;
-    h+=`<tr><td>${esc(x.s||x.l)}</td><td class="num">${x.p>0?dec(1/x.p)+'<span class="bk">'+pct(x.p,0)+'</span>':'—'}</td><td class="num">${x.pm>0?dec(1/x.pm)+'<span class="bk">'+pct(x.pm,0)+'</span>':'—'}</td><td class="dp ${d>0.02?'c-g':d<-0.02?'c-b':'c-d'}">${d==null?'—':ptsTxt(d)}</td><td class="num"><b>${dec(minOdd(x.p,x.pm))}</b></td>${withAdd?`<td><button class="addb" data-add="${a.id}|${esc(x.k)}" title="Anotar apuesta">＋</button></td>`:''}</tr>`;
+    h+=`<tr><td>${esc(x.s||x.l)}</td><td class="num">${x.p>0?dec(1/x.p)+'<span class="bk">'+pct(x.p,0)+'</span>':'—'}</td><td class="num">${x.pm>0?dec(1/x.pm)+'<span class="bk">'+pct(x.pm,0)+'</span>':'—'}</td><td class="dp">${diffHtml(d,leagueStatus(a.lid)[stKey(x.k)])}</td><td class="num"><b>${dec(minOdd(x.p,x.pm))}</b></td>${withAdd?`<td><button class="addb" data-add="${a.id}|${esc(x.k)}" title="Anotar apuesta">＋</button></td>`:''}</tr>`;
   }
   return h+'</tbody></table></div>';
 }
@@ -1174,7 +1185,7 @@ function linesTable(a,lines,withAdd){
 function bestDiff(a){
   let best=null;
   if(!a.lam&&!a.clam)return null;
-  for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(x.p>0&&x.pm>0&&(!best||x.p-x.pm>best.d))best={d:x.p-x.pm,l:x.l};
+  for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(x.p>0&&x.pm>0&&(!best||x.p-x.pm>best.d))best={d:x.p-x.pm,l:x.s||x.l,k:x.k};
   return best;
 }
 async function renderMk(){
@@ -1295,9 +1306,9 @@ async function renderDash(){
     html+=`<div class="league"><span>${flag(f0.lc)}</span><span class="n">${esc(f0.lc)} · ${esc(f0.ln)}</span>${statusChip(s.goals,'Goles')}${statusChip(s.res,'1X2')}</div>`;
     for(const {a} of g.list.sort((x,y)=>x.a.ts-y.a.ts)){
       const bd=bestDiff(a);
-      const right=a.lam||a.clam?(bd&&bd.d>=0.03?`<span class="na"><b class="c-g mono">+${Math.round(bd.d*100)}</b> ${esc(bd.l)}</span>`:'<span class="na">Ver mercados</span>'):`<span class="na">Sin modelo</span>`;
+      const dl=a.lam||a.clam?(bd&&bd.d>=0.03?`<div class="dl"><b class="mono">${diffHtml(bd.d,leagueStatus(a.lid)[stKey(bd.k)])}</b> · ${esc(bd.l)}</div>`:'<div class="dl">Sin diferencias con Pinnacle</div>'):'<div class="dl">Sin modelo</div>';
       const live=a.st&&!['NS','TBD','PST'].includes(a.st);
-      html+=`<div class="fxw"><a class="fx" href="#/partido/${a.id}"><span class="t">${live?'<span class="c-g">'+esc(a.st)+'</span>':fmtTime(a.iso)}</span><span class="teams"><div>${esc(a.hn)}</div><div class="vs">vs ${esc(a.an)}</div></span>${right}<span class="go">›</span></a><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" aria-label="Favorito">${fv[a.id]?'★':'☆'}</button></div>`;
+      html+=`<div class="fxw"><a class="fx" href="#/partido/${a.id}"><span class="t">${live?'<span class="c-g">'+esc(a.st)+'</span>':fmtTime(a.iso)}</span><span class="teams"><div>${esc(a.hn)}</div><div class="vs">vs ${esc(a.an)}</div>${dl}</span><span class="go">›</span></a><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" aria-label="Favorito">${fv[a.id]?'★':'☆'}</button></div>`;
       shown++;
     }
   }
@@ -1335,6 +1346,8 @@ async function renderMatch(id){
   const lines=(a.rows||[]).map(r=>({k:r.k,g:r.g,l:r.l,p:r.p,pm:r.sh&&r.m>0?r.m:null}));
   const seen=new Set(lines.map(x=>x.k));
   for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(!seen.has(x.k)){seen.add(x.k);lines.push(Object.assign({g:F.groupOf(x.bet)},x,{s:null}))}
+  const top=lines.filter(x=>x.p>0&&x.pm>0&&x.p-x.pm>0.005).sort((x,y)=>(y.p-y.pm)-(x.p-x.pm)).slice(0,3);
+  if(top.length)h+=`<div class="box" style="margin-top:12px"><h3 style="margin:0 0 6px;font-size:15px">Donde el modelo difiere de Pinnacle</h3>${linesTable(a,top,upcoming)}<div class="small" style="margin-top:6px"><span class="c-g">Verde</span> = la liga tiene ✓ en ese mercado. <span class="c-d">Gris</span> = sin ✓: confiá más en Pinnacle. <span class="c-m">⚠︎</span> = más de 10 puntos: casi siempre es error del modelo.</div></div>`;
   const order=k=>{const t=k.split(':'),n=Number(t[t.length-1]);return [t[0]+':'+(t[0]==='tt'||t[0]==='c'?t[1]:''),Number.isFinite(n)?n:0,k]};
   for(const g of F.GROUPS){
     const rows=lines.filter(x=>x.g===g.id&&(x.p>0||x.pm>0)).sort((x,y)=>{const ox=order(x.k),oy=order(y.k);return ox[0].localeCompare(oy[0])||ox[1]-oy[1]||ox[2].localeCompare(oy[2])});
