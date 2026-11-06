@@ -138,9 +138,11 @@
     const n = String(name || '');
     if (!HALF.test(n)) {
       const nt = n.trim();
-      if (/^(corners?\s*(over\s*\/?\s*under|o\/u)|total\s*corners|c[oó]rners?\s*(m[aá]s\/menos|totales))$/i.test(nt)) return 'c:total';
-      const mc = nt.match(/^(home|away)\s*(?:team\s*)?corners?(?:\s*over\s*\/?\s*under)?$/i) || nt.match(/^total\s*corners\s*-\s*(home|away)$/i);
-      if (mc) return 'c:' + mc[1].toLowerCase();
+      // Cualquier mercado de córners de más/menos (el nombre exacto cambia según la fuente); no entran los de
+      // 3 resultados, hándicap, par/impar, exactos, primero/último ni carreras.
+      if (/c[oó]rner/i.test(nt) && !/1x2|3\s*way|handicap|asian|odd|even|exact|first|last|race|range|match\s*bet|1st|2nd/i.test(nt)) {
+        return /\bhome\b|local/i.test(nt) ? 'c:home' : /\baway\b|visitante/i.test(nt) ? 'c:away' : 'c:total';
+      }
     }
     if (HALF.test(n) || /corner|card|tarjeta|booking/i.test(n)) return null;
     if (/^(match winner|1x2|resultado( final)?|full ?time result)$/i.test(n.trim())) return '1x2';
@@ -179,7 +181,9 @@
       return ['total:' + side + ':' + line, { type: 'total', side, line }];
     }
     if (kind.startsWith('c:')) {
-      const scope = kind.slice(2), m = lv.match(/^(over|under|más de|mas de|menos de)\s*([0-9]+(?:[.,][0-9]+)?)$/);
+      // «Over 9.5», o «Over» con la línea aparte (handicap).
+      const full = value.handicap != null && /^(over|under)$/i.test(lv) ? lv + ' ' + value.handicap : lv;
+      const scope = kind.slice(2), m = full.match(/^(over|under|más de|mas de|menos de)\s*([0-9]+(?:[.,][0-9]+)?)$/);
       if (!m) return null;
       const side = /^(over|más de|mas de)/.test(m[1]) ? 'over' : 'under', line = q4(num(m[2]));
       if (!(line >= 0.5 && line <= 25)) return null;
@@ -255,11 +259,14 @@
   // Devuelve Map(clave -> {key, bet, best:{price,bookmaker}, mkt (probabilidad sin margen), books})
   function parseOdds(response) {
     const perBook = new Map(); // casa -> Map(clave -> {bet, price})
+    const cornerNames = new Set(); // nombres de mercados de córners que trajo la API (para el diagnóstico)
     for (const item of response || []) {
       for (const bk of item.bookmakers || item.odds?.bookmakers || []) {
         const bkName = bk.name || bk.title || 'Casa';
         const rec = perBook.get(bkName) || new Map();
         for (const betObj of bk.bets || bk.odds || []) {
+          const bn = String(betObj.name || betObj.bet || '');
+          if (/c[oó]rner/i.test(bn)) cornerNames.add(bn);
           const kind = betKind(betObj.name || betObj.bet);
           if (!kind) continue;
           const vals = (betObj.values || []).filter(x => x && x.suspended !== true && Number(x.odd ?? x.price) > 1);
@@ -339,6 +346,7 @@
       }
       out.lambdas = lam;
     }
+    out.cornerNames = [...cornerNames];
     // Doble oportunidad: precio sin margen sacado del 1X2; mejor cuota de las casas que la ofrecen.
     const h = out.get('1x2:home'), d = out.get('1x2:draw'), a = out.get('1x2:away');
     if (h && d && a) {

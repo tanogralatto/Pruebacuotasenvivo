@@ -827,6 +827,7 @@ function buildRows(a,o,first){
   else rows=[...o.values()].filter(x=>x.bet.type!=='corners').map(x=>({key:x.key,group:F.groupOf(x.bet),label:F.betLabel(x.bet,a.hn,a.an),price:x.best.price,bookmaker:x.best.bookmaker,fair:null,p:null,ev:null,score:0,mkt:x.mkt}));
   // Córners: modelo propio (si la liga tiene córners) y precio justo armado con la línea principal de Pinnacle.
   const cm=F.cornerMarkets(a.clam||null,o,{home:a.hn,away:a.an},a.clam&&a.clam.size);
+  if(o.cornerNames&&o.cornerNames.length)a.cnames=o.cornerNames;
   rows=rows.concat(cm.rows);if(cm.mean)a.cmean=cm.mean;
   a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(r.offers||x.offers||[]).slice(0,6),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0}});
   a.edge=a.lam?F.matchEdge(rows):0;
@@ -1487,9 +1488,19 @@ async function renderEsp(){
   $$('#emk [data-emk]').forEach(b=>b.classList.toggle('on',b.dataset.emk===mk));
   const d=await valueFilters('e',Number(day));
   if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para buscar valor.</div>';$('#eStatus').textContent='';return}
-  const has=d.fx.some(a=>(a.rows||[]).some(r=>ESP_KIND[mk](r.k)));
-  if(!has){list.innerHTML=`<div class="empty">API-Football no trajo cuotas de «${ESP_NAME[mk]}» para estos partidos. Probá con el otro día o actualizá más tarde.</div>`;$('#eStatus').textContent='';return}
+  // Diagnóstico: cuántos partidos (por jugar) traen ese mercado, con precio de Pinnacle y con modelo.
+  const up=d.fx.filter(a=>a.ts*1000>Date.now()),withM=up.filter(a=>(a.rows||[]).some(r=>ESP_KIND[mk](r.k)));
+  const withSharp=withM.filter(a=>a.rows.some(r=>ESP_KIND[mk](r.k)&&r.sh)).length;
+  const withModel=withM.filter(a=>a.rows.some(r=>ESP_KIND[mk](r.k)&&r.p>0)).length;
+  const names=[...new Set(up.flatMap(a=>a.cnames||[]))];
+  let diag=`<div class="small box" style="margin:10px 0">«${ESP_NAME[mk]}»: <b>${withM.length}</b> de ${up.length} partidos por jugar traen cuotas · <b>${withSharp}</b> con precio de Pinnacle · <b>${withModel}</b> con modelo${mk==='corners'?' de córners':''}.`;
+  if(mk==='corners')diag+=names.length?`<br>Mercados de córners que trae tu API: ${names.slice(0,12).map(esc).join(' · ')}`:'<br>Tu API no trajo ningún mercado de córners en estos partidos (o el análisis es de antes de esta versión: tocá ↻ Actualizar todo).';
+  const sharpOnly=LS.get('tg:vsharp',true);
+  if(withM.length&&!withSharp&&sharpOnly)diag+=`<br><b>Pinnacle no cotiza este mercado en tu API</b>, y está marcado «Solo con precio de Pinnacle»: por eso no aparece nada. Desmarcalo para comparar contra la mediana de las casas (menos confiable) y mirá la línea «Modelo» de cada tarjeta.`;
+  diag+='</div>';
+  if(!withM.length){list.innerHTML=diag+`<div class="empty">API-Football no trajo cuotas de «${ESP_NAME[mk]}» para estos partidos. Probá con el otro día o actualizá más tarde.</div>`;$('#eStatus').textContent='';return}
   await drawValue(list,$('#eStatus'),d,valueBets(d,r=>ESP_KIND[mk](r.k)),renderEsp,true);
+  list.insertAdjacentHTML('afterbegin',diag);
 }
 async function renderBets(){
   await loadBets();
