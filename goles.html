@@ -863,7 +863,10 @@ function buildRows(a,o,first){
   if(o.cornerNames&&o.cornerNames.length)a.cnames=o.cornerNames;
   if(o.lambdas)a.plam=o.lambdas; // goles esperados que implican el 1X2 y los totales de Pinnacle
   rows=rows.concat(cm.rows);if(cm.mean)a.cmean=cm.mean;
-  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(r.offers||x.offers||[]).slice(0,6),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0,es:r.est?1:0}});
+  // Mejor cuota entre tus casas (Bet365, 1xBet, Betano…), aunque paguen menos que el precio justo: la usa alpha.html.
+  const myRe=new RegExp(LS.get('tg:checkbooks','bet365|1xbet|betano'),'i');
+  const myBest=x=>{let b=null;for(const [bk,pr] of (x&&x.all)||[])if(myRe.test(bk)&&pr>1&&(!b||pr>b[0]))b=[pr,bk];return b};
+  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {my:myBest(x),k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(r.offers||x.offers||[]).slice(0,6),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0,es:r.est?1:0}});
   a.edge=a.lam?F.matchEdge(rows):0;
   // Cuota de cierre de mis apuestas: la última lectura antes del partido.
   if(a.ts*1000>Date.now())for(const b of BETS)if(String(b.fid)===String(a.id)&&!b.res){const x=o.get(b.k);if(x&&x.mkt>0){b.mClose=x.mkt;b.closeAt=Date.now();betsDirty=true}}

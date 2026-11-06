@@ -342,7 +342,7 @@
         if (!isNum(ref)) continue;
         // Las casas se comparan con su propia cuota sin margen; a la referencia derivada se le da más tolerancia.
         const { best, offers } = pickBest(list.map(x => Object.assign({}, x, { p: Math.abs(x.p - ref) <= MAX_GAP + 0.05 ? ref : x.p })), ref);
-        if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length, sharp: true, derived: true, offers });
+        if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length, sharp: true, derived: true, offers, all: list.map(x => [x.bk, x.price, x.p]) });
       }
       out.lambdas = lam;
     }
@@ -355,18 +355,19 @@
       for (const pick of ['1X', 'X2', '12']) {
         const k = 'dc:' + pick;
         let best = null, n = 0;
-        const offers = [];
+        const offers = [], all = [];
         for (const [bk, rec] of perBook) {
           const x = rec.get(k);
           if (!x) continue;
           n++;
+          all.push([bk, x.price, 1 / x.price]);
           if (1 / x.price > ref[pick] + MAX_GAP || 1 / x.price < ref[pick] - MAX_GAP - 0.1) continue;
           if (!best || x.price > best.price) best = { price: x.price, bookmaker: bk };
           if (x.price * ref[pick] - 1 > 0 && !/pinnacle/i.test(bk)) offers.push([bk, x.price]);
         }
         offers.sort((a, b) => b[1] - a[1]);
         const sharp = !!(h.sharp && d.sharp && a.sharp);
-        if (best) out.set(k, { key: k, bet: { type: 'dc', pick }, best, mkt: ref[pick], books: n, sharp, offers });
+        if (best) out.set(k, { key: k, bet: { type: 'dc', pick }, best, mkt: ref[pick], books: n, sharp, offers, all });
       }
     }
     return out;

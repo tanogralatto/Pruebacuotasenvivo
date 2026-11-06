@@ -1,0 +1,1849 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>TanoApp Alpha</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#12161b; --panel2:#181d24; --line:#252c35; --text:#e8edf2; --muted:#8a96a3; --dim:#5b6672;
+  --acc:#14b8a6; --acc2:#0f8f82; --good:#22c55e; --mid:#eab308; --bad:#ef4444; --info:#60a5fa;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:860px;margin:0 auto;padding:0 14px 60px}
+header{position:sticky;top:0;z-index:20;background:rgba(11,13,16,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:10px;padding-top:10px;padding-bottom:10px}
+.brand{font-weight:800;letter-spacing:.12em;font-size:14px;white-space:nowrap}
+.brand b{color:var(--acc)}
+nav{margin-left:auto;display:flex;gap:4px}
+nav a{padding:7px 10px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:14px}
+nav a.on{color:var(--text);background:var(--panel2)}
+h1{font-size:26px;margin:18px 0 10px;letter-spacing:-.01em}
+h2{font-size:15px;color:var(--muted);margin:22px 0 8px;font-weight:700}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;padding:8px 16px;color:var(--muted);font-weight:600}
+.seg button.on{background:var(--acc);color:#04211e}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-weight:600}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#04211e}
+.btn:disabled{opacity:.5;cursor:default}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.g{color:var(--good);border-color:rgba(34,197,94,.35)}
+.chip.w{color:var(--mid);border-color:rgba(234,179,8,.35)}
+.small{font-size:12.5px;color:var(--muted)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.status{font-size:13px;color:var(--muted);margin:10px 0;min-height:18px}
+.status.err{color:var(--bad)}
+.prog{height:3px;background:var(--line);border-radius:3px;overflow:hidden;margin:6px 0}
+.prog i{display:block;height:100%;background:var(--acc);width:0;transition:width .2s}
+/* ligas y partidos */
+.league{margin:18px 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.league .n{font-weight:700;color:var(--muted);font-size:14px}
+.fx{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin:6px 0;text-decoration:none}
+.fx:active{background:var(--panel2)}
+.fx .t{font-family:var(--mono);color:var(--muted);font-size:13px;width:44px;flex:none}
+.fx .teams{flex:1;min-width:0}
+.fx .teams div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fx .teams .vs{color:var(--dim);font-size:12px}
+.fx .na{font-size:12.5px;color:var(--dim);text-align:right}
+.vsw{color:var(--dim);font-size:12px}
+.fx .teams .dl{font-size:12.5px;color:var(--muted);margin-top:3px}
+.fx .go{flex:none;color:var(--dim);font-size:18px}
+.edge{display:flex;align-items:center;gap:6px;flex:none}
+.bar{width:46px;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px}
+.edge b{font-family:var(--mono);width:24px;text-align:right;font-size:14px}
+.c-g{color:var(--good)} .c-m{color:var(--mid)} .c-d{color:var(--dim)} .c-b{color:var(--bad)}
+.bg-g{background:var(--good)} .bg-m{background:var(--mid)} .bg-d{background:var(--dim)}
+.empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted)}
+/* partido */
+.back{display:inline-block;margin-top:14px;color:var(--muted);text-decoration:none;font-size:14px}
+.mh{margin:8px 0 4px;font-size:24px;font-weight:800;line-height:1.2}
+.mh span{color:var(--dim);font-weight:600}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.grp{margin:18px 0}
+.grp-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.grp-h .n{font-weight:700;font-size:15px}
+.grp-h .k{color:var(--dim);font-size:13px}
+table.mk{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+table.mk th{font-size:12px;color:var(--muted);font-weight:600;text-align:right;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.mk th:first-child,table.mk td:first-child{text-align:left}
+table.mk td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;vertical-align:middle}
+table.mk tr:last-child td{border-bottom:0}
+table.mk td .bk{display:block;font-size:11px;color:var(--dim)}
+table.mk .ev{font-family:var(--mono);font-weight:700}
+table.mk .num{font-family:var(--mono)}
+.sc{display:inline-flex;align-items:center;gap:6px}
+.sc .bar{width:34px}
+.arr{font-size:10px;margin-right:3px}
+.more{margin-top:6px;background:none;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:12.5px;padding:5px 10px}
+.none{padding:14px;text-align:center;color:var(--dim);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.info{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;border:1px solid var(--dim);color:var(--muted);font-size:11px;font-weight:700;background:none;padding:0;line-height:1;vertical-align:middle}
+.tip{position:fixed;left:12px;right:12px;bottom:16px;z-index:50;background:#1f2630;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:560px;margin:0 auto}
+.tip b{display:block;margin-bottom:4px}
+/* estudio */
+.study{display:grid;gap:12px;margin-top:12px}
+.study h3{margin:0 0 8px;font-size:14px;color:var(--muted)}
+.lamrow{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.lamrow .nm{width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lamrow .bar{flex:1;width:auto;height:8px}
+.lamrow b{font-family:var(--mono);width:40px;text-align:right}
+.res3{display:flex;height:28px;border-radius:8px;overflow:hidden;font-size:12px;font-weight:700}
+.res3 div{display:flex;align-items:center;justify-content:center;color:#071014;min-width:30px}
+.legend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+table.mat{border-collapse:collapse;font-family:var(--mono);font-size:11.5px;margin:0 auto}
+table.mat td,table.mat th{width:40px;height:30px;text-align:center;border:1px solid var(--bg)}
+table.mat th{color:var(--muted);font-weight:500}
+table.ctx{width:100%;border-collapse:collapse;font-size:13.5px}
+table.ctx td,table.ctx th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right}
+table.ctx th{color:var(--muted);font-weight:600;font-size:12px}
+table.ctx td:first-child,table.ctx th:first-child{text-align:left}
+.rate{position:relative;height:10px;background:var(--line);border-radius:10px;margin:18px 0 4px}
+.rate .dot{position:absolute;top:-3px;width:16px;height:16px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--bg)}
+.rate .mid{position:absolute;top:-4px;width:2px;height:18px;background:var(--muted);left:50%}
+.sig{margin-top:12px}
+.sig-h{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.sig-h b{font-weight:600}
+.sig-bar{position:relative;height:10px;background:var(--line);border-radius:10px;margin-top:6px}
+.sig-bar i{position:absolute;top:0;height:10px;border-radius:10px}
+.sig-bar .mid{position:absolute;top:-3px;width:2px;height:16px;background:var(--muted);left:50%}
+.sig-total{margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-size:14px;line-height:1.45}
+/* precisión */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.tile .l{font-size:12px;color:var(--muted)}
+.tile .v{font-family:var(--mono);font-size:22px;font-weight:700;margin-top:2px}
+table.lg{width:100%;border-collapse:collapse;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+table.lg th{font-size:12px;color:var(--muted);font-weight:600;padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.lg td{white-space:nowrap;padding:9px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono)}
+table.lg td:first-child,table.lg th:first-child{text-align:left;font-family:inherit;white-space:normal}
+table.lg tr:last-child td{border-bottom:0}
+table.lg .cn{display:block;font-size:11.5px;color:var(--dim)}
+svg text{fill:var(--muted);font:11px var(--mono)}
+/* ajustes */
+.field{display:flex;gap:8px;flex-wrap:wrap}
+.field input{flex:1;min-width:200px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font:inherit}
+.lgl{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.lgl label{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.lgl label:last-child{border-bottom:0}
+.lgl input{width:18px;height:18px;accent-color:var(--acc)}
+.lgl .c{color:var(--dim);font-size:12.5px}
+.lgl .k{margin-left:auto;color:var(--dim);font-size:12px}
+@media (max-width:560px){
+  .hide-s{display:none}
+  table.mk{font-size:13px}
+  table.mk th,table.mk td{padding:8px 5px}
+  .sc .bar{width:20px}
+  .tile .v{font-size:18px}
+  .tile{padding:8px 9px}
+}
+</style>
+<style>
+.xs{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+.xs table.lg td:first-child{min-width:130px}
+.nav-mk{display:inline-flex;gap:4px}
+.nav-mkshort{display:none}
+.mkbar{display:none}
+.mkbar-in{max-width:860px;margin:0 auto;display:flex;gap:4px;padding:6px 14px;overflow-x:auto}
+.mkbar a{padding:6px 11px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:14px;white-space:nowrap;border:1px solid var(--line)}
+.mkbar a.on{color:#04211e;background:var(--acc);border-color:var(--acc)}
+nav a{white-space:nowrap}
+@media (max-width:820px){.nav-mk{display:none}.nav-mkshort{display:inline-block}.mkbar.show{display:block;border-top:1px solid var(--line)}}
+.mkc{margin:10px 0}
+.mkc-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mkc-h a{text-decoration:none;font-weight:700}
+table.mk td.dp{font-family:var(--mono);font-weight:700}
+@media (max-width:560px){.mkc table.mk,.grp table.mk{font-size:12.5px}.mkc table.mk th,.mkc table.mk td,.grp table.mk th,.grp table.mk td{padding:7px 4px}.mkc,.mkc.box{padding:10px 8px}}
+.mkf summary{cursor:pointer}
+.filters select{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--text);font:inherit}
+.mkr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:6px 0;cursor:pointer}
+.mkr .t{font-family:var(--mono);color:var(--muted);font-size:13px;width:44px;flex:none}
+.mkr .m{flex:1;min-width:0}
+.mkr .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mkr .m .ln{font-size:13px;color:var(--muted);margin-top:2px}
+.mkr .r{text-align:right;flex:none;font-family:var(--mono);font-size:14px}
+.mkr .r .mo{display:block;font-size:12px;color:var(--muted)}
+.mkr .go{color:var(--dim);font-size:18px;flex:none;transition:transform .15s}
+.mkr.open .go{transform:rotate(90deg)}
+.mkx{margin:-2px 0 10px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px}
+.best{margin:10px 0 4px}
+.best .bl{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);text-decoration:none}
+.best .bl:last-child{border-bottom:0}
+.best .bl .t{font-family:var(--mono);color:var(--muted);font-size:13px;width:44px;flex:none}
+.best .bl .m{flex:1;min-width:0}
+.best .bl .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.best .bl .m .ln{font-size:12.5px;color:var(--muted)}
+.best .bl .r{font-family:var(--mono);text-align:right;flex:none}
+.addb{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px;padding:2px 7px}
+.oddsbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
+.quota-bar{max-width:860px;margin:0 auto;padding:3px 14px 5px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.quota-bar .qdot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+.quota-bar b{color:var(--text)}
+.quota-bar .qtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.show-s{display:none}
+@media (max-width:560px){.show-s{display:inline}}
+.upd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
+.upd .small{flex:1;min-width:160px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.tools input[type=search]{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--text);font:inherit}
+.tools select{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:inherit}
+.star{background:none;border:0;color:var(--dim);font-size:19px;padding:0 2px;line-height:1;flex:none}
+.star.on{color:var(--mid)}
+.fxw{display:flex;align-items:center;gap:4px}
+.fxw .fx{flex:1;min-width:0}
+.model{font-size:12px;color:var(--muted);margin-top:4px}
+.more-leagues{display:block;width:100%;margin:14px 0}
+.filters{margin:10px 0}
+.fl{margin-top:12px}
+.fl-h{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
+.fl-h .mono{color:var(--acc);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--acc)}
+#evmin button{padding:7px 10px;font-size:14px}
+#slot button,#src button,#msrc button{padding:7px 12px;font-size:14px}
+.ev small{display:block;font-weight:400;color:var(--dim);font-size:11px}
+#cloudBtn{white-space:nowrap}
+@media (max-width:560px){.brand{font-size:12px;letter-spacing:.06em}nav{gap:0}nav a{padding:6px 6px;font-size:13.5px}#cloudBtn{max-width:64px;overflow:hidden;text-overflow:ellipsis;padding:6px 7px!important}}
+@media (max-width:430px){header .wrap{gap:6px;padding-left:10px;padding-right:10px}.brand{font-size:11px;letter-spacing:.02em}nav a{padding:6px 4px;font-size:12.5px}#cloudBtn{max-width:40px;padding:5px 6px!important}}
+@media (max-width:430px){.brand{display:none}nav{margin-left:0}nav a{padding:6px 5px}#cloudBtn{margin-left:auto}}
+@media (max-width:345px){nav a{padding:6px 3px;font-size:12px}}
+.vb{margin:8px 0}
+.vb-h{font-size:15px}
+.vb-h a{text-decoration:none;font-weight:700}
+.vb-m{margin:6px 0 4px;font-size:15px}
+.vb-g{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.vb-g .l{display:block;font-size:11px;color:var(--muted)}
+.vb-g b{font-size:14px}
+#vday button,#vevmin button,#vmax button{padding:7px 11px;font-size:14px}
+@media (max-width:560px){.vb-g{grid-template-columns:repeat(3,1fr)}}
+details.guide{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:6px 0 12px}
+details.guide summary{cursor:pointer;font-weight:700}
+details.guide h3{font-size:15px;margin:16px 0 6px;color:var(--acc)}
+details.guide p,details.guide li{font-size:14px;color:#c7d0d9}
+details.guide table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+details.guide th,details.guide td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+details.guide th{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand">TANO<b>APP</b><span class="hide-s"> · ALPHA</span></div>
+  <nav>
+    <a href="#/hoy" data-nav="dash">Partidos</a>
+    <a href="#/apuestas" data-nav="bets">Mis apuestas</a>
+    <a href="#/precision" data-nav="prec">Precisión</a>
+    <a href="#/ajustes" data-nav="cfg" aria-label="Ajustes">⚙︎</a>
+  </nav>
+  <button class="btn" id="cloudBtn" style="padding:6px 10px;font-size:13px" title="Sincronizar con tu cuenta de Google">☁︎ Entrar</button>
+</div>
+<div class="mkbar" id="mkbar"></div>
+<div class="quota-bar" id="quotaBar" role="status" aria-live="polite"><span class="qdot" aria-hidden="true"></span><span class="qtxt">Consultas API-Football: cargá tu clave en ⚙︎ para ver el consumo.</span></div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ PARTIDOS ============ -->
+<section id="v-dash" class="hidden">
+  <h1>Partidos</h1>
+  <details class="guide" id="guide">
+    <summary>📘 Cómo funciona</summary>
+    <h3>Qué hace</h3>
+    <p>Como Alpha: para cada partido, <b>nuestro modelo</b> calcula la probabilidad de cada mercado y su <b>cuota justa</b>. La compara con la <b>cuota de tus casas</b> (Bet365, 1xBet o Betano, según API-Football). Si la casa paga más que la cuota justa, hay valor (<b>EV</b> positivo).</p>
+    <h3>Uso diario</h3>
+    <ol>
+      <li>Una vez por día, tocá <b>↻ Actualizar todo</b>.</li>
+      <li>Mirá la lista: el número de cada partido es el <b>Match score</b> (0-100). Verde = buenas oportunidades.</li>
+      <li>Abrí un partido. En cada grupo, la primera fila es la de mayor <b>Score</b>. Elegí <b>una sola apuesta por partido</b>.</li>
+      <li>Antes de apostar, tocá <b>↻ Cuotas de este partido</b> y fijate que tu casa pague la <b>Cuota</b> de la app o más. Anotala con <b>＋</b>.</li>
+    </ol>
+    <h3>Qué significa cada número</h3>
+    <ul>
+      <li><b>Cuota</b>: la mejor de tus casas según API-Football (abajo dice cuál). Puede diferir un poco de la de tu casa: manda la de tu casa.</li>
+      <li><b>Cuota justa</b>: 1 ÷ la probabilidad del modelo.</li>
+      <li><b>EV</b>: cuánto paga de más la casa frente a la cuota justa. +5% = en promedio ganarías $5 cada $100.</li>
+      <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras).</li>
+      <li><b>Match score</b>: el valor de todo el partido (combina los dos mejores grupos).</li>
+      <li><b>✓ / ✕ en cada grupo</b>: si el modelo acierta en ese mercado en esa liga (pestaña Precisión). Confiá en los ✓.</li>
+    </ul>
+    <p class="small">Nada garantiza ganancia: anotá tus apuestas y mirá el resultado en Mis apuestas. Las rachas malas son normales: apostá montos chicos y parejos.</p>
+  </details>
+  <div class="row">
+    <div class="seg"><button data-day="0">Hoy</button><button data-day="1">Mañana</button><button data-day="fav">★ Favoritos</button></div>
+  </div>
+  <div class="upd"><span class="small" id="updWhen">Todavía no se actualizó.</span><button class="info" data-tip="update">i</button><button class="btn pri" id="btnUpdate">↻ Actualizar todo</button></div>
+  <div class="small" id="syncLine" style="margin:-4px 0 6px"></div>
+  <div class="prog hidden" id="uProg"><i></i></div>
+  <div class="status" id="uStatus"></div>
+  <div class="filters box">
+    <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
+    <div class="fl"><div class="fl-h"><b>Match score mínimo</b> <span class="mono" id="aMinVal">0+</span></div><input type="range" id="aMin" min="0" max="95" step="5" value="0"></div>
+    <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
+  </div>
+  <div id="dList"></div>
+</section>
+
+<!-- ============ PARTIDO ============ -->
+<section id="v-match" class="hidden">
+  <a class="back" href="#/hoy" id="mBack">‹ Partidos</a>
+  <div id="mBody"></div>
+</section>
+
+<!-- ============ PRECISIÓN ============ -->
+<section id="v-prec" class="hidden">
+  <h1>¿Qué tan preciso es el modelo?</h1>
+  <p class="small" style="margin-top:-4px">Cada partido se juzga con lo que el modelo sabía <b>antes</b> de jugarse, y se compara con lo que pasó. Se actualiza solo con <b>↻ Actualizar todo</b>.</p>
+  <div class="small" id="pWhen"></div>
+  <div id="pBody"></div>
+</section>
+
+<!-- ============ MERCADOS ============ -->
+<section id="v-mk" class="hidden">
+  <h1 id="mkTitle">Mercados</h1>
+  <p class="small" style="margin-top:-4px">Cada partido con la probabilidad y la <b>cuota justa del modelo</b> y, al lado, la de <b>Pinnacle</b> (sin margen). Arriba van los partidos donde el modelo ve <b>más probabilidad que Pinnacle</b>. Si tu casa paga la <b>Mínima</b> o más, hay valor. <button class="info" data-tip="mkdiff">i</button></p>
+  <div class="row"><div class="seg" id="mkday"><button data-mkday="0">Hoy</button><button data-mkday="1">Mañana</button></div></div>
+  <div class="oddsbar"><button class="btn pri" id="btnMkOdds">↻ Actualizar cuotas</button><span class="small" id="mkOddsWhen"></span></div>
+  <div class="prog hidden" id="mkProg"><i></i></div>
+  <div class="tools"><input type="search" id="mkq" placeholder="Buscar equipo"></div>
+  <details class="filters box mkf" id="mkf"><summary><b>Filtros y orden</b> <span class="small" id="mkfSum"></span></summary>
+    <div class="tools"><select id="mklg"><option value="">Todas las ligas</option></select></div>
+    <div class="fl"><div class="fl-h"><b>Diferencia mínima</b> <button class="info" data-tip="dif">i</button></div><div class="seg" id="mkmin"><button data-min="0">Todas</button><button data-min="2">+2</button><button data-min="4">+4</button><button data-min="6">+6</button></div></div>
+    <div class="fl"><div class="fl-h"><b>Cuota (Mínima)</b></div><div class="row"><select id="mklo"><option value="0">desde —</option><option value="1.2">desde 1,20</option><option value="1.4">desde 1,40</option><option value="1.6">desde 1,60</option><option value="1.8">desde 1,80</option></select><select id="mkhi"><option value="99">hasta —</option><option value="1.6">hasta 1,60</option><option value="2">hasta 2,00</option><option value="2.5">hasta 2,50</option><option value="3">hasta 3,00</option></select></div></div>
+    <div class="fl"><div class="fl-h"><b>Horario</b></div><div class="seg" id="mkslot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
+    <div class="row" style="margin-top:10px;gap:14px"><label class="small row" style="gap:6px"><input type="checkbox" id="mkGreen" style="accent-color:var(--acc)"> Solo ligas con ✓</label><label class="small">Ordenar por <select id="mksort"><option value="diff">Mayor diferencia</option><option value="time">Hora</option><option value="prob">Más probable (modelo)</option></select></label></div>
+  </details>
+  <div class="status" id="mkStatus"></div>
+  <div id="mkList"></div>
+</section>
+
+<!-- ============ MIS APUESTAS ============ -->
+<section id="v-bets" class="hidden">
+  <h1>Mis apuestas</h1>
+  <p class="small" style="margin-top:-4px">Anotá cada apuesta (desde una pestaña de mercado o la ficha del partido, con el botón <b>＋</b>) con la cuota y el monto <b>reales</b> de tu casa. Se liquidan solas con <b>↻ Actualizar todo</b>.</p>
+  <div class="status" id="bStatus"></div>
+  <div id="bList"></div>
+</section>
+
+<!-- ============ AJUSTES ============ -->
+<section id="v-cfg" class="hidden">
+  <h1>Ajustes</h1>
+  <h2>Clave de API-Football</h2>
+  <div class="field"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu clave (x-apisports-key)"><button class="btn pri" id="btnKey">Guardar y probar</button></div>
+  <div class="status" id="kStatus"></div>
+  <p class="small">¿Buscás las pestañas de mercados y la comparación con Pinnacle? Están en la <a href="./goles.html">app completa</a> (usa los mismos datos).</p>
+  <h2>Banca</h2>
+  <div class="field"><label class="small" for="bank" style="align-self:center">Tu banca para apostar ($): con ella se calcula el monto sugerido</label><input id="bank" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000" style="max-width:160px"></div>
+  <h2>xG</h2>
+  <div class="field"><label class="small" for="xgBudget" style="align-self:center">Consultas para bajar xG en cada actualización (cada consulta trae 20 partidos)</label><input id="xgBudget" type="number" min="0" max="2000" step="10" style="max-width:120px"></div>
+  <p class="small">Más consultas = el xG llega antes a todas las ligas. Con 150 por actualización, en pocos días están todas las ligas que se juegan.</p>
+  <h2>Sincronización</h2>
+  <div class="small" id="cloudInfo">Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.</div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="btnCloudPush">Subir ahora a mi cuenta</button><button class="btn" id="btnCloudPull">Bajar lo último de mi cuenta</button><button class="btn hidden" id="btnLogout">Salir de la cuenta</button></div>
+  <h2>Datos guardados</h2>
+  <div class="small" id="dbInfo">—</div>
+  <div class="row" style="margin-top:8px"><button class="btn" id="btnWipe">Borrar todos los datos guardados</button></div>
+</section>
+
+</main>
+<div class="tip hidden" id="tip"></div>
+
+<script src="./modelo-poisson.js"></script>
+<script src="./modelo-ft.js"></script>
+<script>
+'use strict';
+const T=window.TanoPoissonModel, F=window.TanoFT;
+const API='https://v3.football.api-sports.io';
+const TZ='America/Argentina/Buenos_Aires';
+const MIN_N=30;          // partidos mínimos para pintar una liga de verde o gris
+const CONC=2;            // consultas en paralelo (más que esto choca con el límite por minuto de la API)
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const LS={
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  // El almacenamiento común es chico (≈5 MB) y lo comparte la app de +0,5 1T. Si se llena, se borran las
+  // copias que se pueden volver a bajar (historiales viejos de las dos apps) y se reintenta.
+  set(k,v){
+    const j=JSON.stringify(v);
+    try{localStorage.setItem(k,j);return true}catch(e){}
+    try{
+      const drop=[];
+      for(let i=0;i<localStorage.length;i++){const x=localStorage.key(i);if(x&&x!==k&&(/^o05:v\d+:(league|h|t):/.test(x)||x==='tg:first'||/^tg:(day|lg):/.test(x)))drop.push(x)}
+      drop.forEach(x=>localStorage.removeItem(x));
+      localStorage.setItem(k,j);return true;
+    }catch(e){console.warn('No se pudo guardar '+k+' en el navegador',e);return false}
+  }
+};
+const pct=(x,d=1)=>Number.isFinite(x)?(x*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%':'—';
+const spct=(x,d=1)=>Number.isFinite(x)?(x>0?'+':x<0?'−':'')+Math.abs(x*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%':'—';
+const dec=(x,d=2)=>Number.isFinite(x)?Number(x).toFixed(d):'—';
+const fmtTime=iso=>new Date(iso).toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false});
+const dayOf=ts=>new Date(ts*1000).toLocaleDateString('en-CA',{timeZone:TZ});
+const dayStr=off=>new Date(Date.now()+off*864e5).toLocaleDateString('en-CA',{timeZone:TZ});
+const ago=ms=>{const m=Math.round((Date.now()-ms)/60000);if(m<1)return 'recién';if(m<60)return 'hace '+m+' min';const h=Math.round(m/60);if(h<24)return 'hace '+h+' h';return 'hace '+Math.round(h/24)+' d'};
+const FLAGS={Argentina:'🇦🇷',Brazil:'🇧🇷',Colombia:'🇨🇴',Ecuador:'🇪🇨',Chile:'🇨🇱',Uruguay:'🇺🇾',Paraguay:'🇵🇾',Peru:'🇵🇪',Bolivia:'🇧🇴',Venezuela:'🇻🇪',Mexico:'🇲🇽',USA:'🇺🇸',Canada:'🇨🇦','Costa-Rica':'🇨🇷',England:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',Scotland:'🏴󠁧󠁢󠁳󠁣󠁴󠁿',Wales:'🏴󠁧󠁢󠁷󠁬󠁳󠁿',Ireland:'🇮🇪',Spain:'🇪🇸',Italy:'🇮🇹',Germany:'🇩🇪',France:'🇫🇷',Netherlands:'🇳🇱',Portugal:'🇵🇹',Belgium:'🇧🇪',Turkey:'🇹🇷',Switzerland:'🇨🇭',Austria:'🇦🇹',Denmark:'🇩🇰',Norway:'🇳🇴',Sweden:'🇸🇪',Finland:'🇫🇮',Iceland:'🇮🇸',Japan:'🇯🇵','South-Korea':'🇰🇷',China:'🇨🇳',Australia:'🇦🇺','Saudi-Arabia':'🇸🇦','Czech-Republic':'🇨🇿',Slovakia:'🇸🇰',Croatia:'🇭🇷',Serbia:'🇷🇸',Slovenia:'🇸🇮',Greece:'🇬🇷',Poland:'🇵🇱',Romania:'🇷🇴',Bulgaria:'🇧🇬',Hungary:'🇭🇺',Ukraine:'🇺🇦',Russia:'🇷🇺',Israel:'🇮🇱',Cyprus:'🇨🇾',Egypt:'🇪🇬',Morocco:'🇲🇦','South-Africa':'🇿🇦',World:'🌐',Europe:'🇪🇺'};
+const flag=c=>FLAGS[c]||'⚽';
+
+/* ---------------- base de datos del navegador (IndexedDB) ---------------- */
+// Historiales, xG, registro y análisis no entran en el almacenamiento común: van a IndexedDB.
+const DB=(()=>{
+  let dbp=null;
+  const open=()=>dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('tanogoles',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
+  const tx=async(mode,fn)=>{const db=await open();return new Promise((res,rej)=>{const t=db.transaction('kv',mode),st=t.objectStore('kv');let out;const r=fn(st);if(r)r.onsuccess=()=>{out=r.result};t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})};
+  return {
+    get:k=>tx('readonly',st=>st.get(k)),
+    set:(k,v)=>tx('readwrite',st=>st.put(v,k)),
+    del:k=>tx('readwrite',st=>st.delete(k)),
+    keys:()=>tx('readonly',st=>st.getAllKeys()),
+    clear:()=>tx('readwrite',st=>st.clear())
+  };
+})();
+
+/* ---------------- estado ---------------- */
+const state={key:LS.get('o05:key',''),calls:0,running:false,cancel:false,view:'0',days:{},prec:null,reg:null};
+const favs=()=>LS.get('tg:fav',{})||{};
+
+/* ---------------- API ---------------- */
+async function api(path,params){
+  if(!state.key){const e=new Error('Falta tu clave de API-Football. Cargala en Ajustes (⚙︎).');e.fatal=true;throw e}
+  const url=new URL(API+path);
+  for(const [k,v] of Object.entries(params||{}))url.searchParams.set(k,v);
+  const what=path+(params&&params.page>1?' pág. '+params.page:'')+(params&&params.date?' '+params.date:'')+(params&&params.league?' liga '+params.league:'');
+  let netFails=0;
+  for(let attempt=0;attempt<8;attempt++){
+    let res;
+    // Si la API frena por exceso de consultas, a veces el navegador lo ve como «sin conexión»: se espera y se reintenta.
+    try{res=await fetch(url,{headers:{'x-apisports-key':state.key}})}
+    catch(e){
+      netFails++;
+      if(netFails<=4){say(`La API no respondió (${what}). Reintento en ${netFails*10} s…`);await sleep(netFails*10000);continue}
+      const er=new Error('No se pudo conectar con API-Football ('+what+'). Revisá la conexión y volvé a tocar Actualizar todo: lo ya bajado queda guardado.');er.fatal=true;throw er;
+    }
+    if(path!=='/status')state.calls++;
+    if(res.status===429){say('La API pidió esperar un poco (límite por minuto)…');await sleep(15000);continue}
+    if(res.status>=500){await sleep(5000);continue}
+    let j;try{j=await res.json()}catch(e){throw new Error('Respuesta inválida de la API (HTTP '+res.status+').')}
+    const errs=j.errors,has=errs&&(Array.isArray(errs)?errs.length>0:Object.keys(errs).length>0);
+    if(has){
+      const keys=Array.isArray(errs)?'':Object.keys(errs).join(' '),msg=Array.isArray(errs)?errs.join(', '):Object.values(errs).join(', ');
+      if(/rateLimit/i.test(keys)){await sleep(10000);continue}
+      const er=new Error(msg);if(/token|requests|access|plan|suspend/i.test(keys+' '+msg))er.fatal=true;throw er;
+    }
+    if(path!=='/status')scheduleQuota();
+    return j;
+  }
+  throw new Error('La API limitó las consultas por minuto.');
+}
+// Barra de consultas: cuántas lleva hoy la clave, según API-Football (/status).
+function renderQuota(rq,msg){
+  const bar=$('#quotaBar');if(!bar)return;
+  const dot=bar.querySelector('.qdot'),txt=bar.querySelector('.qtxt');
+  const cur=rq&&rq.current!=null?Number(rq.current):NaN,lim=rq&&rq.limit_day!=null?Number(rq.limit_day):NaN;
+  if(!Number.isFinite(cur)||!Number.isFinite(lim)||lim<=0){dot.style.background='var(--dim)';txt.textContent=msg||'Consultas API-Football: cargá tu clave en ⚙︎ para ver el consumo.';return}
+  const pc=cur*100/lim,left=Math.max(0,lim-cur),f=n=>n.toLocaleString('es-AR');
+  dot.style.background=pc>=90?'var(--bad)':pc>=70?'var(--mid)':'var(--good)';
+  txt.innerHTML=`<span class="hide-s">Consultas </span>API hoy: <b class="mono">${f(cur)}/${f(lim)}</b> · quedan <b class="mono">${f(left)}</b><span class="hide-s"> (${Math.round(pc)}%)</span>`+(state.lastCalls?` · <span class="hide-s">última actualización</span><span class="show-s">última</span>: ${f(state.lastCalls)}`:'');
+}
+async function checkQuota(){
+  if(!state.key)return;
+  try{const j=await api('/status');renderQuota((j.response||{}).requests)}catch(e){renderQuota(null,'Consultas API-Football: '+e.message)}
+}
+let quotaTimer=null;
+function scheduleQuota(){clearTimeout(quotaTimer);quotaTimer=setTimeout(()=>{if(!state.running)checkQuota()},2500)}
+// Corre tareas con CONC en paralelo. Un error fatal (clave, límite diario) corta todo.
+async function pool(tasks,onDone){
+  let i=0,done=0,fatal=null;
+  const worker=async()=>{while(i<tasks.length&&!fatal){const t=tasks[i++];try{await t()}catch(e){if(e.fatal)fatal=e}done++;onDone&&onDone(done,tasks.length);await sleep(250)}};
+  await Promise.all(Array.from({length:Math.min(CONC,tasks.length)},worker));
+  if(fatal)throw fatal;
+}
+// Todas las páginas de una consulta paginada.
+async function allPages(path,params,maxPages=150){
+  const first=await api(path,Object.assign({},params,{page:1}));
+  const items=[...(first.response||[])];
+  const total=Math.min(maxPages,Number(first.paging&&first.paging.total)||1);
+  const tasks=[];
+  for(let p=2;p<=total;p++)tasks.push(async()=>{const j=await api(path,Object.assign({},params,{page:p}));items.push(...(j.response||[]))});
+  await pool(tasks);
+  return items;
+}
+
+/* ---------------- historiales y xG ---------------- */
+// Partido guardado: [id, fecha(s), local, visitante, goles local, goles visitante, temporada]
+const DONE=['FT','AET','PEN'];
+async function seasonGames(lid,season,isCurrent){
+  const k='lg:'+lid+':'+season, c=await DB.get(k), ttl=isCurrent?20*3600e3:30*864e5;
+  if(c&&Array.isArray(c.g)&&Date.now()-c.ts<ttl)return c;
+  try{
+    const j=await api('/fixtures',{league:lid,season,status:'FT-AET-PEN',timezone:TZ});
+    const g=[],t={};
+    for(const f of j.response||[]){
+      const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
+      const hg=Number.isInteger(ft.home)?ft.home:gl.home, ag=Number.isInteger(ft.away)?ft.away:gl.away;
+      if(!DONE.includes(f.fixture.status.short)||!Number.isInteger(hg)||!Number.isInteger(ag))continue;
+      g.push([f.fixture.id,Math.floor(new Date(f.fixture.date).getTime()/1000),f.teams.home.id,f.teams.away.id,hg,ag,season]);
+      t[f.teams.home.id]=f.teams.home.name;t[f.teams.away.id]=f.teams.away.name;
+    }
+    const entry={ts:Date.now(),g,t};
+    await DB.set(k,entry);
+    return entry;
+  }catch(e){if(e.fatal)throw e;if(c&&Array.isArray(c.g))return c;const empty={ts:Date.now(),g:[],t:{}};await DB.set(k,empty);return empty}
+}
+async function loadLeague(lid,season){
+  const [cur,prev]=await Promise.all([seasonGames(lid,season,true),seasonGames(lid,Number(season)-1,false)]);
+  return {lid,season,raw:[...prev.g,...cur.g],names:Object.assign({},prev.t||{},cur.t||{})};
+}
+// xG de cada partido: [xg local, xg visitante, fuente (1 = API, 2 = aproximado, 0 = sin datos), tiros…]
+let XG=null, XGCOEF=null;
+async function loadXg(){if(!XG){XG=(await DB.get('xg'))||{};XGCOEF=(await DB.get('xgcoef'))||F.XG_DEFAULT}return XG}
+function xgOf(id){
+  const r=XG&&XG[id];if(!r||!r[2])return null;
+  if(r[2]===1)return [r[0],r[1]];
+  const h=F.proxyXg({sot:r[3],sib:r[4],sob:r[5]},XGCOEF),a=F.proxyXg({sot:r[6],sib:r[7],sob:r[8]},XGCOEF);
+  return Number.isFinite(h)&&Number.isFinite(a)?[h,a]:null;
+}
+function modelGames(L){
+  const out=L.raw.map(r=>{const x=xgOf(r[0]);return {id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5],fth:r[4],fta:r[5],season:r[6],leagueId:L.lid,xh:x?x[0]:null,xa:x?x[1]:null}});
+  out.mkt=marketOf(L);
+  return out;
+}
+// Cuotas de cierre sin margen (Pinnacle o mediana) de los partidos ya jugados de una liga: Map(id -> [pL, pE, pV]).
+// Salen de lo que guardó la app de API-Football (registro) y de football-data.co.uk (data/fd-1x2.json).
+const MKC=new Map(); // id -> goles esperados que implicaba la cuota (para no invertir dos veces)
+function marketOf(L){
+  if(L._mkt&&L._mktN===L.raw.length&&L._mktR===state.reg&&L._mktF===FD)return L._mkt;
+  const m=new Map(),reg=state.reg||{};
+  for(const [id,r] of Object.entries(reg))if(r&&String(r.lid)===String(L.lid)&&r.m1x2)m.set(String(id),r.m1x2);
+  for(const [id,row] of fdRowsOf(L))if(!m.has(String(id)))m.set(String(id),[row[3]/1000,row[4]/1000,row[5]/1000]);
+  L._mkt=m;L._mktN=L.raw.length;L._mktR=state.reg;L._mktF=FD;
+  return m;
+}
+// Partidos de la liga emparejados con football-data.co.uk: Map(id -> fila). La fila trae las probabilidades de
+// cierre y, en las ligas principales, los córners (que se guardan en FDC).
+const FDC=new Map();
+function fdRowsOf(L){
+  if(L._fdr&&L._fdrN===L.raw.length&&L._fdrF===FD)return L._fdr;
+  const fdl=FD&&FD.leagues&&FD.leagues[L.lid];
+  const m=fdl?F.matchFdRows(L.raw.map(r=>({id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5]})),fdl,L.names):new Map();
+  for(const [id,row] of m)if(Number.isInteger(row[8])&&Number.isInteger(row[9]))FDC.set(String(id),[row[8],row[9]]);
+  L._fdr=m;L._fdrN=L.raw.length;L._fdrF=FD;
+  return m;
+}
+// ¿Coinciden los córners de football-data con los de API-Football en los partidos que tienen los dos?
+// Si con 30 o más partidos menos del 80% coincide (±1 por equipo), no se usan los de football-data.
+let fdcChk=null;
+function fdcCheck(){
+  if(fdcChk&&fdcChk.size===FDC.size&&Date.now()-fdcChk.t<60000)return fdcChk;
+  const pairs=[];for(const [id,c] of FDC){const r=XG&&XG[id];if(r&&Number.isFinite(r[9])&&Number.isFinite(r[10]))pairs.push([c[0],c[1],r[9],r[10]])}
+  const ag=F.cornerAgreement(pairs);
+  return fdcChk=Object.assign(ag,{size:FDC.size,t:Date.now(),ok:!(ag.n>=30&&ag.near<0.8)});
+}
+// Córners de cada partido jugado: las estadísticas de API-Football y, si no hay, los de football-data.
+const cornersOf=id=>{const r=XG&&XG[id];if(r&&Number.isFinite(r[9])&&Number.isFinite(r[10]))return [r[9],r[10]];const c=FDC.get(String(id));return c&&fdcCheck().ok?c:null};
+function cornerGames(L){
+  fdRowsOf(L);
+  const out=[];
+  for(const r of L.raw){const c=cornersOf(r[0]);if(c)out.push({id:r[0],ts:r[1],h:r[2],a:r[3],hg:c[0],ag:c[1],season:r[6],leagueId:L.lid})}
+  return out;
+}
+// Modelo de córners de una liga (ataque y defensa con córners). null si hay pocos partidos con córners.
+function cornerFitAt(L,cutoff,season){
+  const cg=cornerGames(L);if(cg.length<F.CORNERS.minGames)return null;
+  const fm=T.buildFitMatches(cg,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:F.CORNERS.halfLifeDays});
+  const fit=T.fitLeague(fm,{priorMatches:F.CORNERS.priorMatches});
+  return fit.ok?fit:null;
+}
+const cornerSize=lid=>{const c=state.prec&&state.prec.cfg&&state.prec.cfg[lid];return c&&c.csize>0?c.csize:F.CORNERS.size};
+const marketReady=(games,cutoff)=>!!(games&&games.mkt&&games.mkt.size)&&F.marketCoverage(games,games.mkt,cutoff).share>=F.MARKET_FIT.minCoverage;
+async function fetchXg(leagues,budget,status){
+  await loadXg();
+  if(!(budget>0))return 0;
+  // Ligas sin estadísticas en API-Football: si ya se pidieron 20 o más partidos y ninguno trajo nada, la liga
+  // no se vuelve a pedir por 30 días (no gasta consultas en vano).
+  const NOST=LS.get('tg:nostats',{})||{},now=Date.now();
+  const hasStats=r=>r&&(r[2]||Number.isFinite(r[9]));
+  const ready=[];
+  for(const L of leagues){
+    let asked=0,ok=0;fdRowsOf(L);
+    for(const r of L.raw){const x=XG[r[0]];if(x){asked++;if(hasStats(x))ok++}else if(FDC.has(String(r[0]))&&fdcCheck().ok)ok++}
+    if(asked>=20&&!ok){if(!NOST[L.lid])NOST[L.lid]=now}else if(ok)delete NOST[L.lid];
+    if(NOST[L.lid]&&now-NOST[L.lid]<30*864e5)continue;
+    if(NOST[L.lid])delete NOST[L.lid]; // pasaron 30 días: se vuelve a probar
+    // Faltan: sin bajar todavía, o con estadísticas de antes de que se guardaran los córners.
+    const miss=L.raw.filter(r=>!(r[0] in XG)||(XG[r[0]][2]&&XG[r[0]].length<11)).map(r=>({id:r[0],h:r[2],a:r[3],ts:r[1],cur:String(r[6])===String(L.season)}));
+    miss.sort((x,y)=>(y.cur-x.cur)||(y.ts-x.ts));
+    if(miss.length)ready.push({L,ok,miss});
+  }
+  LS.set('tg:nostats',NOST);
+  // Prioridad: completar liga por liga hasta 100 partidos con estadísticas (lo que necesita el modelo de córners),
+  // empezando por las que están más cerca de llegar; después, el resto.
+  const NEED=100;
+  ready.sort((x,y)=>(x.ok>=NEED)-(y.ok>=NEED)||y.ok-x.ok);
+  const cand=[];
+  for(const x of ready)cand.push(...x.miss.slice(0,Math.max(0,NEED-x.ok)));
+  for(const x of ready)cand.push(...x.miss.slice(Math.max(0,NEED-x.ok)));
+  const pick=cand.slice(0,budget*20), byId=new Map(pick.map(x=>[x.id,x]));
+  const batches=[];for(let i=0;i<pick.length;i+=20)batches.push(pick.slice(i,i+20));
+  let got=0;
+  await pool(batches.map(b=>async()=>{
+    const j=await api('/fixtures',{ids:b.map(x=>x.id).join('-'),timezone:TZ});
+    const seen=new Set();
+    for(const f of j.response||[]){
+      const id=f.fixture.id,c=byId.get(id);if(!c)continue;seen.add(id);
+      const s=F.readStats(f.statistics,f.teams.home.id,f.teams.away.id);
+      if(!s){XG[id]=[null,null,0];continue}
+      const H=s.home,A=s.away,ck=Number.isFinite(H.ck)&&Number.isFinite(A.ck)?[H.ck,A.ck]:[null,null];
+      if(Number.isFinite(H.xg)&&Number.isFinite(A.xg))XG[id]=[H.xg,A.xg,1,H.sot,H.sib,H.sob,A.sot,A.sib,A.sob,...ck];
+      else if(Number.isFinite(H.sot)&&Number.isFinite(A.sot))XG[id]=[null,null,2,H.sot,H.sib,H.sob,A.sot,A.sib,A.sob,...ck];
+      else XG[id]=ck[0]!=null?[null,null,0,null,null,null,null,null,null,...ck]:[null,null,0];
+      got++;
+    }
+    for(const x of b)if(!seen.has(x.id))XG[x.id]=[null,null,0];
+  }),(d,t)=>status&&status(`Bajando xG… ${d} de ${t}`));
+  await DB.set('xg',XG);
+  return got;
+}
+// Reajusta el xG aproximado con todos los partidos que tienen tiros y goles.
+async function refitProxy(leagues){
+  const goals=new Map();for(const L of leagues)for(const r of L.raw)goals.set(r[0],[r[4],r[5]]);
+  const samples=[];
+  for(const [id,r] of Object.entries(XG)){const g=goals.get(Number(id));if(!g||!r[2])continue;samples.push({sot:r[3],sib:r[4],sob:r[5],goals:g[0]},{sot:r[6],sib:r[7],sob:r[8],goals:g[1]});}
+  XGCOEF=F.fitProxy(samples);await DB.set('xgcoef',XGCOEF);
+}
+
+/* ---------------- recién llegados (ascendidos y descendidos) ---------------- */
+// NC[lid] = {season, cls:{equipo:'up'|'down'}}. Un equipo que no jugó la temporada anterior de la liga arranca
+// con el nivel típico de un ascendido (más débil) o de un descendido (más fuerte), no con el de un equipo promedio.
+let NC=null,NCT=null;
+async function loadNc(){if(!NC){NC=(await DB.get('nc'))||{};NCT=(await DB.get('ncTeams'))||{}}return NC}
+function ncMean(lid,season){const x=NC&&NC[lid];return x&&String(x.season)===String(season)?F.newcomerPriorMean(x.cls):null}
+async function updateNewcomers(leagues,maxCalls){
+  await loadNc();
+  const todo=[];
+  for(const L of leagues){
+    const cur=new Set(),prev=new Set();
+    for(const r of L.raw){if(String(r[6])===String(L.season)){cur.add(r[2]);cur.add(r[3])}else if(String(r[6])===String(L.season-1)){prev.add(r[2]);prev.add(r[3])}}
+    if(prev.size<6||cur.size<6){delete NC[L.lid];continue}
+    const nw=[...cur].filter(t=>!prev.has(t));
+    NC[L.lid]={season:L.season,teams:nw,cls:{}};
+    for(const t of nw)if(!((t+':'+L.season) in NCT))todo.push({t,L});
+  }
+  let calls=0;
+  await pool(todo.slice(0,maxCalls).map(({t,L})=>async()=>{
+    try{const j=await api('/standings',{team:t,season:L.season-1});calls++;NCT[t+':'+L.season]=F.classifyNewcomer(j.response,t,L.lid)}
+    catch(e){if(e.fatal)throw e}
+  }));
+  for(const L of leagues){const x=NC[L.lid];if(!x||!x.teams)continue;
+    for(const t of x.teams){const k=t+':'+L.season;if(!(k in NCT))continue;const c=NCT[k]===null?'up':NCT[k];if(c==='up'||c==='down')x.cls[t]=c}}
+  await DB.set('nc',NC);await DB.set('ncTeams',NCT);
+  return calls;
+}
+
+/* ---------------- modelo por liga ---------------- */
+// Dos ajustes con los mismos partidos: uno para la forma del partido (quién es mejor) y otro para el total de goles.
+function fitLeagueAt(games,cutoff,season,cfg){
+  // Modelo de mercado: los partidos jugados entran con lo que implicaba Pinnacle (un solo ajuste, sin el del total).
+  if(cfg&&cfg.market&&marketReady(games,cutoff)){
+    const M=F.MARKET_FIT,mg=F.marketGames(games,games.mkt,-0.06,MKC);
+    const fm=T.buildFitMatches(mg,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:M.halfLifeDays,xgWeight:M.weight});
+    const fit=T.fitLeague(fm,{priorMatches:M.priorMatches,priorMean:games.length?ncMean(games[0].leagueId,season):null});
+    fit.market=true;
+    return fit;
+  }
+  const fm=T.buildFitMatches(games,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:240,xgWeight:cfg&&cfg.xg?0.5:0});
+  const priorMean=games.length?ncMean(games[0].leagueId,season):null;
+  const fit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.shape,priorMean});
+  if(fit.ok)fit.totalFit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.total,priorMean});
+  return fit;
+}
+function predictFt(fit,h,a){
+  if(fit&&fit.market)return T.predictMatch(fit,h,a,{minTeamEffective:F.MARKET_FIT.minTeamEffective});
+  const pr=T.predictMatch(fit,h,a,{});
+  if(!pr.ok||!fit.totalFit||!fit.totalFit.ok)return pr;
+  const pt=T.predictMatch(fit.totalFit,h,a,{});if(!pt.ok)return pr;
+  const r=F.rescaleTotal(pr.lambdaHome,pr.lambdaAway,pt.lambdaTotal);
+  return Object.assign({},pr,{lambdaHome:r.lh,lambdaAway:r.la,lambdaTotal:r.lh+r.la});
+}
+function leagueStats(games){
+  const n=games.length;let g=0,h=0,d=0,b=0,o=0;
+  for(const x of games){g+=x.hg+x.ag;if(x.hg>x.ag)h++;else if(x.hg===x.ag)d++;if(x.hg>0&&x.ag>0)b++;if(x.hg+x.ag>=3)o++;}
+  return n?{n,goals:g/n,home:h/n,draw:d/n,away:(n-h-d)/n,btts:b/n,o25:o/n}:null;
+}
+// Últimos n partidos de un equipo antes de ts: [goles a favor, goles en contra] del más viejo al más nuevo.
+function lastN(games,teamId,ts,n=5){
+  const out=[];
+  for(let k=games.length-1;k>=0&&out.length<n;k--){const g=games[k];if(g.ts>=ts)continue;if(String(g.h)===String(teamId))out.push([g.hg,g.ag]);else if(String(g.a)===String(teamId))out.push([g.ag,g.hg])}
+  return out.reverse();
+}
+function topPct(fit,teamId,field,better){
+  const vals=Object.values(fit.teams).filter(t=>t.nEff>=3).map(t=>t[field]);
+  const v=fit.teams[String(teamId)]&&fit.teams[String(teamId)][field];
+  if(!Number.isFinite(v)||vals.length<2)return null;
+  const beat=vals.filter(x=>better==='high'?x>v:x<v).length, worse=vals.filter(x=>better==='high'?x<v:x>v).length;
+  return {top:Math.max(1,Math.round((beat+1)*100/vals.length)),pos:worse/(vals.length-1)};
+}
+// rho del modelo: el elegido en Precisión; si todavía no hay, se estima con el historial.
+function leagueCfg(lid,games,season){
+  const c=state.prec&&state.prec.cfg&&state.prec.cfg[lid];
+  // Precisión ya eligió (market true o false); si es de antes de que existiera el modelo de mercado, se usa si hay cuotas.
+  if(c)return 'market' in c?c:Object.assign({},c,{market:marketReady(games,Date.now()/1000)});
+  const market=marketReady(games,Date.now()/1000);
+  const fit=fitLeagueAt(games,Date.now()/1000,season,{xg:false,market});
+  if(!fit.ok)return {xg:false,rho:-0.06,market:false};
+  const rows=[];for(const g of games){const p=predictFt(fit,g.h,g.a);if(p.ok)rows.push({lh:p.lambdaHome,la:p.lambdaAway,hg:g.hg,ag:g.ag});}
+  return {xg:false,rho:F.fitRho(rows).rho,market:!!fit.market};
+}
+
+/* ---------------- registro de Especiales ---------------- */
+// Antes de cada partido se guarda, por mercado especial, la línea principal (la más pareja) con la probabilidad
+// del modelo, la de Pinnacle (o la derivada de Pinnacle) y la mejor cuota. Después del partido se liquida.
+// Así se mide con datos propios si el modelo le gana al mercado y si apostar donde hay EV deja ganancia.
+const espFamily=k=>{const t=k.split(':');if(t[0]==='tt'&&t[2]==='over')return 'tt:'+t[1];if(t[0]==='c'&&t[2]==='over')return 'c:'+t[1];if(t[0]==='btts'&&t[1]==='yes')return 'btts';return null};
+function recordEsp(a,esp){
+  if(!a.rows||a.ts*1000<=Date.now())return;
+  const fam=new Map();
+  for(const r of a.rows){
+    const f=espFamily(r.k);if(!f||!(r.m>0)||!r.sh||(r.k.startsWith('c:')&&r.es!==0))continue;
+    if(f!=='btts'&&Math.abs(Number(r.k.split(':')[3])%1-0.5)>1e-9)continue; // solo líneas sin devolución
+    const c=fam.get(f);if(!c||Math.abs(r.m-0.5)<Math.abs(c.m-0.5))fam.set(f,r);
+  }
+  for(const [f,r] of fam){
+    for(const id of Object.keys(esp))if(esp[id].fid===a.id&&espFamily(esp[id].k)===f&&esp[id].y==null)delete esp[id];
+    esp[a.id+'|'+r.k]={fid:a.id,k:r.k,l:r.l,lid:a.lid,ts:a.ts,hn:a.hn,an:a.an,p:r.p>0?+r.p.toFixed(4):null,m:+r.m.toFixed(4),pr:r.pr,bk:r.bk};
+  }
+}
+// Liquida lo guardado con los goles del historial y los córners de las estadísticas.
+function settleEsp(esp,gameById){
+  let n=0;
+  for(const e of Object.values(esp)){
+    if(e.y!=null||e.ts*1000>Date.now()-2*3600e3)continue;
+    const bet=parseKey(e.k),x=gameById.get(String(e.fid));if(!bet||!x)continue;
+    let h=x.r[4],a=x.r[5];
+    if(bet.type==='corners'){const c=cornersOf(e.fid);if(!c)continue;[h,a]=c}
+    const r=F.betResult(bet,h,a);if(r==null)continue;
+    e.y=r>0?1:0;n++;
+  }
+  const ids=Object.keys(esp);if(ids.length>20000)ids.sort((a,b)=>esp[a].ts-esp[b].ts).slice(0,ids.length-20000).forEach(k=>delete esp[k]);
+  return n;
+}
+// Resumen por tipo de mercado: Brier del modelo y del mercado, y ganancia si se hubiera apostado con EV ≥ 2%.
+function espSummary(esp){
+  const out={};
+  for(const e of Object.values(esp||{})){
+    if(e.y==null)continue;
+    const t=e.k.startsWith('c:')?'corners':e.k.startsWith('tt:')?'tt':'btts';
+    const o=out[t]||(out[t]={n:0,nb:0,bm:0,bk:0,bets:{mkt:[0,0],model:[0,0],both:[0,0]}});
+    o.n++;
+    if(e.p>0){o.nb++;o.bm+=(e.p-e.y)**2;o.bk+=(e.m-e.y)**2}
+    const prof=e.y?e.pr-1:-1,evK=e.m*e.pr-1,evM=e.p>0?e.p*e.pr-1:null;
+    if(evK>=0.02){o.bets.mkt[0]++;o.bets.mkt[1]+=prof}
+    if(evM!=null&&evM>=0.02){o.bets.model[0]++;o.bets.model[1]+=prof}
+    if(evK>=0.02&&evM!=null&&evM>=0.02){o.bets.both[0]++;o.bets.both[1]+=prof}
+  }
+  return out;
+}
+
+/* ---------------- mis apuestas y casas vistas ---------------- */
+let BETS=[],betsDirty=false;
+const BOOKS=new Set(LS.get('tg:books',[])||[]);
+async function loadBets(){BETS=(await DB.get('bets'))||[];return BETS}
+async function saveBets(){await DB.set('bets',BETS);betsDirty=false}
+const bankroll=()=>Math.max(0,Number(LS.get('tg:bank',0))||0);
+// Liquida las apuestas ya jugadas (resultado final) y calcula el CLV contra la cuota de cierre.
+async function settleBets(){
+  const pend=BETS.filter(b=>!b.res&&b.kick*1000<Date.now()-2*3600e3);
+  for(let i=0;i<pend.length;i+=20){
+    const ids=[...new Set(pend.slice(i,i+20).map(b=>b.fid))];
+    try{
+      const j=await api('/fixtures',{ids:ids.join('-'),timezone:TZ});
+      for(const f of j.response||[]){
+        if(!DONE.includes(f.fixture.status.short))continue;
+        const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
+        const hg=Number.isInteger(ft.home)?ft.home:gl.home,ag=Number.isInteger(ft.away)?ft.away:gl.away;
+        if(!Number.isInteger(hg)||!Number.isInteger(ag))continue;
+        for(const b of BETS)if(String(b.fid)===String(f.fixture.id)&&!b.res){
+          const bet=parseKey(b.k);if(!bet)continue;
+          // Córners: se resuelven con las estadísticas del partido (si la API todavía no las tiene, queda pendiente).
+          let x=hg,y=ag;if(bet.type==='corners'){const s=F.readStats(f.statistics,f.teams.home.id,f.teams.away.id);if(!s||!Number.isFinite(s.home.ck)||!Number.isFinite(s.away.ck))continue;x=s.home.ck;y=s.away.ck}
+          const st=F.settle(bet,x,y,b.pr);if(st){b.res=st;b.hg=hg;b.ag=ag;betsDirty=true}}
+      }
+    }catch(e){if(e.fatal)throw e}
+  }
+}
+
+/* ---------------- filas de mercados de un partido ---------------- */
+// Con modelo: cuota, cuota justa y EV del modelo + precio de las casas. Sin modelo (por ejemplo, copas donde los
+// equipos jugaron poco en esa competencia): solo el precio de las casas, que alcanza para «Cuota justa: De las casas».
+function buildRows(a,o,first){
+  const fr=first[a.id]||(first[a.id]={ts:a.ts});
+  let rows;
+  if(a.lam)rows=F.matchMarkets(a.lam,o,{home:a.hn,away:a.an}).rows;
+  else rows=[...o.values()].filter(x=>x.bet.type!=='corners').map(x=>({key:x.key,group:F.groupOf(x.bet),label:F.betLabel(x.bet,a.hn,a.an),price:x.best.price,bookmaker:x.best.bookmaker,fair:null,p:null,ev:null,score:0,mkt:x.mkt}));
+  // Córners: modelo propio (si la liga tiene córners) y precio justo armado con la línea principal de Pinnacle.
+  const cm=F.cornerMarkets(a.clam||null,o,{home:a.hn,away:a.an},a.clam&&a.clam.size);
+  if(o.cornerNames&&o.cornerNames.length)a.cnames=o.cornerNames;
+  if(o.lambdas)a.plam=o.lambdas; // goles esperados que implican el 1X2 y los totales de Pinnacle
+  rows=rows.concat(cm.rows);if(cm.mean)a.cmean=cm.mean;
+  // Mejor cuota entre tus casas (Bet365, 1xBet, Betano…), aunque paguen menos que el precio justo: la usa alpha.html.
+  const myRe=new RegExp(LS.get('tg:checkbooks','bet365|1xbet|betano'),'i');
+  const myBest=x=>{let b=null;for(const [bk,pr] of (x&&x.all)||[])if(myRe.test(bk)&&pr>1&&(!b||pr>b[0]))b=[pr,bk];return b};
+  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {my:myBest(x),k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(r.offers||x.offers||[]).slice(0,6),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0,es:r.est?1:0}});
+  a.edge=a.lam?F.matchEdge(rows):0;
+  // Cuota de cierre de mis apuestas: la última lectura antes del partido.
+  if(a.ts*1000>Date.now())for(const b of BETS)if(String(b.fid)===String(a.id)&&!b.res){const x=o.get(b.k);if(x&&x.mkt>0){b.mClose=x.mkt;b.closeAt=Date.now();betsDirty=true}}
+  for(const x of o.values()){BOOKS.add(x.best.bookmaker);for(const [bk] of x.offers||[])BOOKS.add(bk)}
+}
+
+/* ---------------- ACTUALIZAR TODO (lo mismo que haría el robot) ---------------- */
+function prog(done,total){const p=$('#uProg');p.classList.toggle('hidden',!total||done>=total);p.querySelector('i').style.width=(total?done*100/total:0)+'%'}
+function say(t,err){const s=$('#uStatus');s.textContent=t;s.classList.toggle('err',!!err)}
+async function updateAll(){
+  if(state.running)return;
+  state.running=true;state.calls=0;$('#btnUpdate').disabled=true;
+  const warn=[];
+  try{
+    await loadXg();await loadFd();
+    state.prec=state.prec||await DB.get('prec');
+    await cloudMergeXg();
+    await loadBets();await cloudMergeBets();
+    let reg=state.reg=state.reg||(await DB.get('reg'))||{};
+    reg=state.reg=await cloudMergeReg(reg);
+    const dates=[dayStr(0),dayStr(1)];
+    // 1) Partidos y cuotas de hoy y mañana (todas las ligas).
+    const fixtures={},odds={};
+    for(const d of dates){
+      say('Buscando partidos y cuotas del '+d.split('-').reverse().slice(0,2).join('/')+'…');prog(dates.indexOf(d),8);
+      const j=await api('/fixtures',{date:d,timezone:TZ});
+      fixtures[d]=(j.response||[]).map(f=>({id:f.fixture.id,iso:f.fixture.date,ts:Math.floor(new Date(f.fixture.date).getTime()/1000),st:f.fixture.status.short,lid:f.league.id,season:f.league.season,ln:f.league.name,lc:f.league.country||'World',hid:f.teams.home.id,hn:f.teams.home.name,aid:f.teams.away.id,an:f.teams.away.name}));
+      const items=await allPages('/odds',{date:d,timezone:TZ});
+      const m=new Map();for(const it of items){const id=String(it.fixture&&it.fixture.id||'');if(id)m.set(id,(m.get(id)||[]).concat([it]))}
+      odds[d]=m;
+    }
+    // 2) Historial de cada liga que tiene cuotas.
+    const need=new Map();
+    for(const d of dates)for(const f of fixtures[d])if(odds[d].has(String(f.id)))need.set(f.lid,f.season);
+    say(`Historial de ${need.size} ligas…`);
+    const leagues=new Map();
+    await pool([...need].map(([lid,season])=>async()=>{leagues.set(lid,await loadLeague(lid,season))}),(d,t)=>{say(`Historial de ligas: ${d} de ${t}`);prog(2+d/t*2,8)});
+    // 3) xG (de la API o aproximado con los tiros).
+    const budget=Number(LS.get('tg:xgBudget',150));
+    try{await fetchXg([...leagues.values()],budget,t=>{say(t);});await refitProxy([...leagues.values()])}catch(e){if(e.fatal)throw e;warn.push('xG: '+e.message)}
+    // Recién llegados: una consulta por equipo nuevo, una sola vez (queda guardado).
+    try{say('Revisando ascendidos y descendidos…');const n=await updateNewcomers([...leagues.values()],400);if(n)say(`Ascendidos y descendidos: ${n} equipos revisados`)}catch(e){if(e.fatal)throw e;warn.push('Ascendidos: '+e.message)}
+    prog(5,8);
+    // 4) Análisis de cada partido con cuotas.
+    say('Calculando mercados…');
+    const first=(await DB.get('first'))||{};
+    try{localStorage.removeItem('tg:first')}catch(e){}
+    const esp=state.esp=(await DB.get('esp'))||{};
+    for(const d of dates){
+      const day={date:d,ts:Date.now(),fx:[]};
+      const byL=new Map();for(const f of fixtures[d])if(odds[d].has(String(f.id))){if(!byL.has(f.lid))byL.set(f.lid,[]);byL.get(f.lid).push(f)}
+      for(const [lid,fxs] of byL){
+        const L=leagues.get(lid);
+        const games=L?modelGames(L):[];
+        const cfg=games.length?leagueCfg(lid,games,fxs[0].season):null;
+        const fit=games.length>=40?fitLeagueAt(games,Math.min(...fxs.map(f=>f.ts)),fxs[0].season,cfg):null;
+        const cur=games.filter(g=>String(g.season)===String(fxs[0].season));
+        const ls=leagueStats(cur.length>=40?cur:games);
+        const cfitL=L?cornerFitAt(L,Math.min(...fxs.map(f=>f.ts)),fxs[0].season):null;
+        for(const f of fxs){
+          const a=Object.assign({},f,{readAt:Date.now()});
+          if(cfitL){const cp=T.predictMatch(cfitL,f.hid,f.aid,{});if(cp.ok)a.clam={home:cp.lambdaHome,away:cp.lambdaAway,size:cornerSize(lid)}}
+          if(!fit||!fit.ok)a.reason='La liga tiene pocos partidos en la API para calcular.';
+          else{
+            const pr=predictFt(fit,f.hid,f.aid);
+            if(!pr.ok)a.reason=/no tiene partidos previos/.test(pr.reason)?'Un equipo no tiene partidos previos en esta liga.':'Todavía hay pocos partidos de estos equipos.';
+            else{
+              const o=F.parseOdds(odds[d].get(String(f.id)));
+              a.lam={home:pr.lambdaHome,away:pr.lambdaAway,rho:cfg.rho};a.xg=!!cfg.xg&&!fit.market;a.mkt=!!fit.market;
+              a.n={home:pr.nHome,away:pr.nAway};a.ls=ls;
+              const nc=NC&&NC[lid]&&String(NC[lid].season)===String(fxs[0].season)?NC[lid].cls:{};a.nc={home:nc[f.hid]||null,away:nc[f.aid]||null};
+              a.form={home:lastN(games,f.hid,f.ts),away:lastN(games,f.aid,f.ts)};a.hadv=fit.muH/fit.muA;
+              a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
+              if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
+              else{
+                buildRows(a,o,first);recordEsp(a,esp);
+                const m1x2=F.market1x2(o);
+                if(m1x2&&f.ts*1000>Date.now()&&!(reg[f.id]&&Number.isFinite(reg[f.id].hg))){
+                  const s=F.summarize(F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho));
+                  reg[f.id]={lid:f.lid,ts:f.ts,p1x2:[s.home,s.draw,s.away].map(x=>+x.toFixed(4)),m1x2:m1x2.map(x=>+x.toFixed(4))};
+                }
+              }
+            }
+          }
+          // Sin modelo, igual se muestran los mercados con el precio de las casas.
+          if(!a.lam){const o=F.parseOdds(odds[d].get(String(f.id)));if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp)}}
+          day.fx.push(a);
+        }
+        await sleep(0);
+      }
+      await DB.set('day:'+d,day);state.days[d]=day;
+    }
+    const cut=Date.now()/1000-3*86400;for(const id of Object.keys(first))if((first[id].ts||0)<cut)delete first[id];
+    await DB.set('first',first);
+    await setUpdated(Date.now());renderDash();
+    prog(6,8);
+    // 5) Cuotas de los últimos 7 días (la API las guarda una semana): para medir 1X2 contra las casas.
+    const bf=LS.get('tg:bf',{})||{};
+    const allLeagues=await knownLeagues(leagues);
+    const gameById=new Map();for(const L of allLeagues.values())for(const r of L.raw)gameById.set(String(r[0]),{L,r});
+    for(let k=1;k<=7;k++){
+      const d=dayStr(-k);if(bf[d])continue;
+      say('Cuotas guardadas del '+d.split('-').reverse().slice(0,2).join('/')+' (para Precisión)…');
+      try{
+        const items=await allPages('/odds',{date:d,timezone:TZ});
+        const m=new Map();for(const it of items){const id=String(it.fixture&&it.fixture.id||'');if(id)m.set(id,(m.get(id)||[]).concat([it]))}
+        const fitCache=new Map();
+        // Cuota de cierre de mis apuestas de ese día (la API guarda las cuotas una semana).
+        for(const b of BETS)if(m.has(String(b.fid))){const x=F.parseOdds(m.get(String(b.fid))).get(b.k);if(x&&x.mkt>0){b.mClose=x.mkt;b.closeAt=Date.now();b.closeFinal=1;betsDirty=true}}
+        for(const [id,its] of m){
+          if(reg[id]&&reg[id].m1x2)continue;
+          const x=gameById.get(id);if(!x)continue;
+          const m1x2=F.market1x2(F.parseOdds(its));if(!m1x2)continue;
+          const {L,r}=x,games=modelGames(L),cfg=leagueCfg(L.lid,games,L.season);
+          const ck=L.lid+':'+Math.floor(r[1]/86400);
+          let fit=fitCache.get(ck);if(!fit){fit=fitLeagueAt(games,r[1]-3600,r[6],cfg);fitCache.set(ck,fit)}
+          if(!fit.ok)continue;
+          const pr=predictFt(fit,r[2],r[3]);if(!pr.ok)continue;
+          const s=F.summarize(F.scoreMatrix(pr.lambdaHome,pr.lambdaAway,cfg.rho));
+          reg[id]={lid:L.lid,ts:r[1],p1x2:[s.home,s.draw,s.away].map(v=>+v.toFixed(4)),m1x2:m1x2.map(v=>+v.toFixed(4)),hg:r[4],ag:r[5]};
+        }
+        bf[d]=1;LS.set('tg:bf',bf);
+      }catch(e){if(e.fatal)throw e;warn.push('Cuotas del '+d+': '+e.message)}
+    }
+    // Mis apuestas: resultado y CLV.
+    try{say('Liquidando tus apuestas…');await settleBets()}catch(e){if(e.fatal)throw e;warn.push('Apuestas: '+e.message)}
+    await saveBets();LS.set('tg:books',[...BOOKS].sort());
+    // 6) Liquidar lo guardado antes de cada partido.
+    for(const [id,r] of Object.entries(reg)){if(Number.isFinite(r.hg))continue;const x=gameById.get(id);if(x){r.hg=x.r[4];r.ag=x.r[5]}}
+    const ids=Object.keys(reg);if(ids.length>40000)ids.sort((a,b)=>reg[a].ts-reg[b].ts).slice(0,ids.length-40000).forEach(k=>delete reg[k]);
+    await DB.set('reg',reg);
+    settleEsp(esp,gameById);await DB.set('esp',esp);
+    prog(7,8);
+    // 7) Precisión de todas las ligas con historial.
+    await computePrecision(allLeagues,reg,t=>say(t));
+    await setUpdated(Date.now());
+    try{await cloudPush();if(window.tgCloud&&window.tgCloud.user)syncLine('☁︎ Guardado en tu cuenta recién: tus otros dispositivos ya lo pueden ver.')}catch(e){warn.push('No se pudo guardar en tu cuenta: '+e.message);syncLine('☁︎ No se pudo guardar en tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
+    state.lastCalls=state.calls;scheduleQuota();
+    say(`Listo · ${state.calls} consultas a la API`+(warn.length?' · avisos: '+warn.slice(0,2).join(' | '):''));
+  }catch(e){say(e.message,true)}
+  prog(1,1);state.running=false;$('#btnUpdate').disabled=false;renderDash();
+}
+// Todas las ligas con historial guardado (las de hoy ya cargadas + las de días anteriores).
+async function knownLeagues(loaded){
+  const out=new Map(loaded);
+  const keys=(await DB.keys()).filter(k=>String(k).startsWith('lg:'));
+  const bySeason=new Map();
+  for(const k of keys){const [,lid,season]=String(k).split(':');const L=Number(lid),S=Number(season);if(!bySeason.has(L)||bySeason.get(L)<S)bySeason.set(L,S)}
+  for(const [lid,season] of bySeason){
+    if(out.has(lid))continue;
+    const cur=await DB.get('lg:'+lid+':'+season),prev=await DB.get('lg:'+lid+':'+(season-1));
+    const raw=[...(prev&&prev.g||[]),...(cur&&cur.g||[])];
+    if(raw.length)out.set(lid,{lid,season,raw,names:Object.assign({},prev&&prev.t||{},cur&&cur.t||{})});
+  }
+  return out;
+}
+
+// Hora de la última actualización: localStorage y también la base grande (por si el primero está lleno).
+async function setUpdated(t){LS.set('tg:updated',t);try{await DB.set('updated',t)}catch(e){}}
+async function getUpdated(){const a=LS.get('tg:updated',0);let b=0;try{b=(await DB.get('updated'))||0}catch(e){}return Math.max(a,b)}
+
+/* ---------------- sincronización con la cuenta (ver el módulo de Firebase al final) ---------------- */
+// En la nube no se guardan historiales ni xG (se vuelven a bajar): solo lo que se ve en pantalla.
+function parseKey(k){
+  const [t,a,b]=k.split(':');
+  if(t==='1x2')return {type:'1x2',pick:a};
+  if(t==='dc')return {type:'dc',pick:a};
+  if(t==='btts')return {type:'btts',pick:a};
+  if(t==='total')return {type:'total',side:a,line:Number(b)};
+  if(t==='ah')return {type:'ah',side:a,line:Number(b)};
+  if(t==='tt')return {type:'tt',team:a,side:b,line:Number(k.split(':')[3])};
+  if(t==='c')return {type:'corners',scope:a,side:b,line:Number(k.split(':')[3])};
+  return null;
+}
+const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
+function packDay(day){
+  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0]);return o})};
+}
+function unpackDay(d){
+  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh])=>{const bet=parseKey(k);return {k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0}});return o})};
+}
+function mergeReg(local,cloud){
+  for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
+  return local;
+}
+async function cloudPush(){
+  const C=window.tgCloud;
+  if(!C||!C.user){syncLine('☁︎ No estás conectado: lo actualizado quedó solo en este dispositivo. Tocá ☁︎ Entrar arriba.',true);return}
+  say('Guardando en tu cuenta…');
+  const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
+  await loadXg();
+  await loadBets();
+  await C.pushAll({bets:BETS,xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{})});
+}
+// Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
+async function cloudPull(force){
+  const C=window.tgCloud;if(!C||!C.user||state.running)return false;
+  const got=await C.pullIfNewer(force?0:await getUpdated(),[dayStr(-1),dayStr(0),dayStr(1)]);
+  if(!got)return false;
+  for(const [d,x] of Object.entries(got.days||{})){const day=unpackDay(x);await DB.set('day:'+d,day);state.days[d]=day}
+  if(got.prec){state.prec=got.prec;await DB.set('prec',got.prec)}
+  if(got.fav)LS.set('tg:fav',got.fav);
+  if(got.bf)LS.set('tg:bf',Object.assign({},LS.get('tg:bf',{}),got.bf));
+  if(got.updated)await setUpdated(got.updated);
+  return true;
+}
+// Apuestas: se juntan las de la cuenta con las de este dispositivo (por id; gana la liquidada o la más nueva).
+async function cloudMergeBets(){
+  const C=window.tgCloud;if(!C||!C.user)return;
+  try{
+    const cloud=await C.pullBets();if(!Array.isArray(cloud))return;
+    const by=new Map(BETS.map(b=>[b.id,b]));
+    for(const b of cloud){const l=by.get(b.id);if(b.del&&!(l&&l.del)){by.set(b.id,b);continue}if(!l||(!l.res&&b.res)||((b.closeAt||0)>(l.closeAt||0)&&!l.res))by.set(b.id,Object.assign({},l||{},b))}
+    BETS=[...by.values()];await saveBets();
+  }catch(e){console.warn(e)}
+}
+async function cloudMergeXg(){
+  const C=window.tgCloud;if(!C||!C.user)return;
+  try{
+    say('Bajando el xG guardado en tu cuenta…');
+    const x=await C.pullXg();if(!x)return;
+    await loadXg();let n=0;
+    for(const [id,r] of Object.entries(x.map||{}))if(r&&(!XG[id]||(!XG[id][2]&&r[2])||(XG[id].length<11&&r.length>=11))){XG[id]=r;n++}
+    if(n)await DB.set('xg',XG);
+    if(x.coef&&x.coef.fitted&&!(XGCOEF&&XGCOEF.fitted&&XGCOEF.n>=x.coef.n)){XGCOEF=x.coef;await DB.set('xgcoef',XGCOEF)}
+  }catch(e){console.warn(e)}
+}
+async function cloudMergeReg(reg){
+  const C=window.tgCloud;if(!C||!C.user)return reg;
+  try{say('Bajando las predicciones guardadas en tu cuenta…');return mergeReg(reg,await C.pullReg())}catch(e){return reg}
+}
+function syncLine(t,err){const el=$('#syncLine');if(!el)return;el.textContent=t||'';el.style.color=err?'var(--bad)':'var(--muted)';const i=$('#cloudInfo');if(i&&t)i.textContent=t}
+window.tgOnLogin=async()=>{
+  try{await loadBets();await cloudMergeBets()}catch(e){}
+  if(state.running)return;
+  if(!window.tgCloud||!window.tgCloud.user){syncLine('');return}
+  syncLine('☁︎ Revisando tu cuenta…');
+  try{
+    const C=window.tgCloud,meta=C&&C.user?await C.peek():null;
+    const changed=await cloudPull();
+    if(changed)rerender();
+    if(!meta)syncLine('☁︎ Tu cuenta todavía no tiene datos guardados. Actualizá en algún dispositivo con ☁︎ conectado, o usá ⚙︎ → «Subir ahora a mi cuenta».',true);
+    else syncLine('☁︎ Al día con tu cuenta · última actualización guardada '+ago(meta.updated||meta.ts||0)+(changed?' (bajada recién)':''));
+  }catch(e){syncLine('☁︎ No se pudo leer tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
+};
+function rerender(){const r=route();if(r.v==='mk')renderMk();else if(r.v==='bets')renderBets();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
+$('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
+$('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
+
+/* ---------------- precisión ---------------- */
+// Cuotas de cierre históricas (football-data.co.uk), en data/fd-1x2.json del repo; se renuevan cada semana.
+let FD=null;
+async function loadFd(){
+  if(FD)return FD;
+  try{const r=await fetch('./data/fd-1x2.json',{cache:'no-cache'});FD=r.ok?await r.json():{leagues:{}}}catch(e){FD={leagues:{}}}
+  return FD;
+}
+async function computePrecision(leagues,reg,status){
+  await loadNc();
+  const fd=await loadFd();
+  const names=LS.get('tg:lnames',{})||{};
+  for(const d of Object.values(state.days))for(const f of (d&&d.fx)||[])names[f.lid]=[f.ln,f.lc];
+  LS.set('tg:lnames',names);
+  // Se parte de la precisión anterior (por ejemplo, la que vino de otro dispositivo con más ligas):
+  // solo se reemplazan las ligas que este dispositivo pudo recalcular.
+  const prev=state.prec||{};
+  const out={ts:Date.now(),leagues:Object.assign({},prev.leagues||{}),cfg:Object.assign({},prev.cfg||{})};
+  const allRows=[],allMarket=[];let i=0;
+  for(const L of leagues.values()){
+    i++;if(i%5===0){status&&status(`Precisión: ${i} de ${leagues.size} ligas…`);await sleep(0)}
+    const games=modelGames(L);
+    if(games.length<60)continue;
+    // Variantes: con o sin xG (si la liga tiene xG en al menos la mitad de los partidos), con o sin corrección.
+    const withXg=games.filter(g=>g.xh!=null).length>=games.length*0.5;
+    const bo={priorMatches:F.FT_PRIOR.shape,totalPriorMatches:F.FT_PRIOR.total,priorMean:s=>ncMean(L.lid,s)};
+    const variants=[{xg:false,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0},bo))}];
+    if(withXg)variants.push({xg:true,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0.5},bo))});
+    // Modelo de mercado: cada partido se predice solo con las cuotas de cierre y los goles de los anteriores.
+    if(marketReady(games)){
+      const M=F.MARKET_FIT;
+      variants.push({xg:false,market:true,rows:F.backtestLeague(F.marketGames(games,games.mkt,-0.06,MKC),T,{xgWeight:M.weight,halfLifeDays:M.halfLifeDays,priorMatches:M.priorMatches,minTeamEffective:M.minTeamEffective,priorMean:bo.priorMean})});
+    }
+    let best=null;
+    for(const v of variants){
+      if(v.rows.length<20)continue;
+      const rho=F.fitRho(v.rows).rho;
+      for(const r of [0,rho]){const pr=F.withProbs(v.rows,r),err=F.backtestError(pr);if(!best||err<best.err)best={xg:v.xg,market:!!v.market,rho:r,err,pr}}
+    }
+    if(!best)continue;
+    out.cfg[L.lid]={xg:best.xg,rho:best.rho,market:best.market};
+    const gs=F.goalsSkill(best.pr);
+    // 1X2 contra las casas: lo guardado por la app antes de cada partido + cuotas de cierre históricas.
+    const mrows=[],seen=new Set();
+    for(const [id,r] of Object.entries(reg))if(r.lid===L.lid&&Number.isFinite(r.hg)&&r.m1x2){mrows.push(r);seen.add(String(id))}
+    let nFd=0;
+    const fdl=fd.leagues&&fd.leagues[L.lid];
+    if(fdl){
+      const m=F.matchFd(best.pr,fdl,L.names);
+      for(const r of best.pr){const q=m.get(r.id);if(q&&!seen.has(String(r.id))){mrows.push({p1x2:r.p1x2,m1x2:q,hg:r.hg,ag:r.ag});nFd++}}
+    }
+    for(const r of mrows)allMarket.push(r);
+    // Goles de cada equipo (con las mismas predicciones) y córners (su propio backtest, si hay estadísticas).
+    const team=F.teamGoalsSkill(best.pr),btts=F.bttsSkill(best.pr,best.rho);
+    let corners=null;
+    const cg=cornerGames(L);
+    if(cg.length>=F.CORNERS.minGames+20){
+      const crows=F.backtestLeague(cg,T,{priorMatches:F.CORNERS.priorMatches,halfLifeDays:F.CORNERS.halfLifeDays});
+      const sz=F.fitCornerSize(crows),ck=F.cornerSkill(crows,sz.size);
+      if(ck.n){corners={n:ck.n,skill:ck.skill,exp:ck.expCorners,real:ck.realCorners};out.cfg[L.lid].csize=sz.size}
+    }
+    const ms=F.marketSkill(mrows);
+    const e=F.ece(best.pr.slice(-500));
+    const nm=names[L.lid]||[('Liga '+L.lid),''];
+    if(nm[0].startsWith('Liga ')&&prev.leagues&&prev.leagues[L.lid])nm[0]=prev.leagues[L.lid].name,nm[1]=prev.leagues[L.lid].country;
+    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,market:best.market,rho:best.rho,fd:nFd,team:{n:team.n,skill:team.skill},btts:{n:btts.n,skill:btts.skill},corners};
+    for(const r of best.pr.slice(-400))allRows.push(r);
+  }
+  const g=F.goalsSkill(allRows),c=F.ece(allRows);
+  // Si este dispositivo tiene menos ligas que la precisión anterior, el resumen de goles y calibración se conserva.
+  const keepOld=prev.summary&&prev.summary.goals&&prev.summary.goals.n>g.n;
+  // Ligas que este dispositivo no recalculó: su 1X2 se conserva de la precisión anterior.
+  const mk=F.marketSkill(allMarket),keepMk=prev.summary&&prev.summary.market&&prev.summary.market.n>mk.n;
+  // Equipo y córners: promedio de las ligas pesado por partidos.
+  const wavg=key=>{let s=0,n=0;for(const l of Object.values(out.leagues)){const x=l[key];if(x&&x.n&&Number.isFinite(x.skill)){s+=x.skill*x.n;n+=x.n}}return {n,skill:n?s/n:null}};
+  out.summary={market:keepMk?prev.summary.market:mk,goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,team:wavg('team'),btts:wavg('btts'),corners:wavg('corners'),leagues:Object.keys(out.leagues).length};
+  state.prec=out;await DB.set('prec',out);
+}
+function leagueStatus(lid){
+  const l=state.prec&&state.prec.leagues&&state.prec.leagues[lid];
+  const st=(s,n)=>!Number.isFinite(n)||n===0?null:n<MIN_N?'w':s>0?'g':'n';
+  return l?{goals:st(l.goals.skill,l.goals.n),res:st(l.res.skill,l.res.n),corners:l.corners?st(l.corners.skill,l.corners.n):null,team:l.team?st(l.team.skill,l.team.n):null,btts:l.btts?st(l.btts.skill,l.btts.n):null,l}:{goals:null,res:null,corners:null,team:null,btts:null,l:null};
+}
+function statusChip(st,label){
+  if(st==='g')return `<span class="chip g">✓ ${label}</span>`;
+  if(st==='w')return `<span class="chip w">⏳ ${label}</span>`;
+  if(st==='n')return `<span class="chip">✕ ${label}</span>`;
+  return `<span class="chip">? ${label}</span>`;
+}
+function allowedGroups(lid){
+  const s=leagueStatus(lid),set=new Set();
+  if(s.goals==='g'){set.add('high');set.add('low');set.add('team')}
+  if(s.corners==='g')set.add('corners');
+  if(s.res==='g'){set.add('home');set.add('away');set.add('other')}
+  return set;
+}
+
+// Casas marcadas antes en Ajustes (ya no se usan para calcular; se conserva la lista guardada).
+const myBooks=()=>new Set(LS.get('tg:mybooks',[])||[]);
+/* ---------------- mercados: modelo contra Pinnacle ---------------- */
+// Pestañas de mercado: nombre, columna de Precisión que dice si el modelo acierta ahí, y texto del ✓.
+const MK_TABS={goles:{name:'Goles del partido',st:'goals',chip:'Goles'},ambos:{name:'Ambos marcan',st:'btts',chip:'Ambos marcan'},equipo:{name:'Goles por equipo',st:'team',chip:'Por equipo'},corners:{name:'Córners',st:'corners',chip:'Córners'}};
+// Nombre corto dentro de una pestaña o grupo (el título ya dice el mercado).
+const lineTxt=l=>String(l).replace('.',',');
+const shortLabel=(b,hn,an)=>b.type==='total'||b.type==='corners'&&b.scope==='total'?(b.side==='over'?'Más de ':'Menos de ')+lineTxt(b.line):b.type==='btts'?(b.pick==='yes'?'Sí':'No'):b.type==='tt'?(b.team==='home'?hn:an)+' más de '+lineTxt(b.line):F.betLabel(b,hn,an);
+const betKey=b=>b.type==='total'?`total:${b.side}:${b.line}`:b.type==='btts'?'btts:'+b.pick:b.type==='tt'?`tt:${b.team}:${b.side}:${b.line}`:b.type==='corners'?`c:${b.scope}:${b.side}:${b.line}`:'';
+// Líneas de una pestaña para un partido: [{k, bet, l, p (modelo), pm (Pinnacle sin margen)}].
+// Pinnacle: su cuota de esa línea si la cotiza; si no, la que sale de sus mercados principales (1X2 y totales,
+// o la línea principal de córners) pasados a goles o córners esperados.
+function marketLines(a,tab){
+  const rowBy=new Map((a.rows||[]).map(r=>[r.k,r]));
+  const pinDirect=k=>{const r=rowBy.get(k);return r&&r.sh&&r.m>0?r.m:null};
+  const out=[];
+  if(tab==='corners'){
+    const sz=(a.clam&&a.clam.size)||F.CORNERS.size;
+    const md=a.clam?F.cornerDist(a.clam.home,a.clam.away,sz):null;
+    const share=a.clam?a.clam.home/(a.clam.home+a.clam.away):0.53;
+    const kd=a.cmean?F.cornerDist(a.cmean*share,a.cmean*(1-share),sz):null;
+    const ref=kd||md;if(!ref)return out;
+    let main=9.5,gap=9;
+    for(let L=4.5;L<=16.5;L++){const q=F.cornerProbs({scope:'total',side:'over',line:L},ref).p;if(Math.abs(q-0.5)<gap){gap=Math.abs(q-0.5);main=L}}
+    for(const L of [main-1,main,main+1])for(const side of ['over','under']){
+      const bet={type:'corners',scope:'total',side,line:L},k=betKey(bet),pd=pinDirect(k);
+      out.push({k,bet,l:F.betLabel(bet,a.hn,a.an),s:shortLabel(bet,a.hn,a.an),p:md?F.cornerProbs(bet,md).p:null,pm:pd!=null?pd:kd?F.cornerProbs(bet,kd).p:null,est:pd==null&&!!kd});
+    }
+    return out;
+  }
+  const m=a.lam?F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho):null;
+  const pmx=a.plam?F.scoreMatrix(a.plam.lh,a.plam.la,-0.06):null;
+  const bets=tab==='goles'?[1.5,2.5,3.5].flatMap(L=>[{type:'total',side:'over',line:L},{type:'total',side:'under',line:L}])
+    :tab==='ambos'?[{type:'btts',pick:'yes'},{type:'btts',pick:'no'}]
+    :[['home',0.5],['home',1.5],['away',0.5],['away',1.5]].map(([team,line])=>({type:'tt',team,side:'over',line}));
+  for(const bet of bets){
+    const k=betKey(bet),pd=pinDirect(k);
+    out.push({k,bet,l:F.betLabel(bet,a.hn,a.an),s:shortLabel(bet,a.hn,a.an),p:m?F.betProbs(bet,m).p:null,pm:pd!=null?pd:pmx?F.betProbs(bet,pmx).p:null});
+  }
+  return out;
+}
+// Cuota mínima que tiene que pagar tu casa: la más alta entre la justa del modelo y la de Pinnacle, + 2%.
+const minOdd=(p,pm)=>{const f=[p,pm].filter(x=>x>0).map(x=>1/x);return f.length?Math.max(...f)*1.02:null};
+const ptsTxt=d=>(d>0?'+':d<0?'−':'')+Math.abs(Math.round(d*100));
+// Columna de Precisión que corresponde a cada tipo de apuesta (para el ✓ de esa línea).
+const stKey=k=>{const t=k.split(':')[0];return t==='total'?'goals':t==='btts'?'btts':t==='tt'?'team':t==='c'?'corners':'res'};
+// Diferencia modelo − Pinnacle: ⚠︎ si pasa de 10 puntos (casi siempre error del modelo); verde solo si la liga
+// tiene ✓ en ese mercado; gris si no; rojo si el modelo ve menos que Pinnacle.
+function diffHtml(d,st){
+  if(d==null)return '<span class="c-d">—</span>';
+  if(d>0.10)return `<span class="c-m" title="Diferencia muy grande: casi siempre es error del modelo">⚠︎ ${ptsTxt(d)}</span>`;
+  if(d>0.02)return `<span class="${st==='g'?'c-g':'c-d'}">${ptsTxt(d)}</span>`;
+  return `<span class="${d<-0.02?'c-b':'c-d'}">${ptsTxt(d)}</span>`;
+}
+function linesTable(a,lines,withAdd){
+  let h=`<div class="xs"><table class="mk"><thead><tr><th>Mercado</th><th>Modelo</th><th>Pinnacle</th><th>Dif. <button class="info" data-tip="dif">i</button></th><th>Mínima <button class="info" data-tip="minodd">i</button></th>${withAdd?'<th></th>':''}</tr></thead><tbody>`;
+  for(const x of lines){
+    const d=x.p>0&&x.pm>0?x.p-x.pm:null;
+    h+=`<tr><td>${esc(x.s||x.l)}</td><td class="num">${x.p>0?dec(1/x.p)+'<span class="bk">'+pct(x.p,0)+'</span>':'—'}</td><td class="num">${x.pm>0?(x.est?'<span title="Pinnacle no cotiza esta línea: precio estimado, no confiable">≈</span>':'')+dec(1/x.pm)+'<span class="bk">'+pct(x.pm,0)+(x.est?' estimado':'')+'</span>':'—'}</td><td class="dp">${diffHtml(d,leagueStatus(a.lid)[stKey(x.k)])}</td><td class="num"><b>${dec(minOdd(x.p,x.pm))}</b></td>${withAdd?`<td><button class="addb" data-add="${a.id}|${esc(x.k)}" title="Anotar apuesta">＋</button></td>`:''}</tr>`;
+  }
+  return h+'</tbody></table></div>';
+}
+// Mayor diferencia modelo − Pinnacle del partido entre todas las pestañas (para la lista de Partidos).
+function bestDiff(a){
+  let best=null;
+  if(!a.lam&&!a.clam)return null;
+  for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(x.p>0&&x.pm>0&&(!best||x.p-x.pm>best.d))best={d:x.p-x.pm,l:x.s||x.l,k:x.k};
+  return best;
+}
+const mkOpen=new Set();
+const inSlotOf=(a,slot)=>{if(slot==='all')return true;const h=Number(fmtTime(a.iso).slice(0,2));return slot==='m'?h<12:slot==='t'?h>=12&&h<19:h>=19};
+// Línea a mostrar de un partido: la de mayor diferencia contra Pinnacle (o, sin Pinnacle, la más probable)
+// entre las que pasan los filtros de diferencia y cuota.
+function pickLine(lines,f){
+  const ok=lines.filter(x=>{const mo=minOdd(x.p,x.pm);if(!mo||mo<f.lo||mo>f.hi)return false;if(f.min>0){const d=x.p>0&&x.pm>0?x.p-x.pm:null;if(d==null||d*100<f.min)return false}return true});
+  if(!ok.length)return null;
+  // Primero las diferencias creíbles (hasta 10 puntos); las mayores (⚠︎) solo si no hay otra.
+  const withD=ok.filter(x=>x.p>0&&x.pm>0),cred=withD.filter(x=>x.p-x.pm<=0.10);
+  if(cred.length)return cred.reduce((b,x)=>x.p-x.pm>b.p-b.pm?x:b);
+  if(withD.length)return withD.reduce((b,x)=>x.p-x.pm>b.p-b.pm?x:b);
+  return ok.reduce((b,x)=>(x.p||0)>(b.p||0)?x:b);
+}
+async function renderMk(){
+  const r=route();if(r.v!=='mk')return;
+  const tab=r.tab,T0=MK_TABS[tab],list=$('#mkList');
+  $('#mkTitle').textContent=T0.name;
+  const day=String(LS.get('tg:mkday','0'));
+  $$('#mkday [data-mkday]').forEach(b=>b.classList.toggle('on',b.dataset.mkday===day));
+  const f={min:Number(LS.get('tg:mkmin',0)),lo:Number(LS.get('tg:mklo',0)),hi:Number(LS.get('tg:mkhi',99)),slot:LS.get('tg:mkslot','all'),sort:LS.get('tg:mksort','diff'),green:!!LS.get('tg:mkgreen',false)};
+  $$('#mkmin [data-min]').forEach(b=>b.classList.toggle('on',Number(b.dataset.min)===f.min));
+  $$('#mkslot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===f.slot));
+  $('#mklo').value=String(f.lo);$('#mkhi').value=String(f.hi);$('#mksort').value=f.sort;$('#mkGreen').checked=f.green;
+  const sum=[];if(f.min)sum.push('dif. +'+f.min);if(f.lo)sum.push('desde '+dec(f.lo));if(f.hi<99)sum.push('hasta '+dec(f.hi));if(f.slot!=='all')sum.push({m:'mañana',t:'tarde',n:'noche'}[f.slot]);if(f.green)sum.push('solo ✓');if($('#mklg').value)sum.push('1 liga');
+  sum.push({diff:'por diferencia',time:'por hora',prob:'por probabilidad'}[f.sort]||'');
+  $('#mkfSum').textContent='· '+sum.filter(Boolean).join(' · ');
+  $('#btnMkOdds').disabled=!!state.running;
+  if(!state.key){list.innerHTML='<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>.</div>';return}
+  const d=await getDay(dayStr(Number(day)));
+  $('#mkOddsWhen').textContent=d?'Cuotas de '+ago(d.oddsTs||d.ts):'';
+  if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para traer los partidos del día.</div>';return}
+  state.prec=state.prec||await DB.get('prec');
+  const now=Date.now(),up=d.fx.filter(a=>a.ts*1000>now);
+  // Ligas del día para el filtro.
+  const lgSel=$('#mklg').value,lgs=new Map();for(const a of up)lgs.set(String(a.lid),a.lc+' · '+a.ln);
+  $('#mklg').innerHTML='<option value="">Todas las ligas</option>'+[...lgs].sort((x,y)=>x[1].localeCompare(y[1])).map(([id,n])=>`<option value="${id}"${id===lgSel?' selected':''}>${esc(n)}</option>`).join('');
+  const q=$('#mkq').value.trim().toLowerCase(),cards=[];let total=0;
+  for(const a of up){
+    if(q&&!(a.hn+' '+a.an).toLowerCase().includes(q))continue;
+    if(lgSel&&String(a.lid)!==lgSel)continue;
+    if(!inSlotOf(a,f.slot))continue;
+    const st=leagueStatus(a.lid)[T0.st];if(f.green&&st!=='g')continue;
+    const lines=marketLines(a,tab).filter(x=>x.p>0||x.pm>0);if(!lines.length)continue;
+    total++;
+    const best=pickLine(lines,f);if(!best)continue;
+    cards.push({a,lines,st,best,d:best.p>0&&best.pm>0?best.p-best.pm:null});
+  }
+  const rk=c=>c.d==null?-9:c.d>0.10?-1+c.d/100:c.d; // los ⚠︎ van después de las diferencias creíbles
+  const sorters={diff:(x,y)=>rk(y)-rk(x)||x.a.ts-y.a.ts,time:(x,y)=>x.a.ts-y.a.ts,prob:(x,y)=>(y.best.p||0)-(x.best.p||0)};
+  cards.sort(sorters[f.sort]||sorters.diff);
+  if(!state.running)$('#mkStatus').textContent=total?`${cards.length} de ${total} partidos con esos filtros. Tocá uno para ver todas sus líneas.`:'';
+  if(!cards.length){list.innerHTML=`<div class="empty">Ningún partido con esos filtros${total?' (probá con «Diferencia mínima: Todas» o sin rango de cuota)':''}.${tab==='corners'&&!total?' Los córners necesitan el historial de córners de la liga o la línea de córners de Pinnacle.':''}</div>`;return}
+  list.innerHTML=cards.slice(0,200).map(({a,lines,st,best,d})=>{
+    const id=String(a.id),op=mkOpen.has(id);
+    return `<div class="mkr${op?' open':''}" data-mkr="${id}"><span class="t">${fmtTime(a.iso)}</span><span class="m"><div>${esc(a.hn)} <span class="vsw">vs</span> ${esc(a.an)}</div><div class="ln">${esc(best.s||best.l)} · ${esc(a.ln)}</div></span><span class="r">${diffHtml(d,st)}<span class="mo">${dec(minOdd(best.p,best.pm))}</span></span><span class="go">›</span></div>`+
+      (op?`<div class="mkx"><div class="mkc-h small">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)} ${statusChip(st,T0.chip)} <a href="#/partido/${a.id}" class="small">Ver partido ›</a></div>${linesTable(a,lines,true)}</div>`:'');
+  }).join('')+(cards.length>200?`<p class="small">Se muestran 200 de ${cards.length}. Usá los filtros.</p>`:'');
+}
+// ↻ Actualizar cuotas: solo las cuotas de hoy y mañana (sin historial ni modelo). Rehace la referencia de Pinnacle.
+async function refreshAllOdds(){
+  if(state.running)return;
+  const st=$('#mkStatus'),pg=$('#mkProg');
+  state.running=true;state.calls=0;$('#btnMkOdds').disabled=true;st.classList.remove('err');
+  try{
+    await loadBets();
+    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{};
+    let n=0;const days=[dayStr(0),dayStr(1)];
+    for(const [i,d] of days.entries()){
+      const day=await getDay(d);if(!day)continue;
+      st.textContent='Bajando cuotas del '+d.split('-').reverse().slice(0,2).join('/')+'…';pg.classList.remove('hidden');pg.querySelector('i').style.width=(i*50+10)+'%';
+      const items=await allPages('/odds',{date:d,timezone:TZ});
+      const m=new Map();for(const it of items){const id=String(it.fixture&&it.fixture.id||'');if(id)m.set(id,(m.get(id)||[]).concat([it]))}
+      for(const a of day.fx){
+        const its=m.get(String(a.id));if(!its||a.ts*1000<=Date.now())continue;
+        const o=F.parseOdds(its);if(!o.size)continue;
+        buildRows(a,o,first);recordEsp(a,esp);a.readAt=Date.now();n++;
+      }
+      day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
+    }
+    await DB.set('first',first);await DB.set('esp',esp);if(betsDirty)await saveBets();
+    st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`;state.lastCalls=state.calls;scheduleQuota();
+  }catch(e){st.textContent=e.message;st.classList.add('err')}
+  pg.classList.add('hidden');state.running=false;$('#btnMkOdds').disabled=false;
+  const keep=st.textContent,err=st.classList.contains('err');await renderMk();st.textContent=keep;st.classList.toggle('err',err);
+}
+// Anotar una apuesta (botón ＋): la cuota y el monto los escribís vos, con los de tu casa.
+async function addBet(fid,k){
+  const a=await findFixture(fid);if(!a)return;
+  let x=null;
+  for(const t of Object.keys(MK_TABS)){x=marketLines(a,t).find(y=>y.k===k);if(x)break}
+  if(!x){const r=(a.rows||[]).find(y=>y.k===k);if(r)x={k,l:r.l,p:r.p,pm:r.sh&&r.m>0?r.m:null}}
+  if(!x)return;
+  const mo=minOdd(x.p,x.pm);
+  const priceTxt=prompt(`¿A qué cuota apostaste «${x.l}» (${a.hn} vs ${a.an})?${mo?' Mínima con valor: '+dec(mo):''}`,'');if(priceTxt==null||!priceTxt.trim())return;
+  const price=Number(String(priceTxt).replace(',','.'));if(!(price>1)){alert('Cuota inválida.');return}
+  const pRef=x.pm>0?x.pm:x.p,bank=bankroll(),sugg=bank&&pRef>0?Math.round(bank*F.kelly(pRef,price)):'';
+  const amtTxt=prompt(`¿Cuánto apostaste ($)?${sugg?' Sugerido (¼ de Kelly): $'+sugg.toLocaleString('es-AR'):''}`,String(sugg||''));if(amtTxt==null)return;
+  const amount=Math.max(0,Number(String(amtTxt).replace(',','.'))||0);
+  const bk=prompt('¿En qué casa? (opcional)',LS.get('tg:lastbk',''))||'';if(bk)LS.set('tg:lastbk',bk);
+  await loadBets();
+  BETS.push({id:a.id+':'+k+':'+Date.now(),fid:a.id,k,l:x.l,hn:a.hn,an:a.an,ln:a.ln,lc:a.lc,kick:a.ts,bk,pr:price,m:x.pm>0?x.pm:null,p:x.p>0?x.p:null,amount,at:Date.now()});
+  await saveBets();
+  if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{});
+  alert('Anotada en Mis apuestas.');
+}
+let showAllLeagues=false;
+async function getDay(d){if(!state.days[d])state.days[d]=await DB.get('day:'+d);return state.days[d]}
+// Cuota de tus casas para una fila (Bet365, 1xBet, Betano…). Los análisis viejos no la guardan: se busca en las ofertas.
+const myRe=()=>new RegExp(LS.get('tg:checkbooks','bet365|1xbet|betano'),'i');
+function myPrice(r){
+  if(r.my!==undefined)return r.my?{pr:r.my[0],bk:r.my[1]}:null;
+  const re=myRe();if(re.test(r.bk||''))return {pr:r.pr,bk:r.bk};
+  const x=(r.of||[]).find(([b])=>re.test(b));return x?{pr:x[1],bk:x[0]}:null;
+}
+const A_EV=0.02; // EV mínimo para mostrar una apuesta como «con valor»
+// Filas del partido como en Alpha: cuota de tus casas, cuota justa del modelo, EV y score.
+function aRows(a){
+  return (a.rows||[]).filter(r=>r.p>0).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:ev>0?F.betScore(ev,r.p):0})});
+}
+// Match score (0-100): combina los dos grupos con mejor score.
+function aEdge(rows){
+  const best={};for(const r of rows)if(r.aev>=A_EV&&r.asc>(best[r.g]||0))best[r.g]=r.asc;
+  const top=Object.values(best).sort((x,y)=>y-x).slice(0,2);
+  return top.length?Math.round(100*(1-top.reduce((acc,s)=>acc*(1-s/100),1))):0;
+}
+function edgeHtml(v){
+  const c=v>=65?'g':v>=35?'m':'d';
+  return `<span class="edge"><span class="bar"><i class="bg-${c}" style="width:${Math.max(3,v)}%"></i></span><b class="c-${c}">${v}</b></span>`;
+}
+async function renderDash(){
+  if(route().v!=='dash')return;
+  $$('.seg [data-day]').forEach(b=>b.classList.toggle('on',b.dataset.day===state.view));
+  const up=await getUpdated();
+  $('#updWhen').innerHTML=up?`Última actualización <b>${ago(up)}</b>`:'Todavía no se actualizó. Tocá <b>Actualizar todo</b>.';
+  const list=$('#dList');
+  if(!state.key){list.innerHTML='<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>.</div>';return}
+  state.prec=state.prec||await DB.get('prec');
+  let fx=[];
+  if(state.view==='fav'){
+    const fv=favs();
+    for(const off of [-1,0,1]){const d=await getDay(dayStr(off));if(d)fx.push(...d.fx.filter(f=>fv[f.id]))}
+    if(!fx.length){list.innerHTML='<div class="empty">Todavía no guardaste partidos. Tocá la ☆ de un partido para seguirlo acá.</div>';return}
+  }else{
+    const d=await getDay(dayStr(Number(state.view)));
+    if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> para traer los partidos de todas las ligas.</div>';return}
+    fx=d.fx;
+  }
+  const q=$('#q').value.trim().toLowerCase(),fv=favs(),lgSel=$('#lg').value,slot=LS.get('tg:slot','all'),minE=Number(LS.get('tg:amin',0));
+  $('#aMin').value=String(minE);$('#aMinVal').textContent=minE+'+';
+  $$('#slot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===slot));
+  const lgs=new Map();for(const a of fx)lgs.set(String(a.lid),a.lc+' · '+a.ln);
+  $('#lg').innerHTML='<option value="">Todas las ligas</option>'+[...lgs].sort((x,y)=>x[1].localeCompare(y[1])).map(([id,n])=>`<option value="${id}"${id===lgSel?' selected':''}>${esc(n)}</option>`).join('');
+  const inSlot=a=>{if(slot==='all')return true;const h=Number(fmtTime(a.iso).slice(0,2));return slot==='m'?h<12:slot==='t'?h>=12&&h<19:h>=19};
+  const groups=new Map();
+  for(const a of fx){
+    if(q&&!(a.hn+' '+a.an+' '+a.ln+' '+a.lc).toLowerCase().includes(q))continue;
+    if(lgSel&&String(a.lid)!==lgSel)continue;
+    if(!inSlot(a))continue;
+    const e=a.lam||a.clam?aEdge(aRows(a)):0;
+    if(minE&&e<minE)continue;
+    if(!groups.has(a.lid))groups.set(a.lid,{first:a.ts,list:[]});
+    const g=groups.get(a.lid);g.list.push({a,e});g.first=Math.min(g.first,a.ts);
+  }
+  const ordered=[...groups.values()].sort((x,y)=>x.first-y.first);
+  const LIMIT=40;let html='';
+  for(const g of (showAllLeagues?ordered:ordered.slice(0,LIMIT))){
+    const f0=g.list[0].a;
+    html+=`<div class="league"><span>${flag(f0.lc)}</span><span class="n">${esc(f0.lc)} · ${esc(f0.ln)}</span></div>`;
+    for(const {a,e} of g.list.sort((x,y)=>x.a.ts-y.a.ts)){
+      const live=a.st&&!['NS','TBD','PST'].includes(a.st);
+      const right=a.lam||a.clam?`<span class="na hide-s">${ago(a.readAt)}</span>${edgeHtml(e)}`:`<span class="na">Sin análisis disponible</span>`;
+      html+=`<div class="fxw"><a class="fx" href="#/partido/${a.id}"><span class="t">${live?'<span class="c-g">'+esc(a.st)+'</span>':fmtTime(a.iso)}</span><span class="teams"><div>${esc(a.hn)}</div><div><span class="vsw">vs</span> ${esc(a.an)}</div></span>${right}<span class="go">›</span></a><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" aria-label="Favorito">${fv[a.id]?'★':'☆'}</button></div>`;
+    }
+  }
+  if(!showAllLeagues&&ordered.length>LIMIT)html+=`<button class="btn more-leagues" id="btnMoreLeagues">Mostrar las otras ${ordered.length-LIMIT} ligas</button>`;
+  list.innerHTML=html||'<div class="empty">Ningún partido con esos filtros.</div>';
+}
+
+/* ---------------- render: partido ---------------- */
+const open=new Set();
+async function findFixture(id){
+  for(const off of [0,1,-1]){const d=await getDay(dayStr(off));const f=d&&d.fx.find(x=>String(x.id)===String(id));if(f)return f}
+  return null;
+}
+function scoreHtml(s){const c=s>=65?'g':s>=35?'m':'d';return `<span class="sc"><span class="bar"><i class="bg-${c}" style="width:${Math.max(2,s)}%"></i></span><span class="mono">${s}</span></span>`}
+function arrow(r){if(!r.f0||Math.abs(r.pr-r.f0)<0.005)return '<span class="arr c-d">→</span>';return r.pr>r.f0?'<span class="arr c-g">▲</span>':'<span class="arr c-b">▼</span>'}
+async function renderMatch(id){
+  const a=await findFixture(id), body=$('#mBody');
+  if(!a){body.innerHTML='<div class="empty" style="margin-top:16px">No encuentro este partido. Volvé a <a href="#/hoy">Partidos</a> y tocá Actualizar todo.</div>';return}
+  state.prec=state.prec||await DB.get('prec');
+  const s=leagueStatus(a.lid), fv=favs();
+  let h=`<div class="row" style="margin-top:10px"><span>${flag(a.lc)}</span><span class="small">${esc(a.lc)} · ${esc(a.ln)} · ${fmtTime(a.iso)}</span><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" style="margin-left:auto">${fv[a.id]?'★':'☆'}</button></div>`;
+  h+=`<div class="mh">${esc(a.hn)} <span>vs</span> ${esc(a.an)}</div><div class="small">Última lectura ${ago(a.readAt)}</div>`;
+  const upcoming=a.ts*1000>Date.now();
+  const refresh=upcoming&&state.key?`<button class="btn" id="btnOdds">↻ Cuotas de este partido</button>`:'';
+  if(!a.lam&&!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">Sin análisis disponible: ${esc(a.reason||'')}</div>`+(refresh?`<div class="row" style="margin-top:10px">${refresh}</div><div class="small" id="oddsMsg"></div>`:'');return}
+  if(a.lam){
+    h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}${a.mkt?' + cuotas de Pinnacle':''}${a.clam?` · córners esperados ${dec(a.clam.home)} – ${dec(a.clam.away)}`:''}</div>`;
+    h+=`<div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">${open.has('study')?'Ocultar estudio':'Ver estudio del partido'}</button>${refresh}</div>`;
+  }else h+=`<div class="none" style="margin-top:10px;text-align:left">Sin modelo para este partido (${esc(a.noModel||a.reason||'')}). </div><div class="row" style="margin-top:10px">${refresh}</div>`;
+  h+=`<div class="small" id="oddsMsg" style="margin-top:6px"></div>`;
+  if(a.lam&&open.has('study'))h+=studyHtml(a);
+  if(!a.rows&&!a.lam){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
+  const rows=aRows(a);
+  h+=`<div class="row" style="margin-top:10px"><span class="small">Match score</span>${edgeHtml(aEdge(rows))}</div>`;
+  const TITLES={high:'Muchos goles',low:'Pocos goles',home:'Resultado {home}',away:'Resultado {away}',other:'Otros mercados',team:'Goles por equipo',corners:'Córners'};
+  for(const g of F.GROUPS){
+    const gr=rows.filter(r=>r.g===g.id).sort((x,y)=>y.asc-x.asc||(y.aev!=null?y.aev:-9)-(x.aev!=null?x.aev:-9));
+    if(!gr.length)continue;
+    const st=g.kind==='goals'?(g.id==='team'?s.team:s.goals):g.kind==='corners'?s.corners:s.res;
+    const val=gr.filter(r=>r.aev>=A_EV),all=open.has(g.id),show=all?gr:val;
+    h+=`<div class="grp"><div class="grp-h"><span class="n">${esc((TITLES[g.id]||g.title).replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${gr.length})</span>${statusChip(st,'en esta liga')}</div>`;
+    if(show.length){
+      h+=`<div class="xs"><table class="mk"><thead><tr><th>Mercado</th><th>Cuota</th><th>Cuota justa</th><th>EV</th><th>Score</th>${upcoming?'<th></th>':''}</tr></thead><tbody>`;
+      for(const r of show){
+        h+=`<tr><td>${esc(r.l)}</td><td class="num">${r.mp?dec(r.mp.pr)+'<span class="bk">'+esc(r.mp.bk)+'</span>':'<span class="c-d">—</span><span class="bk">no en tus casas</span>'}</td><td class="num">${dec(r.fair)}</td><td class="ev ${r.aev>=A_EV?'c-m':'c-d'}">${r.aev!=null?spct(r.aev):'—'}</td><td>${scoreHtml(r.asc)}</td>${upcoming?`<td><button class="addb" data-add="${a.id}|${esc(r.k)}" title="Anotar apuesta">＋</button></td>`:''}</tr>`;
+      }
+      h+='</tbody></table></div>';
+    }else h+='<div class="none">No se encontraron mercados con valor en este grupo</div>';
+    if(gr.length>val.length||all)h+=`<button class="more" data-more="${g.id}">${all?'Mostrar solo los que tienen valor':'Mostrar todos los mercados ('+gr.length+')'}</button>`;
+    h+='</div>';
+  }
+  body.innerHTML=h;
+}
+const ncTag=c=>c==='up'?' (ascendido)':c==='down'?' (descendido)':'';
+function ncNote(a){
+  const t=[[a.hn,a.nc&&a.nc.home],[a.an,a.nc&&a.nc.away]].filter(x=>x[1]).map(([n,c])=>esc(n)+(c==='up'?' subió: el modelo lo arranca más débil que un equipo promedio':' bajó: el modelo lo arranca más fuerte que un equipo promedio'));
+  return t.length?'<div class="small">'+t.join(' · ')+'. Con cada partido pesan más sus resultados reales.</div>':'';
+}
+// «Qué mueve el partido»: hacia qué lado empuja cada señal (+1 = local, −1 = visitante).
+function signalsHtml(a,s){
+  const cl=x=>Math.max(-1,Math.min(1,x));
+  const ppg=f=>f&&f.length?f.reduce((t,[x,y])=>t+(x>y?3:x===y?1:0),0)/f.length:null;
+  const gd=f=>f&&f.length?f.reduce((t,[x,y])=>t+x-y,0)/f.length:null;
+  const str=f=>f&&f.length?f.map(([x,y])=>x>y?'G':x===y?'E':'P').join(''):'';
+  const sig=[];
+  const two=(x,y)=>`${a.hn}: ${x} · ${a.an}: ${y}`;
+  if(a.rt&&a.rt.ah&&a.rt.aa)sig.push(['Ataque',cl((a.rt.ah.pos-a.rt.aa.pos)*1.5),two('top '+a.rt.ah.top+'% de la liga','top '+a.rt.aa.top+'%')]);
+  if(a.rt&&a.rt.dh&&a.rt.da)sig.push(['Defensa',cl((a.rt.dh.pos-a.rt.da.pos)*1.5),two('top '+a.rt.dh.top+'% de la liga','top '+a.rt.da.top+'%')]);
+  const fh=a.form&&a.form.home,fa=a.form&&a.form.away;
+  if(ppg(fh)!=null&&ppg(fa)!=null)sig.push(['Forma (últimos 5)',cl((ppg(fh)-ppg(fa))/2),two(str(fh),str(fa))]);
+  if(gd(fh)!=null&&gd(fa)!=null)sig.push(['Goles recientes (diferencia)',cl((gd(fh)-gd(fa))/2.5),two((gd(fh)>0?'+':'')+dec(gd(fh)),(gd(fa)>0?'+':'')+dec(gd(fa))+' por partido')]);
+  if(Number.isFinite(a.hadv))sig.push(['Ventaja de local en esta liga',cl((a.hadv-1)/0.5),`el local hace ${Math.round((a.hadv-1)*100)}% más goles`]);
+  if(!sig.length)return '';
+  let h=`<div class="box"><h3>Qué mueve el partido <button class="info" data-tip="sig">i</button></h3><div class="small">Hacia qué lado empuja cada señal: <span style="color:var(--acc)">■</span> ${esc(a.hn)} · <span style="color:var(--info)">■</span> ${esc(a.an)}</div>`;
+  for(const [n,v,det] of sig){
+    const side=Math.abs(v)<0.12?'Parejo':v>0?esc(a.hn):esc(a.an);
+    const w=Math.abs(v)*50,st=v>=0?`left:50%;width:${w}%;background:var(--acc)`:`left:${50-w}%;width:${w}%;background:var(--info)`;
+    h+=`<div class="sig"><div class="sig-h"><b>${n}</b><span class="${Math.abs(v)<0.12?'muted':''}">${side}</span></div><div class="sig-bar"><span class="mid"></span>${Math.abs(v)>=0.02?`<i style="${st}"></i>`:''}</div><div class="small">${esc(det)}</div></div>`;
+  }
+  // Resumen: el precio justo de las casas (Pinnacle sin margen) manda; el modelo, como referencia.
+  // r.m = probabilidad sin margen de las casas (Pinnacle o mediana).
+  const mk=k=>{const r=a.rows&&a.rows.find(x=>x.k===k);return r&&r.m>0&&r.m<1?r.m:null};
+  const raw=[mk('1x2:home'),mk('1x2:draw'),mk('1x2:away')],has=raw.every(Boolean),tot=has?raw[0]+raw[1]+raw[2]:1;
+  const mq=has?raw.map(x=>1/(x/tot)):[],mp=[s.home,s.draw,s.away];
+  const k=has?[0,2].sort((x,y)=>mq[x]-mq[y])[0]:(s.home>=s.away?0:2);
+  const lbl=k===0?'victoria de '+esc(a.hn):'victoria de '+esc(a.an);
+  let t=has?`Pinnacle sin margen da <b>${pct(1/mq[k],0)}</b> a la ${lbl}: hay valor si tu casa paga <b>más de ${dec(mq[k])}</b>. El modelo dice ${pct(mp[k],0)}.`
+           :`El modelo da <b>${pct(mp[k],0)}</b> a la ${lbl} (cuota justa ${dec(1/mp[k])}). Sin precio de las casas todavía: tocá ↻ Cuotas de este partido.`;
+  if(has&&Math.abs(mp[k]-1/mq[k])>=0.05)t+=` <span class="muted">Difieren ${Math.round(Math.abs(mp[k]-1/mq[k])*100)} puntos: en el historial, cuando pasa eso, casi siempre acierta Pinnacle.</span>`;
+  return h+`<div class="sig-total">${t}</div></div>`;
+}
+function studyHtml(a){
+  const m=F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho), s=F.summarize(m), lg=a.ls;
+  const mx=Math.max(a.lam.home,a.lam.away,2.5);
+  let h='<div class="study">'+signalsHtml(a,s);
+  h+=`<div class="box"><h3>Goles esperados <button class="info" data-tip="lam">i</button></h3>
+    <div class="lamrow"><span class="nm">${esc(a.hn)}</span><span class="bar"><i style="width:${a.lam.home/mx*100}%;background:var(--acc)"></i></span><b>${dec(a.lam.home)}</b></div>
+    <div class="lamrow"><span class="nm">${esc(a.an)}</span><span class="bar"><i style="width:${a.lam.away/mx*100}%;background:var(--info)"></i></span><b>${dec(a.lam.away)}</b></div>
+    <div class="small">En total esperamos ~${dec(a.lam.home+a.lam.away)} goles. Datos: ${esc(a.hn)} ${a.n.home} partidos${ncTag(a.nc&&a.nc.home)} · ${esc(a.an)} ${a.n.away} partidos${ncTag(a.nc&&a.nc.away)}.</div>${ncNote(a)}</div>`;
+  h+=`<div class="box"><h3>Resultado del partido</h3><div class="res3"><div style="width:${s.home*100}%;background:var(--acc)">${pct(s.home,0)}</div><div style="width:${s.draw*100}%;background:#9aa4ae">${pct(s.draw,0)}</div><div style="width:${s.away*100}%;background:var(--info)">${pct(s.away,0)}</div></div><div class="legend"><span>${esc(a.hn)}</span><span>Empate</span><span>${esc(a.an)}</span></div></div>`;
+  if(lg){
+    const row=(n,l,v,isPct)=>{const d=v-l;const c=Math.abs(d)<(isPct?0.02:0.1)?'c-d':d>0?'c-g':'c-b';return `<tr><td>${n}</td><td class="mono muted">${isPct?pct(l):dec(l)}</td><td class="mono"><b>${isPct?pct(v):dec(v)}</b></td><td class="mono ${c}">${isPct?(d>0?'+':'−')+Math.abs(d*100).toFixed(1)+' pp':(d>0?'+':'−')+Math.abs(d).toFixed(2)}</td></tr>`};
+    h+=`<div class="box"><h3>Contexto de liga <span class="small">(${lg.n} partidos)</span></h3><table class="ctx"><tr><th></th><th>Liga</th><th>Este partido</th><th>Δ</th></tr>
+      ${row('Goles por partido',lg.goals,s.expGoals,false)}${row('Gana '+esc(a.hn),lg.home,s.home,true)}${row('Empate',lg.draw,s.draw,true)}${row('Gana '+esc(a.an),lg.away,s.away,true)}${row('Ambos marcan',lg.btts,s.btts,true)}${row('Más de 2,5 goles',lg.o25,1-s.totals[0]-s.totals[1]-s.totals[2],true)}</table></div>`;
+  }
+  let mt='<table class="mat"><tr><th></th>'+[0,1,2,3,4,5].map(j=>`<th>${j}</th>`).join('')+'</tr>',pmax=0;
+  for(let i=0;i<=5;i++)for(let j=0;j<=5;j++)pmax=Math.max(pmax,m[i][j]);
+  for(let i=5;i>=0;i--){mt+=`<tr><th>${i}</th>`;for(let j=0;j<=5;j++){const p=m[i][j],o=p/pmax;mt+=`<td style="background:rgba(20,184,166,${(o*0.85).toFixed(2)});color:${o>0.55?'#04211e':'var(--muted)'}">${p>=0.005?Math.round(p*100)+'%':''}</td>`}mt+='</tr>'}
+  h+=`<div class="box"><h3>Matriz de marcadores</h3><div class="small" style="margin-bottom:6px">Filas: goles de ${esc(a.hn)} · columnas: goles de ${esc(a.an)}</div><div style="overflow-x:auto">${mt}</table></div></div>`;
+  if(a.rt&&a.rt.ah&&a.rt.aa){
+    const bar=(label,x1,x2)=>`<div style="margin-top:10px"><div class="row" style="justify-content:space-between"><b style="font-size:13px">${label}</b><span class="small">${esc(a.hn)}: top ${x1.top}% · ${esc(a.an)}: top ${x2.top}%</span></div><div class="rate"><span class="mid"></span><span class="dot" style="left:${x1.pos*100}%;background:var(--acc)"></span><span class="dot" style="left:${x2.pos*100}%;background:var(--info)"></span></div><div class="legend"><span>Peor de la liga</span><span>Mejor de la liga</span></div></div>`;
+    h+=`<div class="box"><h3>Ratings de equipos</h3>${bar('Ataque',a.rt.ah,a.rt.aa)}${a.rt.dh&&a.rt.da?bar('Defensa',a.rt.dh,a.rt.da):''}</div>`;
+  }
+  return h+'</div>';
+}
+
+async function refreshOdds(id){
+  const msg=()=>$('#oddsMsg');
+  try{
+    if(msg())msg().textContent='Pidiendo cuotas a API-Football…';
+    for(const off of [0,1,-1]){
+      const d=dayStr(off),day=await getDay(d);const a=day&&day.fx.find(x=>String(x.id)===String(id));if(!a)continue;
+      const j=await api('/odds',{fixture:id,timezone:TZ});
+      const o=F.parseOdds(j.response||[]);
+      if(!o.size){if(msg())msg().textContent='La API no tiene cuotas nuevas para este partido.';return}
+      const first=(await DB.get('first'))||{};
+      await loadBets();buildRows(a,o,first);a.readAt=Date.now();if(betsDirty)await saveBets();
+      await DB.set('first',first);await DB.set('day:'+d,day);state.days[d]=day;
+      await renderMatch(id);
+      if(msg())msg().textContent='Cuotas actualizadas recién (1 consulta). API-Football renueva las cuotas cada pocas horas: si tu casa muestra otra, manda la de tu casa.';
+      return;
+    }
+  }catch(e){if(msg())msg().textContent=e.message}
+}
+
+async function renderBets(){
+  await loadBets();
+  const list=$('#bList'),bets=BETS.filter(b=>!b.del).sort((a,b)=>b.at-a.at);
+  $('#bStatus').textContent='';
+  if(!bets.length){list.innerHTML='<div class="empty">Todavía no anotaste apuestas. En una pestaña de mercado o en la ficha de un partido, tocá <b>＋</b> en la que hagas.</div>';return}
+  const st=bets.filter(b=>b.res),clv=bets.filter(b=>b.mClose>0);
+  const staked=st.reduce((s,b)=>s+(b.amount||0),0),profit=st.reduce((s,b)=>s+(b.amount||0)*b.res.profit,0),units=st.reduce((s,b)=>s+b.res.profit,0);
+  const avgClv=clv.length?clv.reduce((s,b)=>s+(b.pr*b.mClose-1),0)/clv.length:null,beat=clv.filter(b=>b.pr*b.mClose>1).length;
+  let h=`<div class="tiles"><div class="tile"><div class="l">CLV promedio <button class="info" data-tip="clv">i</button></div><div class="v ${avgClv>0?'c-g':avgClv<0?'c-b':''}">${avgClv==null?'—':spct(avgClv)}</div><div class="small">${clv.length} con cierre · le ganás al cierre en ${clv.length?Math.round(beat*100/clv.length):0}%</div></div>
+    <div class="tile"><div class="l">Resultado</div><div class="v ${profit>0?'c-g':profit<0?'c-b':''}">${staked?(profit>=0?'+':'−')+'$'+Math.abs(Math.round(profit)).toLocaleString('es-AR'):(units>=0?'+':'−')+Math.abs(units).toFixed(2)+' u'}</div><div class="small">${st.length} liquidadas</div></div>
+    <div class="tile"><div class="l">ROI</div><div class="v">${staked?spct(profit/staked):st.length?spct(units/st.length):'—'}</div><div class="small">${bets.length-st.length} pendientes</div></div></div>`;
+  h+=`<p class="small">Con menos de 50 apuestas, el resultado es casi pura suerte. El <b>CLV</b> te dice antes si el método funciona.</p>`;
+  h+=`<table class="lg"><thead><tr><th>Apuesta</th><th>Cuota</th><th>CLV</th><th>Resultado</th></tr></thead><tbody>`;
+  for(const b of bets){
+    const c=b.mClose>0?b.pr*b.mClose-1:null;
+    const res=!b.res?'<span class="muted">pendiente</span>':b.res.r>0?`<span class="c-g">${b.res.r<1?'½ ':''}ganada</span>`:b.res.r<0?`<span class="c-b">${b.res.r>-1?'½ ':''}perdida</span>`:'devuelta';
+    h+=`<tr><td>${esc(b.l)}<span class="cn">${esc(b.hn)} vs ${esc(b.an)}${b.bk?' · '+esc(b.bk):''}${b.amount?' · $'+Math.round(b.amount).toLocaleString('es-AR'):''} <button class="info" data-delbet="${esc(b.id)}" title="Borrar">×</button></span></td><td>${dec(b.pr)}</td><td class="${c>0?'c-g':c<0?'c-b':''}">${c==null?'—':spct(c)}${c!=null&&!b.closeFinal&&!b.res?'<span class="cn">provisorio</span>':''}</td><td>${res}${b.res?'<span class="cn">'+b.hg+'-'+b.ag+'</span>':''}</td></tr>`;
+  }
+  h+='</tbody></table><p class="small">El resultado y el CLV se completan con ↻ Actualizar todo.</p>';
+  list.innerHTML=h;
+  list.onclick=async e=>{const d=e.target.closest('[data-delbet]');if(!d)return;if(!confirm('¿Borrar esta apuesta del registro?'))return;const b=BETS.find(x=>x.id===d.dataset.delbet);if(b){b.del=1;b.closeAt=Date.now()}await saveBets();renderBets();if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{})};
+}
+/* ---------------- render: precisión ---------------- */
+function skillCell(sk,n){
+  if(!Number.isFinite(n)||n===0)return '<td class="c-d">—</td>';
+  if(n<MIN_N)return `<td class="c-m">⏳ ${n}/${MIN_N}</td>`;
+  return `<td class="${sk>0?'c-g':'c-d'}">${spct(sk)}</td>`;
+}
+function calibSvg(bins){
+  const W=320,H=220,p=28,x=v=>p+v*(W-p-22),y=v=>H-p-v*(H-p-8),maxN=Math.max(1,...bins.map(b=>b.n));
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:420px">`;
+  for(const t of [0,0.5,1])s+=`<line x1="${x(0)}" y1="${y(t)}" x2="${x(1)}" y2="${y(t)}" stroke="#252c35"/><text x="2" y="${y(t)+4}">${t*100}%</text><text x="${x(t)-10}" y="${H-8}">${t*100}%</text>`;
+  s+=`<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="#5b6672" stroke-dasharray="4 4"/>`;
+  for(const b of bins)s+=`<circle cx="${x(b.predicted)}" cy="${y(b.observed)}" r="${3+9*Math.sqrt(b.n/maxN)}" fill="#14b8a6" fill-opacity=".85"/>`;
+  return s+'</svg>';
+}
+function goalsSvg(exp,real){
+  const e=exp.slice(0,5).concat([exp[5]+exp[6]]),r=real.slice(0,5).concat([real[5]+real[6]]);
+  const W=340,H=170,p=24,bw=(W-p)/6,mx=Math.max(...e,...r,0.01);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:460px">`;
+  e.forEach((v,k)=>{const x0=p+k*bw+6,hh=v/mx*(H-40),hr=r[k]/mx*(H-40);s+=`<rect x="${x0}" y="${H-22-hh}" width="${bw/2-6}" height="${hh}" fill="#14b8a6"/><rect x="${x0+bw/2-4}" y="${H-22-hr}" width="${bw/2-6}" height="${hr}" fill="#c9d1d9"/><text x="${x0+bw/4}" y="${H-6}">${k===5?'5+':k}</text>`});
+  return s+'</svg>';
+}
+let precQ='',precSort='n';
+// Tabla del registro propio de Especiales (ver recordEsp).
+async function espHtml(){
+  const esp=state.esp||(state.esp=(await DB.get('esp'))||{});
+  const all=Object.values(esp),pend=all.filter(e=>e.y==null).length,S=espSummary(esp);
+  let h=`<h2>Registro: modelo contra Pinnacle <button class="info" data-tip="espReg">i</button></h2>`;
+  if(!all.length)return h+`<div class="none">Todavía no hay nada guardado. Desde ahora, cada <b>↻ Actualizar todo</b> guarda la línea principal de cada mercado especial antes del partido y la liquida después.</div>`;
+  const roi=x=>x[0]?`${spct(x[1]/x[0])} <span class="cn">${x[0]} apuestas</span>`:'—';
+  h+=`<div class="xs"><table class="lg"><thead><tr><th>Mercado</th><th>Partidos</th><th>Modelo vs mercado</th><th>EV ≥ 2% según mercado</th><th>según modelo</th><th>los dos</th></tr></thead><tbody>`;
+  for(const [t,name] of [['tt','Goles por equipo'],['btts','Ambos marcan'],['corners','Córners']]){
+    const o=S[t];if(!o){h+=`<tr><td>${name}</td><td>0</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;continue}
+    const imp=o.nb?1-o.bm/o.bk:null;
+    h+=`<tr><td>${name}</td><td>${o.n}</td>${skillCell(imp,o.nb)}<td>${roi(o.bets.mkt)}</td><td>${roi(o.bets.model)}</td><td>${roi(o.bets.both)}</td></tr>`;
+  }
+  h+=`</tbody></table></div><p class="small">${pend} pendientes de liquidar. «Modelo vs mercado»: positivo = el modelo acertó mejor que Pinnacle (error de Brier). Las columnas de apuestas son la ganancia promedio por apuesta (ROI) a la mejor cuota que había. Con menos de unas 200 apuestas, el ROI es casi todo suerte.</p>`;
+  return h;
+}
+async function renderPrec(){
+  const p=state.prec=state.prec||await DB.get('prec'), body=$('#pBody');
+  $('#pWhen').textContent=p?'Actualizada '+ago(p.ts)+' · '+(p.summary&&p.summary.leagues||0)+' ligas':'';
+  if(!p){body.innerHTML=`<div class="empty" style="margin-top:12px">Todavía no hay datos. Andá a <a href="#/hoy">Partidos</a> y tocá <b>↻ Actualizar todo</b>: al final calcula la precisión de todas las ligas.</div>`;return}
+  const S=p.summary||{},mk=S.market||{},g=S.goals||{},c=S.calib||{};
+  let h=`<h2>Resumen</h2><div class="tiles">
+    <div class="tile"><div class="l">Habilidad 1X2 <button class="info" data-tip="skill1x2">i</button></div><div class="v ${mk.n>=MIN_N?(mk.skill>0?'c-g':'c-d'):'c-m'}">${mk.n?spct(mk.skill):'—'}</div><div class="small">${mk.n||0} partidos</div></div>
+    <div class="tile"><div class="l">Habilidad en goles <button class="info" data-tip="skillGoals">i</button></div><div class="v ${g.skill>0?'c-g':'c-d'}">${spct(g.skill)}</div><div class="small">${g.n||0} partidos</div></div>
+    <div class="tile"><div class="l">Calibración <button class="info" data-tip="ece">i</button></div><div class="v">${pct(c.ece)}</div><div class="small">error 1X2</div></div></div>
+    <div class="tiles" style="margin-top:8px">
+    <div class="tile"><div class="l">Ambos marcan <button class="info" data-tip="skillBtts">i</button></div><div class="v ${(S.btts||{}).skill>0?'c-g':'c-d'}">${(S.btts||{}).n?spct(S.btts.skill):'—'}</div><div class="small">${(S.btts||{}).n||0} partidos</div></div>
+    <div class="tile"><div class="l">Goles por equipo <button class="info" data-tip="skillTeam">i</button></div><div class="v ${(S.team||{}).skill>0?'c-g':'c-d'}">${spct((S.team||{}).skill)}</div><div class="small">${(S.team||{}).n||0} partidos</div></div>
+    <div class="tile"><div class="l">Córners <button class="info" data-tip="skillCorners">i</button></div><div class="v ${(S.corners||{}).skill>0?'c-g':'c-d'}">${(S.corners||{}).n?spct(S.corners.skill):'—'}</div><div class="small">${(S.corners||{}).n||0} partidos</div></div></div>`;
+  {const ck=fdcCheck();if(FDC.size)h+=`<p class="small">Córners de football-data.co.uk: ${FDC.size.toLocaleString('es-AR')} partidos. ${ck.n?`Comparados con API-Football en ${ck.n} partidos: coinciden exacto ${pct(ck.exact,0)} y con ±1 córner ${pct(ck.near,0)}. ${ck.ok?'Se usan.':'<b class="c-b">No se usan: coinciden poco.</b>'}`:'Todavía no hay partidos con las dos fuentes para compararlos.'}</p>`}
+  h+=await espHtml();
+  h+=`<h2>Explorá cada liga <button class="info" data-tip="table">i</button></h2>
+    <div class="tools"><input type="search" id="pq" placeholder="Buscar liga o país" value="${esc(precQ)}"><select id="psort"><option value="n"${precSort==='n'?' selected':''}>Más partidos</option><option value="res"${precSort==='res'?' selected':''}>Mejor en 1X2</option><option value="goals"${precSort==='goals'?' selected':''}>Mejor en goles</option><option value="btts"${precSort==='btts'?' selected':''}>Mejor en ambos marcan</option><option value="team"${precSort==='team'?' selected':''}>Mejor en goles por equipo</option><option value="corners"${precSort==='corners'?' selected':''}>Mejor en córners</option></select></div>`;
+  const q=precQ.toLowerCase();
+  const val=(l,k)=>l[k]&&l[k].n>=MIN_N&&Number.isFinite(l[k].skill)?l[k].skill:-9;
+  const rows=Object.values(p.leagues||{}).filter(l=>!q||(l.name+' '+l.country).toLowerCase().includes(q))
+    .sort((a,b)=>precSort==='n'?(b.goals.n-a.goals.n):precSort==='res'?(val(b,'res')-val(a,'res'))||(b.res.n-a.res.n):precSort==='corners'?(val(b,'corners')-val(a,'corners')):precSort==='btts'?(val(b,'btts')-val(a,'btts')):precSort==='team'?(val(b,'team')-val(a,'team')):(val(b,'goals')-val(a,'goals')));
+  h+=`<div class="xs"><table class="lg"><thead><tr><th>Liga</th><th>1X2</th><th>Goles</th><th>Ambos</th><th>Equipo</th><th>Córners</th><th>Partidos</th><th class="hide-s">ECE</th></tr></thead><tbody>`;
+  for(const l of rows.slice(0,300))h+=`<tr><td>${flag(l.country)} ${esc(l.name)}<span class="cn">${esc(l.country)}${l.market?' · aprende de Pinnacle':l.xg?' · usa xG':''}</span></td>${skillCell(l.res.skill,l.res.n)}${skillCell(l.goals.skill,l.goals.n)}${skillCell(l.btts?l.btts.skill:null,l.btts?l.btts.n:0)}${skillCell(l.team?l.team.skill:null,l.team?l.team.n:0)}${skillCell(l.corners?l.corners.skill:null,l.corners?l.corners.n:0)}<td>${l.goals.n||0}</td><td class="hide-s">${pct(l.ece)}</td></tr>`;
+  h+='</tbody></table></div>';
+  if(rows.length>300)h+=`<p class="small">Se muestran 300 de ${rows.length}. Usá el buscador para ver las demás.</p>`;
+  h+=`<p class="small"><b class="c-g">Verde</b> = el modelo acierta mejor: podés apostar ese tipo de mercado en esa liga. <b>Gris</b> = no acierta mejor. <b class="c-m">⏳</b> = todavía faltan partidos (la columna 1X2 se llena sola con cada actualización).</p>`;
+  if(c.bins&&c.bins.length)h+=`<h2>Calibración (1X2) <button class="info" data-tip="calib">i</button></h2><div class="box">${calibSvg(c.bins)}<div class="small">Horizontal: la probabilidad que dio el modelo. Vertical: cuántas veces pasó. Cuanto más cerca de la línea punteada, mejor.</div></div>`;
+  if(g.dist)h+=`<h2>Goles: esperados vs reales</h2><div class="box">${goalsSvg(g.dist,g.realDist)}<div class="small"><span style="color:var(--acc)">■</span> esperado · <span style="color:#c9d1d9">■</span> real · Promedio esperado ${dec(g.expGoals)} vs real ${dec(g.realGoals)} goles por partido.</div></div>`;
+  body.innerHTML=h;
+}
+
+/* ---------------- ajustes ---------------- */
+async function renderCfg(){
+  $('#key').value=state.key;$('#xgBudget').value=LS.get('tg:xgBudget',150);$('#bank').value=bankroll()||'';
+  const mb=myBooks(),all=[...new Set([...BOOKS,...mb])].sort((a,b)=>a.localeCompare(b));
+  if($('#booksList'))$('#booksList').innerHTML=all.length?all.map(b=>`<label><input type="checkbox" data-book="${esc(b)}" ${mb.has(b)?'checked':''}><span>${esc(b)}</span></label>`).join(''):'<div class="small" style="padding:10px">Tocá ↻ Actualizar todo una vez y aparecen las casas.</div>';
+  try{
+    const keys=await DB.keys(),xg=await loadXg(),reg=state.reg||(await DB.get('reg'))||{};
+    const nl=new Set(keys.filter(k=>String(k).startsWith('lg:')).map(k=>String(k).split(':')[1])).size;
+    const nx=Object.values(xg).filter(r=>r[2]).length;
+    const est=navigator.storage&&navigator.storage.estimate?await navigator.storage.estimate():null;
+    $('#dbInfo').textContent=`${nl} ligas con historial · ${nx} partidos con xG · ${Object.keys(reg).length} predicciones guardadas`+(est?` · ${(est.usage/1048576).toFixed(1)} MB usados`:'');
+  }catch(e){$('#dbInfo').textContent='No se pudo leer la base de datos del navegador: '+e.message}
+}
+$('#bank').addEventListener('change',e=>LS.set('tg:bank',Math.max(0,Number(e.target.value)||0)));
+$('#booksList')&&$('#booksList').addEventListener('change',e=>{const cb=e.target.closest('[data-book]');if(!cb)return;const s=myBooks();cb.checked?s.add(cb.dataset.book):s.delete(cb.dataset.book);LS.set('tg:mybooks',[...s])});
+$('#xgBudget').addEventListener('change',e=>LS.set('tg:xgBudget',Math.max(0,Number(e.target.value)||0)));
+$('#btnKey').addEventListener('click',async()=>{
+  state.key=$('#key').value.trim();LS.set('o05:key',state.key);
+  const s=$('#kStatus');s.classList.remove('err');s.textContent='Probando…';
+  try{const j=await api('/status');const r=j.response||{},rq=r.requests||{};s.textContent='Clave válida'+(rq.limit_day!=null?' · consultas hoy: '+rq.current+' de '+rq.limit_day:'');renderQuota(rq)}
+  catch(e){s.textContent=e.message;s.classList.add('err')}
+});
+$('#btnWipe').addEventListener('click',async()=>{
+  if(!confirm('¿Borrar historiales, xG, predicciones y precisión guardados? La clave de API se mantiene.'))return;
+  await DB.clear();['tg:first','tg:bf','tg:updated','tg:lnames'].forEach(k=>localStorage.removeItem(k));
+  XG=null;state.days={};state.prec=null;state.reg=null;renderCfg();
+});
+
+/* ---------------- explicaciones (ⓘ) ---------------- */
+const TIPS={
+  update:['Actualizar todo','Hace lo mismo que haría un robot: trae los partidos y las cuotas de hoy y mañana de todas las ligas, baja el xG que falta, calcula los mercados, guarda las cuotas de la última semana y recalcula la Precisión. Tocalo una o dos veces por día. Si pasás más de 7 días sin tocarlo, esos días no entran en la Precisión de 1X2.'],
+  edge:['Edge del partido (0-100)','Junta el valor de todos los mercados del partido donde la cuota paga más que la cuota justa, dando más peso a las cuotas bajas. 0 = sin valor. 65 o más = hay buenas oportunidades.'],
+  fair:['Cuota justa','La cuota que debería pagar (1 ÷ probabilidad), según la fuente elegida arriba: las casas sin margen o nuestro modelo. Si la casa paga más que esto, hay valor.'],
+  ev:['EV','Probabilidad × cuota − 1, con la fuente elegida (casas o modelo). Cuánto ganarías en promedio por cada $100 si apostaras muchas veces así. Abajo, en chico, el EV según la otra fuente.'],
+  score:['Score (0-100)','Ordena las apuestas: sube con el EV y premia las cuotas bajas, que son más seguras. Verde (65+) = de las mejores.'],
+  sig:['Qué mueve el partido','Cada barra muestra hacia qué equipo empuja una señal: ataque y defensa (comparados con el resto de la liga), forma y diferencia de goles de los últimos 5 partidos, y la ventaja de local de esta liga. Es para entender el partido, no una recomendación. El historial cara a cara no se usa: con tan pocos partidos es más ruido que señal. Abajo, la referencia para apostar es Pinnacle sin margen: en ~18.000 partidos, cuando el modelo y Pinnacle difieren 5 puntos o más, casi siempre acierta Pinnacle.'],
+  lam:['Goles esperados','Cuántos goles esperamos de cada equipo según el ataque y la defensa de los dos en esta liga (temporada actual y anterior, con más peso a lo reciente). Si la liga usa xG, mezcla goles con xG.'],
+  skill1x2:['Habilidad 1X2','Cuánto mejor acierta el modelo el ganador (local, empate, visitante) que las casas sin margen, en los mismos partidos. Positivo = mejor que las casas. Usa las cuotas de cierre históricas de football-data.co.uk (unas 40 ligas, dos temporadas) más las cuotas que la app guarda en cada actualización (todas las ligas).'],
+  src:['Cuota justa: de dónde sale','«De las casas»: el precio justo según las propias casas (Pinnacle, o la mediana de todas), sin su margen. Si una casa paga más que eso, hay valor. No depende del modelo: es la ventaja más probada y sirve en todas las ligas. «Del modelo»: el precio según nuestro modelo; confiá solo en ligas en verde. «Coinciden»: solo cuando hay valor según las dos; el EV y la cuota justa que se ven son los de las casas.'],
+  evmin:['EV mínimo','Las apuestas con menos valor que esto no se muestran ni cuentan para el edge. Con «De las casas», 2% es un buen piso: por debajo, el valor puede desaparecer con el mínimo movimiento de la cuota. «Todos» muestra desde 0,5%.'],
+  pick:['¿Qué apuesta elegir?','La de mayor Score (la primera fila), no la de mayor EV: el Score combina el valor con la chance de ganar. El EV más alto suele estar en cuotas altas, que se pierden seguido. Una sola apuesta por partido: líneas parecidas (Hándicap −0,5 y −0,75, Más de 2,5 y Más de 3) son casi la misma apuesta. Nunca grupos opuestos. Antes de apostar, tocá «↻ Cuotas de este partido» y fijate que tu casa pague más que la cuota justa.'],
+  maxodds:['Cuota máxima','Oculta las apuestas con cuotas más altas. Las cuotas altas tienen más varianza (se pierden seguido) y su precio justo es menos preciso. Para empezar, 3,00.'],
+  sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
+  clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
+  slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
+  check:['Para revisar en tu casa','Líneas donde Bet365, 1xBet o Betano, según las cuotas que trae API-Football, pagan más que el precio justo de Pinnacle (sin margen) más 2%. API-Football trae la versión internacional de cada casa y se actualiza cada pocas horas: la cuota de tu casa puede ser otra. Usalo como pista: abrí tu casa y apostá solo si paga la Mínima (precio justo de Pinnacle + 2%) o más. Solo cuotas de 1,30 a 2,50, ordenadas para que arriba queden las de cuota baja con ventaja clara. Se descartan las diferencias de más de 15%, que casi siempre son cuotas viejas.'],
+  best:['Lo mejor del día','Las 10 líneas donde el modelo ve más probabilidad que Pinnacle, solo en ligas donde el modelo acierta en ese mercado (✓ en Precisión) y con diferencias de 2 a 10 puntos (más de 10 casi siempre es error del modelo). A la derecha: la diferencia y la cuota Mínima que tiene que pagar tu casa.'],
+  mkdiff:['Modelo contra Pinnacle','Modelo: la cuota justa según nuestro modelo (y su probabilidad). Pinnacle: la cuota justa de la casa más precisa del mundo, sin su margen; si Pinnacle no cotiza esa línea, sale de su 1X2 y sus totales (o de su línea principal de córners). Las dos son el precio «sin ganancia para nadie»: si tu casa paga más, la apuesta tiene valor.'],
+  dif:['Diferencia','Puntos de probabilidad que el modelo ve de más (+) o de menos (−) contra Pinnacle. +5 = el modelo le da 5 puntos más (por ejemplo 60% contra 55%). Arriba de la lista van los partidos donde el modelo ve más que Pinnacle: ahí cree que el mercado se equivoca. Confiá más en las ligas con ✓.'],
+  minodd:['Cuota mínima','La cuota que tiene que pagar tu casa para que haya valor según el modelo y según Pinnacle: la más alta de las dos cuotas justas, más 2%. Si tu casa paga eso o más, apostá; si no, salteala.'],
+  skillBtts:['Ambos marcan','Cuánto mejor acierta el modelo si marcan los dos equipos que decir siempre el promedio de la liga (error de Brier). Cada partido se predice solo con los anteriores. Es el ✓ de la pestaña Ambos marcan.'],
+  skillTeam:['Goles por equipo','Cuánto mejor acierta el modelo los goles de cada equipo (los mercados «Local/Visitante más de…») que decir siempre el promedio de la liga. Cada partido se predice solo con los anteriores.'],
+  skillCorners:['Córners','Cuánto mejor acierta el modelo el total de córners de cada partido que decir siempre el promedio de la liga. Necesita las estadísticas de los partidos: se bajan junto con el xG en cada actualización.'],
+  espReg:['Registro: modelo contra Pinnacle','Antes de cada partido la app guarda la línea principal de goles por equipo, ambos marcan y córners: lo que decía el modelo, lo que decía Pinnacle (o el precio armado con sus mercados principales) y la mejor cuota. Después del partido lo liquida. «Modelo vs mercado» positivo = el modelo acertó mejor que Pinnacle. Las columnas de apuestas muestran qué habría pasado apostando en cada caso con EV de 2% o más.'],
+  skillGoals:['Habilidad en goles','Cuánto mejor acierta el modelo la cantidad de goles de cada partido que decir siempre el promedio de la liga. Positivo = distingue partidos de muchos y pocos goles.'],
+  ece:['Calibración (ECE)','Si el modelo dice 60%, ¿pasa el 60% de las veces? Es la diferencia promedio. Menos de 3% es bueno.'],
+  table:['Cómo leer la tabla','Habilidad 1X2 = ganador, doble oportunidad y hándicap. Habilidad en goles = más/menos goles y ambos marcan. Verde = podés usar esos mercados en esa liga. Lecturas = partidos que respaldan el número de goles. «usa xG» = en esa liga el modelo acierta mejor mezclando xG.'],
+  calib:['Calibración','Cada punto junta pronósticos parecidos. Si el modelo dijo 40% y pasó 40% de las veces, el punto cae sobre la línea. El tamaño indica cuántos pronósticos hay.']
+};
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-tip]'),tip=$('#tip');
+  if(b){e.preventDefault();e.stopPropagation();const t=TIPS[b.dataset.tip];tip.innerHTML=`<b>${esc(t[0])}</b>${esc(t[1])}`;tip.classList.remove('hidden');return}
+  if(!e.target.closest('#tip'))tip.classList.add('hidden');
+},true);
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-star]');if(!s)return;
+  e.preventDefault();const id=s.dataset.star,f=favs();
+  if(f[id])delete f[id];else f[id]=1;
+  LS.set('tg:fav',f);if(window.tgCloud&&window.tgCloud.user)window.tgCloud.pushFav(f).catch(()=>{});const r=route();if(r.v==='match')renderMatch(r.id);else renderDash();
+});
+
+/* ---------------- navegación ---------------- */
+function route(){
+  const h=location.hash.replace(/^#\/?/,'');
+  if(h.startsWith('partido/'))return {v:'match',id:h.split('/')[1]};
+  if(h==='precision')return {v:'prec'};
+  if(h==='ajustes')return {v:'cfg'};
+
+  if(h==='apuestas'||h==='valor')return {v:'bets'};
+  return {v:'dash',view:h==='manana'?'1':h==='favoritos'?'fav':'0'};
+}
+function go(){
+  const r=route();
+  $$('main>section').forEach(s=>s.classList.add('hidden'));
+  const key=r.v==='match'?'dash':r.v==='mk'?'mk:'+r.tab:r.v;
+  $$('nav a, #mkbar a').forEach(a=>a.classList.toggle('on',a.dataset.nav===key||(a.dataset.nav==='mk'&&r.v==='mk')));
+  $('#mkbar').classList.toggle('show',r.v==='mk');
+  $('#tip').classList.add('hidden');
+  if(r.v==='dash'){$('#v-dash').classList.remove('hidden');state.view=r.view;showAllLeagues=false;renderDash()}
+  if(r.v==='match'){$('#v-match').classList.remove('hidden');$('#mBack').href=state.view==='1'?'#/manana':state.view==='fav'?'#/favoritos':'#/hoy';open.clear();renderMatch(r.id);window.scrollTo(0,0)}
+  if(r.v==='prec'){$('#v-prec').classList.remove('hidden');renderPrec()}
+  if(r.v==='mk'){$('#v-mk').classList.remove('hidden');LS.set('tg:mktab',r.tab);renderMk()}
+  if(r.v==='bets'){$('#v-bets').classList.remove('hidden');renderBets()}
+  if(r.v==='cfg'){$('#v-cfg').classList.remove('hidden');renderCfg()}
+}
+window.addEventListener('hashchange',go);
+$$('.seg [data-day]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.dataset.day==='1'?'#/manana':b.dataset.day==='fav'?'#/favoritos':'#/hoy'}));
+$('#btnUpdate').addEventListener('click',updateAll);
+$('#btnMkOdds').addEventListener('click',refreshAllOdds);
+$('#mkday').addEventListener('click',e=>{const b=e.target.closest('[data-mkday]');if(!b)return;LS.set('tg:mkday',b.dataset.mkday);renderMk()});
+$('#mkq').addEventListener('input',()=>renderMk());
+$('#mklg').addEventListener('change',()=>renderMk());
+$('#mkf').open=!!LS.get('tg:mkfopen',false);
+$('#mkf').addEventListener('toggle',()=>LS.set('tg:mkfopen',$('#mkf').open));
+$('#mkmin').addEventListener('click',e=>{const b=e.target.closest('[data-min]');if(!b)return;LS.set('tg:mkmin',Number(b.dataset.min));renderMk()});
+$('#mkslot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:mkslot',b.dataset.slot);renderMk()});
+$('#mklo').addEventListener('change',e=>{LS.set('tg:mklo',Number(e.target.value));renderMk()});
+$('#mkhi').addEventListener('change',e=>{LS.set('tg:mkhi',Number(e.target.value));renderMk()});
+$('#mksort').addEventListener('change',e=>{LS.set('tg:mksort',e.target.value);renderMk()});
+$('#mkList').addEventListener('click',e=>{if(e.target.closest('[data-add],a,button'))return;const r=e.target.closest('[data-mkr]');if(!r)return;const id=r.dataset.mkr;mkOpen.has(id)?mkOpen.delete(id):mkOpen.add(id);renderMk()});
+$('#mkGreen').addEventListener('change',e=>{LS.set('tg:mkgreen',e.target.checked);renderMk()});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();const i=b.dataset.add.indexOf('|');addBet(b.dataset.add.slice(0,i),b.dataset.add.slice(i+1))});
+['q','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',()=>{showAllLeagues=false;renderDash()}));
+$('#aMin').addEventListener('input',e=>{LS.set('tg:amin',Number(e.target.value));showAllLeagues=false;renderDash()});
+$('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
+$('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
+if(LS.get('tg:guide',true))$('#guide').open=true;
+$('#dList').addEventListener('click',e=>{if(e.target.closest('#btnMoreLeagues')){showAllLeagues=true;renderDash()}});
+$('#pBody').addEventListener('input',e=>{if(e.target.id==='pq'){precQ=e.target.value;renderPrec().then(()=>{const i=$('#pq');i.focus();i.setSelectionRange(i.value.length,i.value.length)})}});
+$('#pBody').addEventListener('change',e=>{if(e.target.id==='psort'){precSort=e.target.value;renderPrec()}});
+$('#mBody').addEventListener('click',e=>{
+  const m=e.target.closest('[data-more]'),r=route();
+  if(m){const g=m.dataset.more;open.has(g)?open.delete(g):open.add(g);renderMatch(r.id);return}
+  if(e.target.closest('#btnOdds')){refreshOdds(r.id);return}
+  if(e.target.closest('#btnStudy')){open.has('study')?open.delete('study'):open.add('study');renderMatch(r.id)}
+});
+if(!state.key&&!location.hash)location.hash='#/ajustes';
+go();
+checkQuota();
+</script>
+<script type="module">
+// Misma cuenta y misma base que la app de +0,5 1T. Datos en tanoapp_v2_datos/{uid}/goles/…
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const cfg={apiKey:"AIzaSyDL0LkEW3IAdBZcOARMjzAewgB_lh1edjI",authDomain:"appuestasclaude.firebaseapp.com",projectId:"appuestasclaude",storageBucket:"appuestasclaude.firebasestorage.app",messagingSenderId:"1020425173076",appId:"1:1020425173076:web:4ca5edab0f72c92a7ad5c1"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
+provider.setCustomParameters({prompt:'select_account'});
+const $=s=>document.querySelector(s);
+const ref=id=>doc(db,'tanoapp_v2_datos',auth.currentUser.uid,'goles',id);
+const MAXC=700000; // cada documento guarda texto; se parte en pedazos para no pasar el límite de Firestore
+function friendly(e){
+  const c=(e&&e.code)||'';
+  if(c==='permission-denied'||/permission/i.test((e&&e.message)||''))return 'Firebase no deja guardar en tu cuenta (reglas de seguridad). Avisale a Claude.';
+  if(c==='auth/unauthorized-domain')return 'Este dominio no está autorizado en Firebase.';
+  if(c==='auth/network-request-failed')return 'Sin conexión.';
+  return (e&&e.message)||'Error desconocido.';
+}
+async function putText(id,obj){
+  const txt=JSON.stringify(obj),parts=[];
+  for(let i=0;i<txt.length;i+=MAXC)parts.push(txt.slice(i,i+MAXC));
+  for(let k=0;k<parts.length;k+=10){
+    const b=writeBatch(db);
+    parts.slice(k,k+10).forEach((p,j)=>b.set(ref(id+'~'+(k+j)),{v:p}));
+    await b.commit();
+  }
+  return parts.length;
+}
+async function getText(id,n){
+  let txt='';
+  for(let k=0;k<n;k++){const d=await getDoc(ref(id+'~'+k));if(!d.exists())return null;txt+=d.data().v}
+  return txt?JSON.parse(txt):null;
+}
+const C=window.tgCloud={user:null,
+  async pushAll({bets,xg,days,prec,reg,fav,updated,bf}){
+    const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
+    const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
+    for(const [d,x] of Object.entries(days))meta.days[d]=await putText('day_'+d,x);
+    if(prec)meta.prec=await putText('prec',prec);
+    if(bets)meta.bets=await putText('bets',bets);
+    else if(prevMeta.bets)meta.bets=prevMeta.bets;
+    // xG compacto: [xg local, xg visitante, fuente, tiros…] por partido (los que no tienen datos van como 0).
+    if(xg){const map={};for(const [id,r] of Object.entries(xg.map||{}))map[id]=r[2]||r[9]!=null?r:0;meta.xg=await putText('xg',{map,coef:xg.coef})}
+    else if(prevMeta.xg)meta.xg=prevMeta.xg;
+    const months={};
+    for(const [id,e] of Object.entries(reg)){const m=new Date(e.ts*1000).toISOString().slice(0,7);(months[m]=months[m]||{})[id]=e}
+    // Solo se reescriben los meses recientes (o los que la nube todavía no tiene).
+    const recent=new Date(Date.now()-40*864e5).toISOString().slice(0,7);
+    for(const [m,x] of Object.entries(months))if(m>=recent||!meta.regMonths[m])meta.regMonths[m]=await putText('reg_'+m,x);
+    await setDoc(ref('fav'),{v:JSON.stringify(fav||{}),ts:Date.now()});
+    await setDoc(ref('meta'),{v:JSON.stringify(meta)});
+    status();
+  },
+  async pullIfNewer(localUpdated,dates){
+    const m=await getDoc(ref('meta'));if(!m.exists())return null;
+    const meta=JSON.parse(m.data().v);
+    const out={updated:meta.updated,bf:meta.bf};
+    const f=await getDoc(ref('fav'));if(f.exists())out.fav=JSON.parse(f.data().v);
+    meta.updated=meta.updated||meta.ts||0;out.updated=meta.updated;
+    if(!(meta.updated>localUpdated))return out.fav?{fav:out.fav}:null;
+    out.days={};
+    for(const d of dates)if(meta.days&&meta.days[d]){const x=await getText('day_'+d,meta.days[d]);if(x)out.days[d]=x}
+    if(meta.prec)out.prec=await getText('prec',meta.prec);
+    return out;
+  },
+  async peek(){const m=await getDoc(ref('meta'));return m.exists()?JSON.parse(m.data().v):null},
+  async pullBets(){
+    const m=await getDoc(ref('meta'));if(!m.exists())return null;
+    const meta=JSON.parse(m.data().v);return meta.bets?await getText('bets',meta.bets):null;
+  },
+  async pullXg(){
+    const m=await getDoc(ref('meta'));if(!m.exists())return null;
+    const meta=JSON.parse(m.data().v);if(!meta.xg)return null;
+    const x=await getText('xg',meta.xg);if(!x)return null;
+    for(const id of Object.keys(x.map))if(x.map[id]===0)x.map[id]=[null,null,0];
+    return x;
+  },
+  async pullReg(){
+    const m=await getDoc(ref('meta'));if(!m.exists())return {};
+    const meta=JSON.parse(m.data().v),out={};
+    for(const [mo,n] of Object.entries(meta.regMonths||{})){const x=await getText('reg_'+mo,n);if(x)Object.assign(out,x)}
+    return out;
+  },
+  async pushFav(fav){await setDoc(ref('fav'),{v:JSON.stringify(fav||{}),ts:Date.now()})}
+};
+function status(msg){
+  const u=auth.currentUser,b=$('#cloudBtn'),i=$('#cloudInfo');
+  b.textContent=u?'☁︎ '+(u.email||'').split('@')[0]:'☁︎ Entrar';
+  $('#btnLogout').classList.toggle('hidden',!u);
+  if(i)i.textContent=msg||(u?'Sincronizado con '+u.email+'. Lo que actualices en un dispositivo aparece en los demás.':'Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.');
+}
+onAuthStateChanged(auth,async u=>{
+  C.user=u||null;status();
+  if(u&&window.tgOnLogin){try{await window.tgOnLogin()}catch(e){status(friendly(e))}}
+});
+getRedirectResult(auth).catch(e=>status(friendly(e)));
+$('#cloudBtn').addEventListener('click',async()=>{
+  if(auth.currentUser){location.hash='#/ajustes';return}
+  try{await signInWithPopup(auth,provider)}
+  catch(e){
+    const c=e&&e.code;
+    if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return;
+    if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'||c==='auth/web-storage-unsupported'){try{await signInWithRedirect(auth,provider);return}catch(e2){e=e2}}
+    alert(friendly(e));
+  }
+});
+$('#btnLogout').addEventListener('click',()=>signOut(auth));
+</script>
+</body>
+</html>
