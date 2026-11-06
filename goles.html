@@ -53,7 +53,7 @@ h2{font-size:15px;color:var(--muted);margin:22px 0 8px;font-weight:700}
 .fx .teams div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fx .teams .vs{color:var(--dim);font-size:12px}
 .fx .na{font-size:12.5px;color:var(--dim);text-align:right}
-.fx .teams .vsw{color:var(--dim);font-size:12px}
+.vsw{color:var(--dim);font-size:12px}
 .fx .teams .dl{font-size:12.5px;color:var(--muted);margin-top:3px}
 .fx .go{flex:none;color:var(--dim);font-size:18px}
 .edge{display:flex;align-items:center;gap:6px;flex:none}
@@ -161,6 +161,26 @@ nav a{white-space:nowrap}
 .mkc-h a{text-decoration:none;font-weight:700}
 table.mk td.dp{font-family:var(--mono);font-weight:700}
 @media (max-width:560px){.mkc table.mk,.grp table.mk{font-size:12.5px}.mkc table.mk th,.mkc table.mk td,.grp table.mk th,.grp table.mk td{padding:7px 4px}.mkc,.mkc.box{padding:10px 8px}}
+.mkf summary{cursor:pointer}
+.filters select{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--text);font:inherit}
+.mkr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:6px 0;cursor:pointer}
+.mkr .t{font-family:var(--mono);color:var(--muted);font-size:13px;width:44px;flex:none}
+.mkr .m{flex:1;min-width:0}
+.mkr .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mkr .m .ln{font-size:13px;color:var(--muted);margin-top:2px}
+.mkr .r{text-align:right;flex:none;font-family:var(--mono);font-size:14px}
+.mkr .r .mo{display:block;font-size:12px;color:var(--muted)}
+.mkr .go{color:var(--dim);font-size:18px;flex:none;transition:transform .15s}
+.mkr.open .go{transform:rotate(90deg)}
+.mkx{margin:-2px 0 10px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px}
+.best{margin:10px 0 4px}
+.best .bl{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid var(--line);text-decoration:none}
+.best .bl:last-child{border-bottom:0}
+.best .bl .t{font-family:var(--mono);color:var(--muted);font-size:13px;width:44px;flex:none}
+.best .bl .m{flex:1;min-width:0}
+.best .bl .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.best .bl .m .ln{font-size:12.5px;color:var(--muted)}
+.best .bl .r{font-family:var(--mono);text-align:right;flex:none}
 .addb{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px;padding:2px 7px}
 .oddsbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
 .quota-bar{max-width:860px;margin:0 auto;padding:3px 14px 5px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
@@ -337,6 +357,7 @@ details.guide th{color:var(--muted);font-weight:600}
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
   </div>
+  <div id="dBest"></div>
   <div id="dList"></div>
 </section>
 
@@ -361,7 +382,14 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="row"><div class="seg" id="mkday"><button data-mkday="0">Hoy</button><button data-mkday="1">Mañana</button></div></div>
   <div class="oddsbar"><button class="btn pri" id="btnMkOdds">↻ Actualizar cuotas</button><span class="small" id="mkOddsWhen"></span></div>
   <div class="prog hidden" id="mkProg"><i></i></div>
-  <div class="tools"><input type="search" id="mkq" placeholder="Buscar equipo o liga"><label class="small row" style="gap:6px"><input type="checkbox" id="mkGreen" style="accent-color:var(--acc)"> Solo ligas con ✓</label></div>
+  <div class="tools"><input type="search" id="mkq" placeholder="Buscar equipo"></div>
+  <details class="filters box mkf" id="mkf"><summary><b>Filtros y orden</b> <span class="small" id="mkfSum"></span></summary>
+    <div class="tools"><select id="mklg"><option value="">Todas las ligas</option></select></div>
+    <div class="fl"><div class="fl-h"><b>Diferencia mínima</b> <button class="info" data-tip="dif">i</button></div><div class="seg" id="mkmin"><button data-min="0">Todas</button><button data-min="2">+2</button><button data-min="4">+4</button><button data-min="6">+6</button></div></div>
+    <div class="fl"><div class="fl-h"><b>Cuota (Mínima)</b></div><div class="row"><select id="mklo"><option value="0">desde —</option><option value="1.2">desde 1,20</option><option value="1.4">desde 1,40</option><option value="1.6">desde 1,60</option><option value="1.8">desde 1,80</option></select><select id="mkhi"><option value="99">hasta —</option><option value="1.6">hasta 1,60</option><option value="2">hasta 2,00</option><option value="2.5">hasta 2,50</option><option value="3">hasta 3,00</option></select></div></div>
+    <div class="fl"><div class="fl-h"><b>Horario</b></div><div class="seg" id="mkslot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
+    <div class="row" style="margin-top:10px;gap:14px"><label class="small row" style="gap:6px"><input type="checkbox" id="mkGreen" style="accent-color:var(--acc)"> Solo ligas con ✓</label><label class="small">Ordenar por <select id="mksort"><option value="diff">Mayor diferencia</option><option value="time">Hora</option><option value="prob">Más probable (modelo)</option></select></label></div>
+  </details>
   <div class="status" id="mkStatus"></div>
   <div id="mkList"></div>
 </section>
@@ -1251,33 +1279,63 @@ function bestDiff(a){
   for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(x.p>0&&x.pm>0&&(!best||x.p-x.pm>best.d))best={d:x.p-x.pm,l:x.s||x.l,k:x.k};
   return best;
 }
+const mkOpen=new Set();
+const inSlotOf=(a,slot)=>{if(slot==='all')return true;const h=Number(fmtTime(a.iso).slice(0,2));return slot==='m'?h<12:slot==='t'?h>=12&&h<19:h>=19};
+// Línea a mostrar de un partido: la de mayor diferencia contra Pinnacle (o, sin Pinnacle, la más probable)
+// entre las que pasan los filtros de diferencia y cuota.
+function pickLine(lines,f){
+  const ok=lines.filter(x=>{const mo=minOdd(x.p,x.pm);if(!mo||mo<f.lo||mo>f.hi)return false;if(f.min>0){const d=x.p>0&&x.pm>0?x.p-x.pm:null;if(d==null||d*100<f.min)return false}return true});
+  if(!ok.length)return null;
+  // Primero las diferencias creíbles (hasta 10 puntos); las mayores (⚠︎) solo si no hay otra.
+  const withD=ok.filter(x=>x.p>0&&x.pm>0),cred=withD.filter(x=>x.p-x.pm<=0.10);
+  if(cred.length)return cred.reduce((b,x)=>x.p-x.pm>b.p-b.pm?x:b);
+  if(withD.length)return withD.reduce((b,x)=>x.p-x.pm>b.p-b.pm?x:b);
+  return ok.reduce((b,x)=>(x.p||0)>(b.p||0)?x:b);
+}
 async function renderMk(){
   const r=route();if(r.v!=='mk')return;
   const tab=r.tab,T0=MK_TABS[tab],list=$('#mkList');
   $('#mkTitle').textContent=T0.name;
   const day=String(LS.get('tg:mkday','0'));
   $$('#mkday [data-mkday]').forEach(b=>b.classList.toggle('on',b.dataset.mkday===day));
-  $('#mkGreen').checked=!!LS.get('tg:mkgreen',false);
+  const f={min:Number(LS.get('tg:mkmin',0)),lo:Number(LS.get('tg:mklo',0)),hi:Number(LS.get('tg:mkhi',99)),slot:LS.get('tg:mkslot','all'),sort:LS.get('tg:mksort','diff'),green:!!LS.get('tg:mkgreen',false)};
+  $$('#mkmin [data-min]').forEach(b=>b.classList.toggle('on',Number(b.dataset.min)===f.min));
+  $$('#mkslot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===f.slot));
+  $('#mklo').value=String(f.lo);$('#mkhi').value=String(f.hi);$('#mksort').value=f.sort;$('#mkGreen').checked=f.green;
+  const sum=[];if(f.min)sum.push('dif. +'+f.min);if(f.lo)sum.push('desde '+dec(f.lo));if(f.hi<99)sum.push('hasta '+dec(f.hi));if(f.slot!=='all')sum.push({m:'mañana',t:'tarde',n:'noche'}[f.slot]);if(f.green)sum.push('solo ✓');if($('#mklg').value)sum.push('1 liga');
+  sum.push({diff:'por diferencia',time:'por hora',prob:'por probabilidad'}[f.sort]||'');
+  $('#mkfSum').textContent='· '+sum.filter(Boolean).join(' · ');
   $('#btnMkOdds').disabled=!!state.running;
   if(!state.key){list.innerHTML='<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>.</div>';return}
   const d=await getDay(dayStr(Number(day)));
   $('#mkOddsWhen').textContent=d?'Cuotas de '+ago(d.oddsTs||d.ts):'';
   if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para traer los partidos del día.</div>';return}
   state.prec=state.prec||await DB.get('prec');
-  const q=$('#mkq').value.trim().toLowerCase(),green=$('#mkGreen').checked,now=Date.now(),cards=[];
-  for(const a of d.fx){
-    if(a.ts*1000<=now)continue;
-    if(q&&!(a.hn+' '+a.an+' '+a.ln+' '+a.lc).toLowerCase().includes(q))continue;
-    const st=leagueStatus(a.lid)[T0.st];if(green&&st!=='g')continue;
+  const now=Date.now(),up=d.fx.filter(a=>a.ts*1000>now);
+  // Ligas del día para el filtro.
+  const lgSel=$('#mklg').value,lgs=new Map();for(const a of up)lgs.set(String(a.lid),a.lc+' · '+a.ln);
+  $('#mklg').innerHTML='<option value="">Todas las ligas</option>'+[...lgs].sort((x,y)=>x[1].localeCompare(y[1])).map(([id,n])=>`<option value="${id}"${id===lgSel?' selected':''}>${esc(n)}</option>`).join('');
+  const q=$('#mkq').value.trim().toLowerCase(),cards=[];let total=0;
+  for(const a of up){
+    if(q&&!(a.hn+' '+a.an).toLowerCase().includes(q))continue;
+    if(lgSel&&String(a.lid)!==lgSel)continue;
+    if(!inSlotOf(a,f.slot))continue;
+    const st=leagueStatus(a.lid)[T0.st];if(f.green&&st!=='g')continue;
     const lines=marketLines(a,tab).filter(x=>x.p>0||x.pm>0);if(!lines.length)continue;
-    const diffs=lines.filter(x=>x.p>0&&x.pm>0).map(x=>x.p-x.pm);
-    cards.push({a,lines,st,best:diffs.length?Math.max(...diffs):null});
+    total++;
+    const best=pickLine(lines,f);if(!best)continue;
+    cards.push({a,lines,st,best,d:best.p>0&&best.pm>0?best.p-best.pm:null});
   }
-  cards.sort((x,y)=>(y.best!=null?y.best:-9)-(x.best!=null?x.best:-9)||x.a.ts-y.a.ts);
-  const pin=cards.filter(c=>c.best!=null).length;
-  if(!state.running)$('#mkStatus').textContent=cards.length?`${cards.length} partidos por jugar · ${pin} con precio de Pinnacle para comparar`:'';
-  if(!cards.length){list.innerHTML=`<div class="empty">No hay partidos por jugar con «${esc(T0.name)}»${green?' en ligas con ✓ (desmarcá «Solo ligas con ✓»)':''}.${tab==='corners'?' Los córners necesitan las estadísticas de la liga (se bajan solas con ↻ Actualizar todo) o la línea de córners de Pinnacle.':''}</div>`;return}
-  list.innerHTML=cards.slice(0,150).map(({a,lines,st})=>`<div class="mkc box"><div class="mkc-h"><span class="mono muted">${fmtTime(a.iso)}</span><a href="#/partido/${a.id}">${esc(a.hn)} vs ${esc(a.an)}</a>${statusChip(st,T0.chip)}</div><div class="small">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)}</div>${linesTable(a,lines,true)}</div>`).join('')+(cards.length>150?`<p class="small">Se muestran 150 de ${cards.length}. Usá el buscador.</p>`:'');
+  const rk=c=>c.d==null?-9:c.d>0.10?-1+c.d/100:c.d; // los ⚠︎ van después de las diferencias creíbles
+  const sorters={diff:(x,y)=>rk(y)-rk(x)||x.a.ts-y.a.ts,time:(x,y)=>x.a.ts-y.a.ts,prob:(x,y)=>(y.best.p||0)-(x.best.p||0)};
+  cards.sort(sorters[f.sort]||sorters.diff);
+  if(!state.running)$('#mkStatus').textContent=total?`${cards.length} de ${total} partidos con esos filtros. Tocá uno para ver todas sus líneas.`:'';
+  if(!cards.length){list.innerHTML=`<div class="empty">Ningún partido con esos filtros${total?' (probá con «Diferencia mínima: Todas» o sin rango de cuota)':''}.${tab==='corners'&&!total?' Los córners necesitan el historial de córners de la liga o la línea de córners de Pinnacle.':''}</div>`;return}
+  list.innerHTML=cards.slice(0,200).map(({a,lines,st,best,d})=>{
+    const id=String(a.id),op=mkOpen.has(id);
+    return `<div class="mkr${op?' open':''}" data-mkr="${id}"><span class="t">${fmtTime(a.iso)}</span><span class="m"><div>${esc(a.hn)} <span class="vsw">vs</span> ${esc(a.an)}</div><div class="ln">${esc(best.s||best.l)} · ${esc(a.ln)}</div></span><span class="r">${diffHtml(d,st)}<span class="mo">${dec(minOdd(best.p,best.pm))}</span></span><span class="go">›</span></div>`+
+      (op?`<div class="mkx"><div class="mkc-h small">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)} ${statusChip(st,T0.chip)} <a href="#/partido/${a.id}" class="small">Ver partido ›</a></div>${linesTable(a,lines,true)}</div>`:'');
+  }).join('')+(cards.length>200?`<p class="small">Se muestran 200 de ${cards.length}. Usá los filtros.</p>`:'');
 }
 // ↻ Actualizar cuotas: solo las cuotas de hoy y mañana (sin historial ni modelo). Rehace la referencia de Pinnacle.
 async function refreshAllOdds(){
@@ -1345,6 +1403,22 @@ async function renderDash(){
     const d=await getDay(dayStr(Number(state.view)));
     if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> para traer los partidos de todas las ligas.</div>';return}
     fx=d.fx;
+  }
+  // «Lo mejor del día»: las 10 líneas creíbles (liga con ✓ en ese mercado, entre 2 y 10 puntos) de todos los mercados.
+  {
+    const now=Date.now(),best=[];
+    if(state.view!=='fav')for(const a of fx){
+      if(a.ts*1000<=now||(!a.lam&&!a.clam))continue;
+      const lst=leagueStatus(a.lid);
+      for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t)){
+        if(!(x.p>0&&x.pm>0))continue;const d=x.p-x.pm;
+        if(d<0.02||d>0.10||lst[MK_TABS[t].st]!=='g')continue;
+        best.push({a,x,d,t});
+      }
+    }
+    best.sort((u,v)=>v.d-u.d);
+    const seen=new Set(),top=[];for(const b of best){const k=b.a.id+'|'+b.t;if(seen.has(k))continue;seen.add(k);top.push(b);if(top.length>=10)break}
+    $('#dBest').innerHTML=top.length?`<div class="box best"><h3 style="margin:0 0 4px;font-size:15px">Lo mejor ${state.view==='1'?'de mañana':'de hoy'} <button class="info" data-tip="best">i</button></h3>${top.map(({a,x,d,t})=>`<a class="bl" href="#/partido/${a.id}"><span class="t">${fmtTime(a.iso)}</span><span class="m"><div>${esc(a.hn)} <span class="vsw">vs</span> ${esc(a.an)}</div><div class="ln">${esc(MK_TABS[t].name)}: ${esc(x.s||x.l)} · ${esc(a.ln)}</div></span><span class="r"><b class="c-g">${ptsTxt(d)}</b><span class="mo small" style="display:block;color:var(--muted)">${dec(minOdd(x.p,x.pm))}</span></span></a>`).join('')}</div>`:'';
   }
   const q=$('#q').value.trim().toLowerCase(), fv=favs();
   const lgSel=$('#lg').value, slot=LS.get('tg:slot','all');
@@ -1642,6 +1716,7 @@ const TIPS={
   sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
   clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
+  best:['Lo mejor del día','Las 10 líneas donde el modelo ve más probabilidad que Pinnacle, solo en ligas donde el modelo acierta en ese mercado (✓ en Precisión) y con diferencias de 2 a 10 puntos (más de 10 casi siempre es error del modelo). A la derecha: la diferencia y la cuota Mínima que tiene que pagar tu casa.'],
   mkdiff:['Modelo contra Pinnacle','Modelo: la cuota justa según nuestro modelo (y su probabilidad). Pinnacle: la cuota justa de la casa más precisa del mundo, sin su margen; si Pinnacle no cotiza esa línea, sale de su 1X2 y sus totales (o de su línea principal de córners). Las dos son el precio «sin ganancia para nadie»: si tu casa paga más, la apuesta tiene valor.'],
   dif:['Diferencia','Puntos de probabilidad que el modelo ve de más (+) o de menos (−) contra Pinnacle. +5 = el modelo le da 5 puntos más (por ejemplo 60% contra 55%). Arriba de la lista van los partidos donde el modelo ve más que Pinnacle: ahí cree que el mercado se equivoca. Confiá más en las ligas con ✓.'],
   minodd:['Cuota mínima','La cuota que tiene que pagar tu casa para que haya valor según el modelo y según Pinnacle: la más alta de las dos cuotas justas, más 2%. Si tu casa paga eso o más, apostá; si no, salteala.'],
@@ -1697,6 +1772,15 @@ $('#btnUpdate').addEventListener('click',updateAll);
 $('#btnMkOdds').addEventListener('click',refreshAllOdds);
 $('#mkday').addEventListener('click',e=>{const b=e.target.closest('[data-mkday]');if(!b)return;LS.set('tg:mkday',b.dataset.mkday);renderMk()});
 $('#mkq').addEventListener('input',()=>renderMk());
+$('#mklg').addEventListener('change',()=>renderMk());
+$('#mkf').open=!!LS.get('tg:mkfopen',false);
+$('#mkf').addEventListener('toggle',()=>LS.set('tg:mkfopen',$('#mkf').open));
+$('#mkmin').addEventListener('click',e=>{const b=e.target.closest('[data-min]');if(!b)return;LS.set('tg:mkmin',Number(b.dataset.min));renderMk()});
+$('#mkslot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:mkslot',b.dataset.slot);renderMk()});
+$('#mklo').addEventListener('change',e=>{LS.set('tg:mklo',Number(e.target.value));renderMk()});
+$('#mkhi').addEventListener('change',e=>{LS.set('tg:mkhi',Number(e.target.value));renderMk()});
+$('#mksort').addEventListener('change',e=>{LS.set('tg:mksort',e.target.value);renderMk()});
+$('#mkList').addEventListener('click',e=>{if(e.target.closest('[data-add],a,button'))return;const r=e.target.closest('[data-mkr]');if(!r)return;const id=r.dataset.mkr;mkOpen.has(id)?mkOpen.delete(id):mkOpen.add(id);renderMk()});
 $('#mkGreen').addEventListener('change',e=>{LS.set('tg:mkgreen',e.target.checked);renderMk()});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();const i=b.dataset.add.indexOf('|');addBet(b.dataset.add.slice(0,i),b.dataset.add.slice(i+1))});
 ['q','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',()=>{showAllLeagues=false;renderDash()}));
