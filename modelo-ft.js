@@ -738,6 +738,17 @@
     }
     return n ? { n, skill: 1 - m / b, rpsModel: m / n, rpsBase: b / n, expCorners: exp / n, realCorners: real / n } : { n: 0, skill: null };
   }
+  // Habilidad en «ambos marcan» (error de Brier) contra decir siempre el promedio de la liga.
+  function bttsSkill(rows, rho) {
+    let m = 0, b = 0, n = 0;
+    for (const r of rows || []) {
+      if (!(r.lh > 0) || !(r.la > 0) || !isNum(r.hg) || !isNum(r.ag)) continue;
+      const y = r.hg > 0 && r.ag > 0 ? 1 : 0;
+      const pm = summarize(scoreMatrix(r.lh, r.la, rho)).btts, pb = summarize(scoreMatrix(r.muH, r.muA, rho)).btts;
+      m += (pm - y) ** 2; b += (pb - y) ** 2; n++;
+    }
+    return n ? { n, skill: 1 - m / b, brierModel: m / n, brierBase: b / n } : { n: 0, skill: null };
+  }
   // Habilidad en goles de cada equipo (los mercados «Local/Visitante más de…») contra el promedio de la liga.
   function teamGoalsSkill(rows) {
     let m = 0, b = 0, n = 0;
@@ -888,7 +899,7 @@
     rps, outcome1x2, goalsRps, sharpLambdas, ece, backtestLeague, goalsSkill, marketSkill,
     FT_PRIOR, NEWCOMER_PRIOR, newcomerPriorMean, classifyNewcomer, rescaleTotal,
     MARKET_FIT, invert1x2, marketGames, marketCoverage,
-    CORNERS, nbPmf, cornerDist, cornerProbs, fitCornerSize, cornerMeanFor, reprice, cornerMarkets, cornerSkill, teamGoalsSkill
+    CORNERS, nbPmf, cornerDist, cornerProbs, fitCornerSize, cornerMeanFor, reprice, cornerMarkets, cornerSkill, teamGoalsSkill, bttsSkill
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoFT = api;

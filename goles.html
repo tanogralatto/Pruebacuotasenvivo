@@ -1074,7 +1074,7 @@ async function computePrecision(leagues,reg,status){
     }
     for(const r of mrows)allMarket.push(r);
     // Goles de cada equipo (con las mismas predicciones) y córners (su propio backtest, si hay estadísticas).
-    const team=F.teamGoalsSkill(best.pr);
+    const team=F.teamGoalsSkill(best.pr),btts=F.bttsSkill(best.pr,best.rho);
     let corners=null;
     const cg=cornerGames(L);
     if(cg.length>=F.CORNERS.minGames+20){
@@ -1086,7 +1086,7 @@ async function computePrecision(leagues,reg,status){
     const e=F.ece(best.pr.slice(-500));
     const nm=names[L.lid]||[('Liga '+L.lid),''];
     if(nm[0].startsWith('Liga ')&&prev.leagues&&prev.leagues[L.lid])nm[0]=prev.leagues[L.lid].name,nm[1]=prev.leagues[L.lid].country;
-    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,market:best.market,rho:best.rho,fd:nFd,team:{n:team.n,skill:team.skill},corners};
+    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,market:best.market,rho:best.rho,fd:nFd,team:{n:team.n,skill:team.skill},btts:{n:btts.n,skill:btts.skill},corners};
     for(const r of best.pr.slice(-400))allRows.push(r);
   }
   const g=F.goalsSkill(allRows),c=F.ece(allRows);
@@ -1096,13 +1096,13 @@ async function computePrecision(leagues,reg,status){
   const mk=F.marketSkill(allMarket),keepMk=prev.summary&&prev.summary.market&&prev.summary.market.n>mk.n;
   // Equipo y córners: promedio de las ligas pesado por partidos.
   const wavg=key=>{let s=0,n=0;for(const l of Object.values(out.leagues)){const x=l[key];if(x&&x.n&&Number.isFinite(x.skill)){s+=x.skill*x.n;n+=x.n}}return {n,skill:n?s/n:null}};
-  out.summary={market:keepMk?prev.summary.market:mk,goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,team:wavg('team'),corners:wavg('corners'),leagues:Object.keys(out.leagues).length};
+  out.summary={market:keepMk?prev.summary.market:mk,goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,team:wavg('team'),btts:wavg('btts'),corners:wavg('corners'),leagues:Object.keys(out.leagues).length};
   state.prec=out;await DB.set('prec',out);
 }
 function leagueStatus(lid){
   const l=state.prec&&state.prec.leagues&&state.prec.leagues[lid];
   const st=(s,n)=>!Number.isFinite(n)||n===0?null:n<MIN_N?'w':s>0?'g':'n';
-  return l?{goals:st(l.goals.skill,l.goals.n),res:st(l.res.skill,l.res.n),corners:l.corners?st(l.corners.skill,l.corners.n):null,team:l.team?st(l.team.skill,l.team.n):null,l}:{goals:null,res:null,corners:null,team:null,l:null};
+  return l?{goals:st(l.goals.skill,l.goals.n),res:st(l.res.skill,l.res.n),corners:l.corners?st(l.corners.skill,l.corners.n):null,team:l.team?st(l.team.skill,l.team.n):null,btts:l.btts?st(l.btts.skill,l.btts.n):null,l}:{goals:null,res:null,corners:null,team:null,btts:null,l:null};
 }
 function statusChip(st,label){
   if(st==='g')return `<span class="chip g">✓ ${label}</span>`;
@@ -1122,7 +1122,7 @@ function allowedGroups(lid){
 const myBooks=()=>new Set(LS.get('tg:mybooks',[])||[]);
 /* ---------------- mercados: modelo contra Pinnacle ---------------- */
 // Pestañas de mercado: nombre, columna de Precisión que dice si el modelo acierta ahí, y texto del ✓.
-const MK_TABS={goles:{name:'Goles del partido',st:'goals',chip:'Goles'},ambos:{name:'Ambos marcan',st:'goals',chip:'Goles'},equipo:{name:'Goles por equipo',st:'team',chip:'Por equipo'},corners:{name:'Córners',st:'corners',chip:'Córners'}};
+const MK_TABS={goles:{name:'Goles del partido',st:'goals',chip:'Goles'},ambos:{name:'Ambos marcan',st:'btts',chip:'Ambos marcan'},equipo:{name:'Goles por equipo',st:'team',chip:'Por equipo'},corners:{name:'Córners',st:'corners',chip:'Córners'}};
 // Nombre corto dentro de una pestaña o grupo (el título ya dice el mercado).
 const lineTxt=l=>String(l).replace('.',',');
 const shortLabel=(b,hn,an)=>b.type==='total'||b.type==='corners'&&b.scope==='total'?(b.side==='over'?'Más de ':'Menos de ')+lineTxt(b.line):b.type==='btts'?(b.pick==='yes'?'Sí':'No'):b.type==='tt'?(b.team==='home'?hn:an)+' más de '+lineTxt(b.line):F.betLabel(b,hn,an);
@@ -1500,17 +1500,18 @@ async function renderPrec(){
     <div class="tile"><div class="l">Habilidad en goles <button class="info" data-tip="skillGoals">i</button></div><div class="v ${g.skill>0?'c-g':'c-d'}">${spct(g.skill)}</div><div class="small">${g.n||0} partidos</div></div>
     <div class="tile"><div class="l">Calibración <button class="info" data-tip="ece">i</button></div><div class="v">${pct(c.ece)}</div><div class="small">error 1X2</div></div></div>
     <div class="tiles" style="margin-top:8px">
+    <div class="tile"><div class="l">Ambos marcan <button class="info" data-tip="skillBtts">i</button></div><div class="v ${(S.btts||{}).skill>0?'c-g':'c-d'}">${(S.btts||{}).n?spct(S.btts.skill):'—'}</div><div class="small">${(S.btts||{}).n||0} partidos</div></div>
     <div class="tile"><div class="l">Goles por equipo <button class="info" data-tip="skillTeam">i</button></div><div class="v ${(S.team||{}).skill>0?'c-g':'c-d'}">${spct((S.team||{}).skill)}</div><div class="small">${(S.team||{}).n||0} partidos</div></div>
     <div class="tile"><div class="l">Córners <button class="info" data-tip="skillCorners">i</button></div><div class="v ${(S.corners||{}).skill>0?'c-g':'c-d'}">${(S.corners||{}).n?spct(S.corners.skill):'—'}</div><div class="small">${(S.corners||{}).n||0} partidos</div></div></div>`;
   h+=await espHtml();
   h+=`<h2>Explorá cada liga <button class="info" data-tip="table">i</button></h2>
-    <div class="tools"><input type="search" id="pq" placeholder="Buscar liga o país" value="${esc(precQ)}"><select id="psort"><option value="n"${precSort==='n'?' selected':''}>Más partidos</option><option value="res"${precSort==='res'?' selected':''}>Mejor en 1X2</option><option value="goals"${precSort==='goals'?' selected':''}>Mejor en goles</option><option value="corners"${precSort==='corners'?' selected':''}>Mejor en córners</option></select></div>`;
+    <div class="tools"><input type="search" id="pq" placeholder="Buscar liga o país" value="${esc(precQ)}"><select id="psort"><option value="n"${precSort==='n'?' selected':''}>Más partidos</option><option value="res"${precSort==='res'?' selected':''}>Mejor en 1X2</option><option value="goals"${precSort==='goals'?' selected':''}>Mejor en goles</option><option value="btts"${precSort==='btts'?' selected':''}>Mejor en ambos marcan</option><option value="corners"${precSort==='corners'?' selected':''}>Mejor en córners</option></select></div>`;
   const q=precQ.toLowerCase();
   const val=(l,k)=>l[k]&&l[k].n>=MIN_N&&Number.isFinite(l[k].skill)?l[k].skill:-9;
   const rows=Object.values(p.leagues||{}).filter(l=>!q||(l.name+' '+l.country).toLowerCase().includes(q))
-    .sort((a,b)=>precSort==='n'?(b.goals.n-a.goals.n):precSort==='res'?(val(b,'res')-val(a,'res'))||(b.res.n-a.res.n):precSort==='corners'?(val(b,'corners')-val(a,'corners')):(val(b,'goals')-val(a,'goals')));
-  h+=`<div class="xs"><table class="lg"><thead><tr><th>Liga</th><th>1X2</th><th>Goles</th><th>Equipo</th><th>Córners</th><th class="hide-s">ECE</th><th class="hide-s">Lecturas</th></tr></thead><tbody>`;
-  for(const l of rows.slice(0,300))h+=`<tr><td>${flag(l.country)} ${esc(l.name)}<span class="cn">${esc(l.country)}${l.market?' · aprende de Pinnacle':l.xg?' · usa xG':''}</span></td>${skillCell(l.res.skill,l.res.n)}${skillCell(l.goals.skill,l.goals.n)}${skillCell(l.team?l.team.skill:null,l.team?l.team.n:0)}${skillCell(l.corners?l.corners.skill:null,l.corners?l.corners.n:0)}<td class="hide-s">${pct(l.ece)}</td><td class="hide-s">${l.goals.n||0}</td></tr>`;
+    .sort((a,b)=>precSort==='n'?(b.goals.n-a.goals.n):precSort==='res'?(val(b,'res')-val(a,'res'))||(b.res.n-a.res.n):precSort==='corners'?(val(b,'corners')-val(a,'corners')):precSort==='btts'?(val(b,'btts')-val(a,'btts')):(val(b,'goals')-val(a,'goals')));
+  h+=`<div class="xs"><table class="lg"><thead><tr><th>Liga</th><th>1X2</th><th>Goles</th><th>Ambos</th><th>Equipo</th><th>Córners</th><th class="hide-s">ECE</th><th class="hide-s">Lecturas</th></tr></thead><tbody>`;
+  for(const l of rows.slice(0,300))h+=`<tr><td>${flag(l.country)} ${esc(l.name)}<span class="cn">${esc(l.country)}${l.market?' · aprende de Pinnacle':l.xg?' · usa xG':''}</span></td>${skillCell(l.res.skill,l.res.n)}${skillCell(l.goals.skill,l.goals.n)}${skillCell(l.btts?l.btts.skill:null,l.btts?l.btts.n:0)}${skillCell(l.team?l.team.skill:null,l.team?l.team.n:0)}${skillCell(l.corners?l.corners.skill:null,l.corners?l.corners.n:0)}<td class="hide-s">${pct(l.ece)}</td><td class="hide-s">${l.goals.n||0}</td></tr>`;
   h+='</tbody></table></div>';
   if(rows.length>300)h+=`<p class="small">Se muestran 300 de ${rows.length}. Usá el buscador para ver las demás.</p>`;
   h+=`<p class="small"><b class="c-g">Verde</b> = el modelo acierta mejor: podés apostar ese tipo de mercado en esa liga. <b>Gris</b> = no acierta mejor. <b class="c-m">⏳</b> = todavía faltan partidos (la columna 1X2 se llena sola con cada actualización).</p>`;
@@ -1567,6 +1568,7 @@ const TIPS={
   mkdiff:['Modelo contra Pinnacle','Modelo: la cuota justa según nuestro modelo (y su probabilidad). Pinnacle: la cuota justa de la casa más precisa del mundo, sin su margen; si Pinnacle no cotiza esa línea, sale de su 1X2 y sus totales (o de su línea principal de córners). Las dos son el precio «sin ganancia para nadie»: si tu casa paga más, la apuesta tiene valor.'],
   dif:['Diferencia','Puntos de probabilidad que el modelo ve de más (+) o de menos (−) contra Pinnacle. +5 = el modelo le da 5 puntos más (por ejemplo 60% contra 55%). Arriba de la lista van los partidos donde el modelo ve más que Pinnacle: ahí cree que el mercado se equivoca. Confiá más en las ligas con ✓.'],
   minodd:['Cuota mínima','La cuota que tiene que pagar tu casa para que haya valor según el modelo y según Pinnacle: la más alta de las dos cuotas justas, más 2%. Si tu casa paga eso o más, apostá; si no, salteala.'],
+  skillBtts:['Ambos marcan','Cuánto mejor acierta el modelo si marcan los dos equipos que decir siempre el promedio de la liga (error de Brier). Cada partido se predice solo con los anteriores. Es el ✓ de la pestaña Ambos marcan.'],
   skillTeam:['Goles por equipo','Cuánto mejor acierta el modelo los goles de cada equipo (los mercados «Local/Visitante más de…») que decir siempre el promedio de la liga. Cada partido se predice solo con los anteriores.'],
   skillCorners:['Córners','Cuánto mejor acierta el modelo el total de córners de cada partido que decir siempre el promedio de la liga. Necesita las estadísticas de los partidos: se bajan junto con el xG en cada actualización.'],
   espReg:['Registro: modelo contra Pinnacle','Antes de cada partido la app guarda la línea principal de goles por equipo, ambos marcan y córners: lo que decía el modelo, lo que decía Pinnacle (o el precio armado con sus mercados principales) y la mejor cuota. Después del partido lo liquida. «Modelo vs mercado» positivo = el modelo acertó mejor que Pinnacle. Las columnas de apuestas muestran qué habría pasado apostando en cada caso con EV de 2% o más.'],
