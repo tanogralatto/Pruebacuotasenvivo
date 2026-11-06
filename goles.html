@@ -295,7 +295,8 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>Dos ajustes</b>: quién es mejor (1X2, hándicap) se calcula con poca regresión a la media, y el total de goles con más. Probado con ~18.000 partidos de 38 ligas contra las cuotas de cierre: acierta mejor que un solo ajuste.</li>
       <li><b>Ascendidos y descendidos</b>: un equipo que no jugó la temporada anterior en la liga no arranca como «equipo promedio». Si subió, parte más débil; si bajó, más fuerte. Con cada partido pesan más sus resultados reales. En la ficha dice «(ascendido)» o «(descendido)».</li>
       <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
-      <li>Cada liga usa la combinación (con o sin xG, con o sin corrección) que <b>mejor acertó</b> en su historial.</li>
+      <li><b>Aprende de Pinnacle</b>: en las ligas con cuotas de cierre de los partidos ya jugados (football-data.co.uk y las que guarda la app de API-Football), cada partido entra al ajuste con los goles esperados que implicaba Pinnacle (90%) y los goles reales (10%), dando mucho más peso a lo reciente. La cuota de cierre ya resume lesiones, rotaciones y forma, y un gol de suerte casi no la mueve. Probado con ~17.800 partidos de 38 ligas: la diferencia con la probabilidad de Pinnacle baja casi a la mitad (de 6,7 a 3,6 puntos en el local). En la ficha dice «+ cuotas de Pinnacle».</li>
+      <li>Cada liga usa la combinación (con o sin xG, con o sin corrección, con o sin cuotas de Pinnacle) que <b>mejor acertó</b> en su historial.</li>
     </ul>
 
     <h3>Precisión: en qué ligas confiar en el modelo</h3>
@@ -336,7 +337,7 @@ details.guide th{color:var(--muted);font-weight:600}
     <h3>Diferencias con Alpha</h3>
     <table>
       <tr><th></th><th>Alpha</th><th>TanoApp Goles</th></tr>
-      <tr><td>Modelo</td><td>Poisson con ataque/defensa y «correlación» (Dixon-Coles), entrenado con ~9 años. No publica la fórmula.</td><td>Poisson con ataque/defensa + Dixon-Coles por liga + xG (de la API o aproximado). Temporada actual y anterior.</td></tr>
+      <tr><td>Modelo</td><td>Poisson con ataque/defensa y «correlación» (Dixon-Coles), entrenado con ~9 años. No publica la fórmula.</td><td>Poisson con ataque/defensa + Dixon-Coles por liga + xG (de la API o aproximado) o, donde hay cuotas de cierre, lo que implicaba Pinnacle en cada partido. Temporada actual y anterior.</td></tr>
       <tr><td>Ajustes extra</td><td>Clima (altitud, temperatura, viento…)</td><td>No usa clima.</td></tr>
       <tr><td>Ligas</td><td>Las que elige Alpha</td><td>Todas las que trae tu API-Football</td></tr>
       <tr><td>Cuota justa</td><td>Del modelo</td><td>Elegís: de las casas (sin margen), del modelo, o cuando coinciden</td></tr>
@@ -561,8 +562,26 @@ function xgOf(id){
   return Number.isFinite(h)&&Number.isFinite(a)?[h,a]:null;
 }
 function modelGames(L){
-  return L.raw.map(r=>{const x=xgOf(r[0]);return {id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5],fth:r[4],fta:r[5],season:r[6],leagueId:L.lid,xh:x?x[0]:null,xa:x?x[1]:null}});
+  const out=L.raw.map(r=>{const x=xgOf(r[0]);return {id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5],fth:r[4],fta:r[5],season:r[6],leagueId:L.lid,xh:x?x[0]:null,xa:x?x[1]:null}});
+  out.mkt=marketOf(L);
+  return out;
 }
+// Cuotas de cierre sin margen (Pinnacle o mediana) de los partidos ya jugados de una liga: Map(id -> [pL, pE, pV]).
+// Salen de lo que guardó la app de API-Football (registro) y de football-data.co.uk (data/fd-1x2.json).
+const MKC=new Map(); // id -> goles esperados que implicaba la cuota (para no invertir dos veces)
+function marketOf(L){
+  if(L._mkt&&L._mktN===L.raw.length&&L._mktR===state.reg&&L._mktF===FD)return L._mkt;
+  const m=new Map(),reg=state.reg||{};
+  for(const [id,r] of Object.entries(reg))if(r&&String(r.lid)===String(L.lid)&&r.m1x2)m.set(String(id),r.m1x2);
+  const fdl=FD&&FD.leagues&&FD.leagues[L.lid];
+  if(fdl){
+    const rest=L.raw.filter(r=>!m.has(String(r[0]))).map(r=>({id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5]}));
+    for(const [id,q] of F.matchFd(rest,fdl,L.names))m.set(String(id),q);
+  }
+  L._mkt=m;L._mktN=L.raw.length;L._mktR=state.reg;L._mktF=FD;
+  return m;
+}
+const marketReady=(games,cutoff)=>!!(games&&games.mkt&&games.mkt.size)&&F.marketCoverage(games,games.mkt,cutoff).share>=F.MARKET_FIT.minCoverage;
 async function fetchXg(leagues,budget,status){
   await loadXg();
   if(!(budget>0))return 0;
@@ -629,6 +648,14 @@ async function updateNewcomers(leagues,maxCalls){
 /* ---------------- modelo por liga ---------------- */
 // Dos ajustes con los mismos partidos: uno para la forma del partido (quién es mejor) y otro para el total de goles.
 function fitLeagueAt(games,cutoff,season,cfg){
+  // Modelo de mercado: los partidos jugados entran con lo que implicaba Pinnacle (un solo ajuste, sin el del total).
+  if(cfg&&cfg.market&&marketReady(games,cutoff)){
+    const M=F.MARKET_FIT,mg=F.marketGames(games,games.mkt,-0.06,MKC);
+    const fm=T.buildFitMatches(mg,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:M.halfLifeDays,xgWeight:M.weight});
+    const fit=T.fitLeague(fm,{priorMatches:M.priorMatches,priorMean:games.length?ncMean(games[0].leagueId,season):null});
+    fit.market=true;
+    return fit;
+  }
   const fm=T.buildFitMatches(games,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:240,xgWeight:cfg&&cfg.xg?0.5:0});
   const priorMean=games.length?ncMean(games[0].leagueId,season):null;
   const fit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.shape,priorMean});
@@ -636,6 +663,7 @@ function fitLeagueAt(games,cutoff,season,cfg){
   return fit;
 }
 function predictFt(fit,h,a){
+  if(fit&&fit.market)return T.predictMatch(fit,h,a,{minTeamEffective:F.MARKET_FIT.minTeamEffective});
   const pr=T.predictMatch(fit,h,a,{});
   if(!pr.ok||!fit.totalFit||!fit.totalFit.ok)return pr;
   const pt=T.predictMatch(fit.totalFit,h,a,{});if(!pt.ok)return pr;
@@ -663,11 +691,13 @@ function topPct(fit,teamId,field,better){
 // rho del modelo: el elegido en Precisión; si todavía no hay, se estima con el historial.
 function leagueCfg(lid,games,season){
   const c=state.prec&&state.prec.cfg&&state.prec.cfg[lid];
-  if(c)return c;
-  const fit=fitLeagueAt(games,Date.now()/1000,season,{xg:false});
-  if(!fit.ok)return {xg:false,rho:-0.06};
+  // Precisión ya eligió (market true o false); si es de antes de que existiera el modelo de mercado, se usa si hay cuotas.
+  if(c)return 'market' in c?c:Object.assign({},c,{market:marketReady(games,Date.now()/1000)});
+  const market=marketReady(games,Date.now()/1000);
+  const fit=fitLeagueAt(games,Date.now()/1000,season,{xg:false,market});
+  if(!fit.ok)return {xg:false,rho:-0.06,market:false};
   const rows=[];for(const g of games){const p=predictFt(fit,g.h,g.a);if(p.ok)rows.push({lh:p.lambdaHome,la:p.lambdaAway,hg:g.hg,ag:g.ag});}
-  return {xg:false,rho:F.fitRho(rows).rho};
+  return {xg:false,rho:F.fitRho(rows).rho,market:!!fit.market};
 }
 
 /* ---------------- mis apuestas y casas vistas ---------------- */
@@ -717,7 +747,7 @@ async function updateAll(){
   state.running=true;state.calls=0;$('#btnUpdate').disabled=true;
   const warn=[];
   try{
-    await loadXg();
+    await loadXg();await loadFd();
     state.prec=state.prec||await DB.get('prec');
     await cloudMergeXg();
     await loadBets();await cloudMergeBets();
@@ -768,7 +798,7 @@ async function updateAll(){
             if(!pr.ok)a.reason=/no tiene partidos previos/.test(pr.reason)?'Un equipo no tiene partidos previos en esta liga.':'Todavía hay pocos partidos de estos equipos.';
             else{
               const o=F.parseOdds(odds[d].get(String(f.id)));
-              a.lam={home:pr.lambdaHome,away:pr.lambdaAway,rho:cfg.rho};a.xg=!!cfg.xg;
+              a.lam={home:pr.lambdaHome,away:pr.lambdaAway,rho:cfg.rho};a.xg=!!cfg.xg&&!fit.market;a.mkt=!!fit.market;
               a.n={home:pr.nHome,away:pr.nAway};a.ls=ls;
               const nc=NC&&NC[lid]&&String(NC[lid].season)===String(fxs[0].season)?NC[lid].cls:{};a.nc={home:nc[f.hid]||null,away:nc[f.aid]||null};
               a.form={home:lastN(games,f.hid,f.ts),away:lastN(games,f.aid,f.ts)};a.hadv=fit.muH/fit.muA;
@@ -974,14 +1004,19 @@ async function computePrecision(leagues,reg,status){
     const bo={priorMatches:F.FT_PRIOR.shape,totalPriorMatches:F.FT_PRIOR.total,priorMean:s=>ncMean(L.lid,s)};
     const variants=[{xg:false,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0},bo))}];
     if(withXg)variants.push({xg:true,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0.5},bo))});
+    // Modelo de mercado: cada partido se predice solo con las cuotas de cierre y los goles de los anteriores.
+    if(marketReady(games)){
+      const M=F.MARKET_FIT;
+      variants.push({xg:false,market:true,rows:F.backtestLeague(F.marketGames(games,games.mkt,-0.06,MKC),T,{xgWeight:M.weight,halfLifeDays:M.halfLifeDays,priorMatches:M.priorMatches,minTeamEffective:M.minTeamEffective,priorMean:bo.priorMean})});
+    }
     let best=null;
     for(const v of variants){
       if(v.rows.length<20)continue;
       const rho=F.fitRho(v.rows).rho;
-      for(const r of [0,rho]){const pr=F.withProbs(v.rows,r),err=F.backtestError(pr);if(!best||err<best.err)best={xg:v.xg,rho:r,err,pr}}
+      for(const r of [0,rho]){const pr=F.withProbs(v.rows,r),err=F.backtestError(pr);if(!best||err<best.err)best={xg:v.xg,market:!!v.market,rho:r,err,pr}}
     }
     if(!best)continue;
-    out.cfg[L.lid]={xg:best.xg,rho:best.rho};
+    out.cfg[L.lid]={xg:best.xg,rho:best.rho,market:best.market};
     const gs=F.goalsSkill(best.pr);
     // 1X2 contra las casas: lo guardado por la app antes de cada partido + cuotas de cierre históricas.
     const mrows=[],seen=new Set();
@@ -997,7 +1032,7 @@ async function computePrecision(leagues,reg,status){
     const e=F.ece(best.pr.slice(-500));
     const nm=names[L.lid]||[('Liga '+L.lid),''];
     if(nm[0].startsWith('Liga ')&&prev.leagues&&prev.leagues[L.lid])nm[0]=prev.leagues[L.lid].name,nm[1]=prev.leagues[L.lid].country;
-    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,rho:best.rho,fd:nFd};
+    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,market:best.market,rho:best.rho,fd:nFd};
     for(const r of best.pr.slice(-400))allRows.push(r);
   }
   const g=F.goalsSkill(allRows),c=F.ece(allRows);
@@ -1151,7 +1186,7 @@ async function renderMatch(id){
   const refresh=upcoming&&state.key?`<button class="btn" id="btnOdds">↻ Cuotas de este partido</button>`:'';
   if(!a.lam&&!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">Sin análisis disponible: ${esc(a.reason||'')}</div>`+(refresh?`<div class="row" style="margin-top:10px">${refresh}</div><div class="small" id="oddsMsg"></div>`:'');return}
   if(a.lam){
-    h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}</div>`;
+    h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}${a.mkt?' + cuotas de Pinnacle':''}</div>`;
     h+=`<div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">${open.has('study')?'Ocultar estudio':'Ver estudio del partido'}</button>${refresh}</div>`;
   }else h+=`<div class="none" style="margin-top:10px;text-align:left">Sin modelo para este partido (${esc(a.noModel||a.reason||'')}). Se puede usar igual con <b>Cuota justa: De las casas</b>.</div><div class="row" style="margin-top:10px">${refresh}</div>`;
   h+=`<div class="small" id="oddsMsg" style="margin-top:6px"></div>`;
@@ -1379,7 +1414,7 @@ async function renderPrec(){
   const rows=Object.values(p.leagues||{}).filter(l=>!q||(l.name+' '+l.country).toLowerCase().includes(q))
     .sort((a,b)=>precSort==='n'?(b.goals.n-a.goals.n):precSort==='res'?(val(b,'res')-val(a,'res'))||(b.res.n-a.res.n):(val(b,'goals')-val(a,'goals')));
   h+=`<table class="lg"><thead><tr><th>Liga</th><th>Habilidad 1X2</th><th>Habilidad goles</th><th class="hide-s">ECE</th><th>Lecturas</th></tr></thead><tbody>`;
-  for(const l of rows.slice(0,300))h+=`<tr><td>${flag(l.country)} ${esc(l.name)}<span class="cn">${esc(l.country)}${l.xg?' · usa xG':''}</span></td>${skillCell(l.res.skill,l.res.n)}${skillCell(l.goals.skill,l.goals.n)}<td class="hide-s">${pct(l.ece)}</td><td>${l.goals.n||0}</td></tr>`;
+  for(const l of rows.slice(0,300))h+=`<tr><td>${flag(l.country)} ${esc(l.name)}<span class="cn">${esc(l.country)}${l.market?' · aprende de Pinnacle':l.xg?' · usa xG':''}</span></td>${skillCell(l.res.skill,l.res.n)}${skillCell(l.goals.skill,l.goals.n)}<td class="hide-s">${pct(l.ece)}</td><td>${l.goals.n||0}</td></tr>`;
   h+='</tbody></table>';
   if(rows.length>300)h+=`<p class="small">Se muestran 300 de ${rows.length}. Usá el buscador para ver las demás.</p>`;
   h+=`<p class="small"><b class="c-g">Verde</b> = el modelo acierta mejor: podés apostar ese tipo de mercado en esa liga. <b>Gris</b> = no acierta mejor. <b class="c-m">⏳</b> = todavía faltan partidos (la columna 1X2 se llena sola con cada actualización).</p>`;

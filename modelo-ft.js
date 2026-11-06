@@ -9,6 +9,8 @@
  *    precio sin margen de las casas (Pinnacle o mediana).
  *  - matchMarkets / matchEdge: todas las apuestas del partido agrupadas como en la pantalla y el edge (0-100).
  *  - rps / goalsRps / ece / backtestLeague: métricas de la pestaña Precisión.
+ *  - invert1x2 / marketGames / marketCoverage: modelo «de mercado», que aprende de las cuotas de cierre de
+ *    Pinnacle (sin margen) de los partidos ya jugados además de los goles.
  */
 (function (root) {
   'use strict';
@@ -430,7 +432,7 @@
         fitAt = g.ts;
       }
       if (!fit || !fit.ok) continue;
-      const pr = T.predictMatch(fit, g.h, g.a, {});
+      const pr = T.predictMatch(fit, g.h, g.a, isNum(o.minTeamEffective) ? { minTeamEffective: o.minTeamEffective } : {});
       if (!pr.ok) continue;
       let lh = pr.lambdaHome, la = pr.lambdaAway;
       if (fitT && fitT.ok) { const pt = T.predictMatch(fitT, g.h, g.a, {}); if (pt.ok) ({ lh, la } = rescaleTotal(lh, la, pt.lambdaTotal)); }
@@ -469,6 +471,67 @@
     let e = 0, n = 0;
     for (const r of rows || []) { const t = r.hg + r.ag; e += goalsRps(r.goals, t) + rps(r.p1x2, outcome1x2(r.hg, r.ag)); n++; }
     return n ? e / n : null;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 5b. Modelo de mercado (lo más parecido a Pinnacle)                  */
+  /* ------------------------------------------------------------------ */
+  // La cuota de cierre de Pinnacle resume todo lo que se sabe de un partido (lesiones, rotaciones, forma), y un
+  // gol de más o de menos es casi puro ruido. Así que cada partido ya jugado entra al ajuste con los goles
+  // esperados que implicaba Pinnacle (90%) más los goles reales (10%), y el ajuste olvida rápido (vida media de
+  // 40 días) porque cada partido trae mucha información. Medido con 38 ligas y ~17.800 partidos (football-data,
+  // prediciendo cada partido solo con los anteriores): la diferencia con la probabilidad de Pinnacle baja de
+  // 6,7 a 3,6 puntos en el local y de 2,1 a 1,3 en el empate; el error del 1X2 (RPS) pasa de 0,2127 a 0,2074
+  // (Pinnacle: 0,2043) y el del total de goles, de 0,1455 a 0,1443.
+  const MARKET_FIT = Object.freeze({ weight: 0.9, halfLifeDays: 40, priorMatches: 0.25, minTeamEffective: 1, minCoverage: 0.6, coverageDays: 60 });
+
+  // Goles esperados (local, visitante) que reproducen un 1X2 sin margen con la matriz de Poisson + Dixon-Coles.
+  // Para un total fijo se busca la ventaja que iguala local − visitante; después, el total que iguala el empate
+  // (más goles esperados = menos empates).
+  function invert1x2(p, rho) {
+    if (!p || p.length !== 3 || !p.every(x => isNum(x) && x > 0)) return null;
+    const s = p[0] + p[1] + p[2], q = p.map(x => x / s), r = isNum(rho) ? rho : -0.06;
+    const probs = (lh, la) => { const m = summarize(scoreMatrix(lh, la, r)); return [m.home, m.draw, m.away]; };
+    const target = q[0] - q[2];
+    const split = t => {
+      let lo = -t * 0.98, hi = t * 0.98;
+      for (let i = 0; i < 40; i++) { const d = (lo + hi) / 2, x = probs((t + d) / 2, (t - d) / 2); if (x[0] - x[2] < target) lo = d; else hi = d; }
+      const d = (lo + hi) / 2;
+      return [(t + d) / 2, (t - d) / 2];
+    };
+    let lo = 0.6, hi = 6;
+    for (let i = 0; i < 30; i++) { const t = (lo + hi) / 2, [a, b] = split(t); if (probs(a, b)[1] > q[1]) lo = t; else hi = t; }
+    const [lh, la] = split((lo + hi) / 2);
+    return { lh, la };
+  }
+  // Copia de los partidos con los goles esperados de Pinnacle en xh / xa (el ajuste los mezcla con los goles
+  // reales con xgWeight = MARKET_FIT.weight). mkt: Map(id del partido -> [p local, p empate, p visitante]).
+  // Los partidos sin cuota quedan solo con goles. cache (opcional): Map id -> {lh, la} para no invertir dos veces.
+  function marketGames(games, mkt, rho, cache) {
+    let n = 0;
+    const out = (games || []).map(g => {
+      const p = mkt && mkt.get(String(g.id));
+      let lam = null;
+      if (p) {
+        lam = cache && cache.get(String(g.id));
+        if (!lam) { lam = invert1x2(p, rho); if (lam && cache) cache.set(String(g.id), lam); }
+      }
+      if (lam) n++;
+      return Object.assign({}, g, { xh: lam ? lam.lh : null, xa: lam ? lam.la : null, market: !!lam });
+    });
+    out.marketCount = n;
+    return out;
+  }
+  // Qué parte de los partidos de los últimos `days` días (hasta `untilTs`) tiene cuota de cierre.
+  function marketCoverage(games, mkt, untilTs, days) {
+    const until = isNum(untilTs) ? untilTs : Infinity;
+    let last = -Infinity;
+    for (const g of games || []) if (g.ts < until && g.ts > last) last = g.ts;
+    if (!isNum(last)) return { n: 0, share: 0 };
+    const from = last - (days || MARKET_FIT.coverageDays) * 86400;
+    let n = 0, hit = 0;
+    for (const g of games || []) if (g.ts < until && g.ts >= from) { n++; if (mkt && mkt.has(String(g.id))) hit++; }
+    return { n, share: n ? hit / n : 0 };
   }
 
   /* ------------------------------------------------------------------ */
@@ -606,7 +669,8 @@
     poissonPmf, scoreMatrix, summarize, lineParts, lineResult, betResult, betProbs, betScore, evaluate,
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
     rps, outcome1x2, goalsRps, ece, backtestLeague, goalsSkill, marketSkill,
-    FT_PRIOR, NEWCOMER_PRIOR, newcomerPriorMean, classifyNewcomer, rescaleTotal
+    FT_PRIOR, NEWCOMER_PRIOR, newcomerPriorMean, classifyNewcomer, rescaleTotal,
+    MARKET_FIT, invert1x2, marketGames, marketCoverage
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoFT = api;
