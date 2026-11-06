@@ -722,7 +722,7 @@
       const pm = mdist ? cornerProbs(o.bet, mdist) : null, e = pm ? evaluate(pm, o.best.price) : null;
       rows.push({ key: o.key, bet: o.bet, group: 'corners', label: betLabel(o.bet, names && names.home || 'Local', names && names.away || 'Visitante'),
         price: o.best.price, bookmaker: o.best.bookmaker, fair: e ? e.fair : null, p: e ? e.p : null, ev: e ? e.ev : null, score: e ? e.score : 0,
-        mkt: o.mkt, sharp: !!o.sharp, offers: o.offers, evMkt: o.mkt > 0 ? o.mkt * o.best.price - 1 : null });
+        mkt: o.mkt, sharp: !!o.sharp, est: !!o.derived, offers: o.offers, evMkt: o.mkt > 0 ? o.mkt * o.best.price - 1 : null });
     }
     rows.sort((a, b) => b.score - a.score || (b.evMkt || -9) - (a.evMkt || -9));
     return { rows, mean };
