@@ -707,6 +707,55 @@ function leagueCfg(lid,games,season){
 // del modelo, la de Pinnacle (o la derivada de Pinnacle) y la mejor cuota. Después del partido se liquida.
 // Así se mide con datos propios si el modelo le gana al mercado y si apostar donde hay EV deja ganancia.
 const espFamily=k=>{const t=k.split(':');if(t[0]==='tt'&&t[2]==='over')return 'tt:'+t[1];if(t[0]==='c'&&t[2]==='over')return 'c:'+t[1];if(t[0]==='btts'&&t[1]==='yes')return 'btts';return null};
+/* ---------------- lecturas selladas (recomendaciones de la app) ---------------- */
+// Antes de cada partido se guarda (una sola vez, sin cambiarla después) la mejor apuesta de cada grupo que la app
+// recomienda: mercado con ✓ en la liga, EV positivo, Score 60 o más y cuota de tus casas. Después se liquida.
+const SEAL_MIN=60;
+function sealAlpha(a,areg){
+  if(!areg||!a.rows||a.ts*1000<=Date.now())return;
+  const best=new Map();
+  for(const r of aRows(a)){
+    if(!r.ok||!r.mp||!(r.aev>=A_EV)||r.asc<SEAL_MIN)continue;
+    const c=best.get(r.g);if(!c||r.asc>c.asc)best.set(r.g,r);
+  }
+  for(const [g,r] of best){
+    if(Object.values(areg).some(x=>x.fid===a.id&&x.g===g))continue; // ya hay una sellada de ese grupo
+    areg[a.id+'|'+r.k]={fid:a.id,k:r.k,l:r.l,g,lid:a.lid,ln:a.ln,lc:a.lc,hn:a.hn,an:a.an,ts:a.ts,p:+r.p.toFixed(4),pr:r.mp.pr,bk:r.mp.bk,ev:+r.aev.toFixed(4),sc:r.asc,at:Date.now()};
+  }
+}
+function settleAlpha(areg,gameById){
+  for(const e of Object.values(areg)){
+    if(e.res||e.ts*1000>Date.now()-2*3600e3)continue;
+    const bet=parseKey(e.k),x=gameById.get(String(e.fid));if(!bet||!x)continue;
+    let h=x.r[4],a=x.r[5];
+    if(bet.type==='corners'){const c=cornersOf(e.fid);if(!c)continue;[h,a]=c}
+    const st=F.settle(bet,h,a,e.pr);if(st)e.res={r:st.r,profit:st.profit,hg:x.r[4],ag:x.r[5]};
+  }
+  const ids=Object.keys(areg);if(ids.length>20000)ids.sort((x,y)=>areg[x].ts-areg[y].ts).slice(0,ids.length-20000).forEach(k=>delete areg[k]);
+}
+async function sealHtml(){
+  const areg=state.areg||(state.areg=(await DB.get('areg'))||{});
+  const all=Object.values(areg),done=all.filter(e=>e.res),pend=all.length-done.length;
+  let h=`<h2>Lecturas selladas <button class="info" data-tip="seal">i</button></h2>`;
+  if(!all.length)return h+`<div class="none">Todavía no hay lecturas. Desde ahora, cada <b>↻ Actualizar todo</b> guarda las apuestas que recomienda la app (Score ${SEAL_MIN}+ en mercados con ✓) y las liquida cuando terminan los partidos.</div>`;
+  const sum=list=>{const n=list.length,u=list.reduce((t,e)=>t+e.res.profit,0),w=list.filter(e=>e.res.r>0).length;return {n,u,w,roi:n?u/n:null}};
+  const T=sum(done);
+  h+=`<div class="tiles"><div class="tile"><div class="l">Resultado</div><div class="v ${T.u>0?'c-g':T.u<0?'c-b':''}">${T.n?(T.u>=0?'+':'−')+Math.abs(T.u).toFixed(2)+' u':'—'}</div><div class="small">${T.n} liquidadas · ${pend} pendientes</div></div>
+    <div class="tile"><div class="l">ROI</div><div class="v ${T.roi>0?'c-g':T.roi<0?'c-b':''}">${T.n?spct(T.roi):'—'}</div><div class="small">por apuesta (1 u cada una)</div></div>
+    <div class="tile"><div class="l">Acertadas</div><div class="v">${T.n?pct(T.w/T.n,0):'—'}</div><div class="small">${T.w} de ${T.n}</div></div></div>`;
+  const row=(name,list)=>{const x=sum(list);return `<tr><td>${name}</td><td>${x.n}</td><td>${x.n?pct(x.w/x.n,0):'—'}</td><td class="${x.u>0?'c-g':x.u<0?'c-b':''}">${x.n?(x.u>=0?'+':'−')+Math.abs(x.u).toFixed(2):'—'}</td><td class="${x.roi>0?'c-g':x.roi<0?'c-b':''}">${x.n?spct(x.roi):'—'}</td></tr>`};
+  const GN={high:'Muchos goles',low:'Pocos goles',home:'Resultado local',away:'Resultado visitante',other:'Otros',team:'Goles por equipo',corners:'Córners'};
+  h+=`<div class="xs" style="margin-top:10px"><table class="lg"><thead><tr><th>Mercado</th><th>Liquidadas</th><th>Acertadas</th><th>Unidades</th><th>ROI</th></tr></thead><tbody>`;
+  for(const [g,n] of Object.entries(GN)){const l=done.filter(e=>e.g===g);if(l.length)h+=row(n,l)}
+  h+=`</tbody></table></div>`;
+  h+=`<div class="xs" style="margin-top:10px"><table class="lg"><thead><tr><th>Score</th><th>Liquidadas</th><th>Acertadas</th><th>Unidades</th><th>ROI</th></tr></thead><tbody>`;
+  for(const [lo,hi] of [[60,69],[70,79],[80,100]]){const l=done.filter(e=>e.sc>=lo&&e.sc<=hi);h+=row(lo+'–'+(hi===100?'100':hi),l)}
+  h+=`</tbody></table></div>`;
+  const last=done.sort((x,y)=>y.ts-x.ts).slice(0,15);
+  if(last.length)h+=`<div class="xs" style="margin-top:10px"><table class="lg"><thead><tr><th>Últimas</th><th>Cuota</th><th>Score</th><th>Resultado</th></tr></thead><tbody>${last.map(e=>`<tr><td>${esc(e.l)}<span class="cn">${esc(e.hn)} vs ${esc(e.an)} · ${esc(e.bk||'')}</span></td><td>${dec(e.pr)}</td><td>${e.sc}</td><td>${e.res.r>0?`<span class="c-g">${e.res.r<1?'½ ':''}ganada</span>`:e.res.r<0?`<span class="c-b">${e.res.r>-1?'½ ':''}perdida</span>`:'devuelta'}<span class="cn">${e.res.hg}-${e.res.ag}</span></td></tr>`).join('')}</tbody></table></div>`;
+  h+=`<p class="small">Cada lectura se guarda la primera vez que la app la recomienda y no se cambia después. Con menos de unas 100 liquidadas, el resultado es casi todo suerte.</p>`;
+  return h;
+}
 function recordEsp(a,esp){
   if(!a.rows||a.ts*1000<=Date.now())return;
   const fam=new Map();
@@ -844,6 +893,7 @@ async function updateAll(){
     const first=(await DB.get('first'))||{};
     try{localStorage.removeItem('tg:first')}catch(e){}
     const esp=state.esp=(await DB.get('esp'))||{};
+    const areg=state.areg=(await DB.get('areg'))||{};
     for(const d of dates){
       const day={date:d,ts:Date.now(),fx:[]};
       const byL=new Map();for(const f of fixtures[d])if(odds[d].has(String(f.id))){if(!byL.has(f.lid))byL.set(f.lid,[]);byL.get(f.lid).push(f)}
@@ -871,7 +921,7 @@ async function updateAll(){
               a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
               if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
               else{
-                buildRows(a,o,first);recordEsp(a,esp);
+                buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);
                 const m1x2=F.market1x2(o);
                 if(m1x2&&f.ts*1000>Date.now()&&!(reg[f.id]&&Number.isFinite(reg[f.id].hg))){
                   const s=F.summarize(F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho));
@@ -881,7 +931,7 @@ async function updateAll(){
             }
           }
           // Sin modelo, igual se muestran los mercados con el precio de las casas.
-          if(!a.lam){const o=F.parseOdds(odds[d].get(String(f.id)));if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp)}}
+          if(!a.lam){const o=F.parseOdds(odds[d].get(String(f.id)));if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg)}}
           day.fx.push(a);
         }
         await sleep(0);
@@ -928,6 +978,7 @@ async function updateAll(){
     const ids=Object.keys(reg);if(ids.length>40000)ids.sort((a,b)=>reg[a].ts-reg[b].ts).slice(0,ids.length-40000).forEach(k=>delete reg[k]);
     await DB.set('reg',reg);
     settleEsp(esp,gameById);await DB.set('esp',esp);
+    settleAlpha(areg,gameById);await DB.set('areg',areg);
     prog(7,8);
     // 7) Precisión de todas las ligas con historial.
     await computePrecision(allLeagues,reg,t=>say(t));
@@ -1277,7 +1328,7 @@ async function refreshAllOdds(){
   state.running=true;state.calls=0;$('#btnMkOdds').disabled=true;st.classList.remove('err');
   try{
     await loadBets();
-    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{};
+    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{},areg=state.areg=state.areg||(await DB.get('areg'))||{};
     let n=0;const days=[dayStr(0),dayStr(1)];
     for(const [i,d] of days.entries()){
       const day=await getDay(d);if(!day)continue;
@@ -1287,11 +1338,11 @@ async function refreshAllOdds(){
       for(const a of day.fx){
         const its=m.get(String(a.id));if(!its||a.ts*1000<=Date.now())continue;
         const o=F.parseOdds(its);if(!o.size)continue;
-        buildRows(a,o,first);recordEsp(a,esp);a.readAt=Date.now();n++;
+        buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);a.readAt=Date.now();n++;
       }
       day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
     }
-    await DB.set('first',first);await DB.set('esp',esp);if(betsDirty)await saveBets();
+    await DB.set('first',first);await DB.set('esp',esp);await DB.set('areg',areg);if(betsDirty)await saveBets();
     st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`;state.lastCalls=state.calls;scheduleQuota();
   }catch(e){st.textContent=e.message;st.classList.add('err')}
   pg.classList.add('hidden');state.running=false;$('#btnMkOdds').disabled=false;
@@ -1624,7 +1675,7 @@ async function renderPrec(){
     <div class="tile"><div class="l">Goles por equipo <button class="info" data-tip="skillTeam">i</button></div><div class="v ${(S.team||{}).skill>0?'c-g':'c-d'}">${spct((S.team||{}).skill)}</div><div class="small">${(S.team||{}).n||0} partidos</div></div>
     <div class="tile"><div class="l">Córners <button class="info" data-tip="skillCorners">i</button></div><div class="v ${(S.corners||{}).skill>0?'c-g':'c-d'}">${(S.corners||{}).n?spct(S.corners.skill):'—'}</div><div class="small">${(S.corners||{}).n||0} partidos</div></div></div>`;
   {const ck=fdcCheck();if(FDC.size)h+=`<p class="small">Córners de football-data.co.uk: ${FDC.size.toLocaleString('es-AR')} partidos. ${ck.n?`Comparados con API-Football en ${ck.n} partidos: coinciden exacto ${pct(ck.exact,0)} y con ±1 córner ${pct(ck.near,0)}. ${ck.ok?'Se usan.':'<b class="c-b">No se usan: coinciden poco.</b>'}`:'Todavía no hay partidos con las dos fuentes para compararlos.'}</p>`}
-  h+=await espHtml();
+  h+=await sealHtml();
   h+=`<h2>Explorá cada liga <button class="info" data-tip="table">i</button></h2>
     <div class="tools"><input type="search" id="pq" placeholder="Buscar liga o país" value="${esc(precQ)}"><select id="psort"><option value="n"${precSort==='n'?' selected':''}>Más partidos</option><option value="res"${precSort==='res'?' selected':''}>Mejor en 1X2</option><option value="goals"${precSort==='goals'?' selected':''}>Mejor en goles</option><option value="btts"${precSort==='btts'?' selected':''}>Mejor en ambos marcan</option><option value="team"${precSort==='team'?' selected':''}>Mejor en goles por equipo</option><option value="corners"${precSort==='corners'?' selected':''}>Mejor en córners</option></select></div>`;
   const q=precQ.toLowerCase();
@@ -1692,6 +1743,7 @@ const TIPS={
   dif:['Diferencia','Puntos de probabilidad que el modelo ve de más (+) o de menos (−) contra Pinnacle. +5 = el modelo le da 5 puntos más (por ejemplo 60% contra 55%). Arriba de la lista van los partidos donde el modelo ve más que Pinnacle: ahí cree que el mercado se equivoca. Confiá más en las ligas con ✓.'],
   minodd:['Cuota mínima','La cuota que tiene que pagar tu casa para que haya valor según el modelo y según Pinnacle: la más alta de las dos cuotas justas, más 2%. Si tu casa paga eso o más, apostá; si no, salteala.'],
   skillBtts:['Ambos marcan','Cuánto mejor acierta el modelo si marcan los dos equipos que decir siempre el promedio de la liga (error de Brier). Cada partido se predice solo con los anteriores. Es el ✓ de la pestaña Ambos marcan.'],
+  seal:['Lecturas selladas','Las apuestas que la app recomendó antes de cada partido (Score 60 o más, en mercados con ✓ en esa liga, con la cuota de tus casas de ese momento). Se guardan la primera vez y no se cambian. Después se liquidan con el resultado real: así ves cuánto habrías ganado siguiendo a la app, apostando 1 unidad en cada una.'],
   skillTeam:['Goles por equipo','Cuánto mejor acierta el modelo los goles de cada equipo (los mercados «Local/Visitante más de…») que decir siempre el promedio de la liga. Cada partido se predice solo con los anteriores.'],
   skillCorners:['Córners','Cuánto mejor acierta el modelo el total de córners de cada partido que decir siempre el promedio de la liga. Necesita las estadísticas de los partidos: se bajan junto con el xG en cada actualización.'],
   espReg:['Registro: modelo contra Pinnacle','Antes de cada partido la app guarda la línea principal de goles por equipo, ambos marcan y córners: lo que decía el modelo, lo que decía Pinnacle (o el precio armado con sus mercados principales) y la mejor cuota. Después del partido lo liquida. «Modelo vs mercado» positivo = el modelo acertó mejor que Pinnacle. Las columnas de apuestas muestran qué habría pasado apostando en cada caso con EV de 2% o más.'],
