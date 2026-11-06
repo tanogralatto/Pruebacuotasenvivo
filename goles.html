@@ -1043,10 +1043,10 @@ function parseKey(k){
 }
 const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
 function packDay(day){
-  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0]);return o})};
+  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0,r.p>0?+r.p.toFixed(4):null,r.my===undefined?0:r.my,r.es==null?null:r.es]);return o})};
 }
 function unpackDay(d){
-  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh])=>{const bet=parseKey(k);return {k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0}});return o})};
+  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh,pp,my,es])=>{const bet=parseKey(k);const r={k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0,p:pp>0?pp:f>0?1/f:null};if(my!==undefined&&my!==0)r.my=my;else if(my===0)r.my=null;if(es!=null)r.es=es;return r});return o})};
 }
 function mergeReg(local,cloud){
   for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
@@ -1398,7 +1398,7 @@ async function renderDash(){
   const up=await getUpdated();
   $('#updWhen').innerHTML=up?`Última actualización <b>${ago(up)}</b>`:'Todavía no se actualizó. Tocá <b>Actualizar todo</b>.';
   const list=$('#dList');
-  if(!state.key){list.innerHTML='<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>.</div>';return}
+  if(!state.key&&!(await getDay(dayStr(0)))&&!(await getDay(dayStr(1)))){list.innerHTML='<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>, o entrá con tu cuenta (☁︎ arriba) para ver lo que actualizaste en otro dispositivo.</div>';return}
   state.prec=state.prec||await DB.get('prec');
   let fx=[];
   if(state.view==='fav'){
