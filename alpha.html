@@ -268,7 +268,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>Cuota justa</b>: 1 ÷ la probabilidad del modelo.</li>
       <li><b>EV</b>: cuánto paga de más la casa frente a la cuota justa. +5% = en promedio ganarías $5 cada $100.</li>
       <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras).</li>
-      <li><b>Match score</b>: el valor de todo el partido (combina los dos mejores grupos).</li>
+      <li><b>Match score</b>: el Score de la mejor apuesta del partido. Con <b>Ordenar: Mayor score</b>, los mejores partidos quedan arriba.</li>
       <li><b>✓ / ✕ en cada grupo</b>: si el modelo acierta en ese mercado en esa liga (pestaña Precisión). Confiá en los ✓.</li>
     </ul>
     <p class="small">Nada garantiza ganancia: anotá tus apuestas y mirá el resultado en Mis apuestas. Las rachas malas son normales: apostá montos chicos y parejos.</p>
@@ -282,6 +282,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="status" id="uStatus"></div>
   <div class="filters box">
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
+    <div class="fl" style="margin-top:4px"><div class="fl-h"><b>Ordenar</b></div><div class="seg" id="aSort"><button data-asort="league">Por liga y hora</button><button data-asort="score">Mayor score</button></div></div>
     <div class="fl"><div class="fl-h"><b>Match score mínimo</b> <span class="mono" id="aMinVal">0+</span></div><input type="range" id="aMin" min="0" max="95" step="5" value="0"></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
   </div>
@@ -1325,15 +1326,20 @@ function myPrice(r){
   const x=(r.of||[]).find(([b])=>re.test(b));return x?{pr:x[1],bk:x[0]}:null;
 }
 const A_EV=0.02; // EV mínimo para mostrar una apuesta como «con valor»
+// Score (0-100) en la escala de Alpha: crece con el EV, premia las cuotas bajas y medias, y castiga fuerte las
+// apuestas poco probables (menos de 45%). Ajustado con las líneas de Alpha de Hammarby–Elfsborg.
+function aScore(ev,p){
+  if(!(ev>0)||!(p>0))return 0;
+  return Math.round(100*Math.sqrt(Math.tanh(ev/0.10))*Math.pow(p,0.7)*Math.min(1,(p/0.45)**2));
+}
 // Filas del partido como en Alpha: cuota de tus casas, cuota justa del modelo, EV y score.
 function aRows(a){
-  return (a.rows||[]).filter(r=>r.p>0).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:ev>0?F.betScore(ev,r.p):0})});
+  return (a.rows||[]).filter(r=>r.p>0).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p)})});
 }
-// Match score (0-100): combina los dos grupos con mejor score.
+// Match score (0-100): el Score de la mejor línea con valor del partido (lo que ves arriba al abrirlo).
 function aEdge(rows){
-  const best={};for(const r of rows)if(r.aev>=A_EV&&r.asc>(best[r.g]||0))best[r.g]=r.asc;
-  const top=Object.values(best).sort((x,y)=>y-x).slice(0,2);
-  return top.length?Math.round(100*(1-top.reduce((acc,s)=>acc*(1-s/100),1))):0;
+  let b=0;for(const r of rows)if(r.aev>=A_EV&&r.asc>b)b=r.asc;
+  return b;
 }
 function edgeHtml(v){
   const c=v>=65?'g':v>=35?'m':'d';
@@ -1372,6 +1378,19 @@ async function renderDash(){
     if(minE&&e<minE)continue;
     if(!groups.has(a.lid))groups.set(a.lid,{first:a.ts,list:[]});
     const g=groups.get(a.lid);g.list.push({a,e});g.first=Math.min(g.first,a.ts);
+  }
+  const sortBy=LS.get('tg:asort','league');
+  $$('#aSort [data-asort]').forEach(b=>b.classList.toggle('on',b.dataset.asort===sortBy));
+  if(sortBy==='score'){
+    // Una sola lista, de mayor a menor match score, con la liga en cada partido.
+    const all=[...groups.values()].flatMap(g=>g.list).sort((x,y)=>y.e-x.e||x.a.ts-y.a.ts);
+    const shown=showAllLeagues?all:all.slice(0,150);
+    list.innerHTML=shown.map(({a,e})=>{
+      const live=a.st&&!['NS','TBD','PST'].includes(a.st);
+      const right=a.lam||a.clam?edgeHtml(e):`<span class="na">Sin análisis</span>`;
+      return `<div class="fxw"><a class="fx" href="#/partido/${a.id}"><span class="t">${live?'<span class="c-g">'+esc(a.st)+'</span>':fmtTime(a.iso)}</span><span class="teams"><div>${esc(a.hn)}</div><div><span class="vsw">vs</span> ${esc(a.an)}</div><div class="dl">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)}</div></span>${right}<span class="go">›</span></a><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" aria-label="Favorito">${fv[a.id]?'★':'☆'}</button></div>`;
+    }).join('')+(!showAllLeagues&&all.length>150?`<button class="btn more-leagues" id="btnMoreLeagues">Mostrar los otros ${all.length-150} partidos</button>`:'')||'<div class="empty">Ningún partido con esos filtros.</div>';
+    return;
   }
   const ordered=[...groups.values()].sort((x,y)=>x.first-y.first);
   const LIMIT=40;let html='';
@@ -1720,6 +1739,7 @@ $('#mkList').addEventListener('click',e=>{if(e.target.closest('[data-add],a,butt
 $('#mkGreen').addEventListener('change',e=>{LS.set('tg:mkgreen',e.target.checked);renderMk()});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();const i=b.dataset.add.indexOf('|');addBet(b.dataset.add.slice(0,i),b.dataset.add.slice(i+1))});
 ['q','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',()=>{showAllLeagues=false;renderDash()}));
+$('#aSort').addEventListener('click',e=>{const b=e.target.closest('[data-asort]');if(!b)return;LS.set('tg:asort',b.dataset.asort);showAllLeagues=false;renderDash()});
 $('#aMin').addEventListener('input',e=>{LS.set('tg:amin',Number(e.target.value));showAllLeagues=false;renderDash()});
 $('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
 $('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
