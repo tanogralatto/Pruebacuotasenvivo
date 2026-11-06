@@ -91,6 +91,7 @@
       case 'btts': return ((i > 0 && j > 0) === (bet.pick === 'yes')) ? 1 : -1;
       case 'total': return bet.side === 'over' ? lineResult(i + j, -bet.line) : lineResult(-(i + j), bet.line);
       case 'ah': return bet.side === 'home' ? lineResult(i - j, bet.line) : lineResult(j - i, bet.line);
+      case 'tt': { const x = bet.team === 'home' ? i : j; return bet.side === 'over' ? lineResult(x, -bet.line) : lineResult(-x, bet.line); }
       default: return null;
     }
   }
@@ -135,6 +136,9 @@
     const n = String(name || '');
     if (HALF.test(n) || /corner|card|tarjeta|booking/i.test(n)) return null;
     if (/^(match winner|1x2|resultado( final)?|full ?time result)$/i.test(n.trim())) return '1x2';
+    // Goles de un solo equipo («Total - Home» / «Total - Away» en API-Football).
+    const tt = n.trim().match(/^(?:total\s*-\s*(home|away)|(home|away)\s*team\s*(?:total\s*)?goals?(?:\s*over\s*\/?\s*under)?|(home|away)\s*team\s*over\s*\/?\s*under)$/i);
+    if (tt) return 'tt:' + (tt[1] || tt[2] || tt[3]).toLowerCase();
     if (/^double chance$|^doble oportunidad$/i.test(n.trim())) return 'dc';
     if (/^(both teams (to )?score|ambos (equipos )?marcan|btts)$/i.test(n.trim())) return 'btts';
     if (/asian\s*handicap|h[aá]ndicap\s*asi[aá]tico/i.test(n) && !/alternative/i.test(n)) return 'ah';
@@ -166,6 +170,13 @@
       if (!(line >= 0.5 && line <= 8)) return null;
       return ['total:' + side + ':' + line, { type: 'total', side, line }];
     }
+    if (kind.startsWith('tt:')) {
+      const team = kind.slice(3), m = lv.match(/^(over|under|más de|mas de|menos de)\s*([0-9]+(?:[.,][0-9]+)?)$/);
+      if (!m) return null;
+      const side = /^(over|más de|mas de)/.test(m[1]) ? 'over' : 'under', line = q4(num(m[2]));
+      if (!(line >= 0.5 && line <= 5)) return null;
+      return ['tt:' + team + ':' + side + ':' + line, { type: 'tt', team, side, line }];
+    }
     if (kind === 'ah') {
       const m = v.match(/^(home|away|local|visitante|1|2)\s*([+-]?\d+(?:[.,]\d+)?)(?:\s*[,/]\s*([+-]?\d+(?:[.,]\d+)?))?$/i);
       let side = null, line = null;
@@ -188,10 +199,42 @@
     if (t === 'btts') return 'btts';
     if (t === 'total') return 'total:' + b;
     if (t === 'ah') return 'ah:' + (a === 'home' ? Number(b) : -Number(b));
+    if (t === 'tt') return 'tt:' + a + ':' + key.split(':')[3];
     return null; // doble oportunidad: se saca del 1X2
   }
 
   const MAX_GAP = 0.10; // una casa que se aleja más de 10 puntos del precio de referencia casi siempre tiene una cuota vieja
+
+  // Goles esperados de cada equipo que mejor reproducen el 1X2 y los totales de Pinnacle (sin margen).
+  // Arranca de invert1x2 y ajusta con búsqueda por coordenadas en escala log. null si no hay 1X2 de Pinnacle.
+  function sharpLambdas(odds) {
+    const h = odds.get('1x2:home'), d = odds.get('1x2:draw'), a = odds.get('1x2:away');
+    if (!h || !d || !a || !h.sharp || !d.sharp || !a.sharp) return null;
+    const p = [h.mkt, d.mkt, a.mkt], s = p[0] + p[1] + p[2];
+    const start = invert1x2(p.map(x => x / s), -0.06);
+    if (!start) return null;
+    const totals = [];
+    for (const [k, o] of odds) if (o.sharp && o.bet.type === 'total' && o.bet.side === 'over' && Math.abs(o.bet.line % 1 - 0.5) < 1e-9) totals.push([o.bet.line, o.mkt]);
+    if (!totals.length) return start;
+    const err = (x, y) => {
+      const m = scoreMatrix(Math.exp(x), Math.exp(y), -0.06), sm = summarize(m);
+      let e = (sm.home - p[0] / s) ** 2 + (sm.draw - p[1] / s) ** 2 + (sm.away - p[2] / s) ** 2;
+      for (const [line, q] of totals) e += (betProbs({ type: 'total', side: 'over', line }, m).p - q) ** 2;
+      return e;
+    };
+    let x = Math.log(start.lh), y = Math.log(start.la), cur = err(x, y);
+    for (let step = 0.1; step > 0.001; step /= 2) {
+      let moved = true;
+      while (moved) {
+        moved = false;
+        for (const [dx, dy] of [[step, 0], [-step, 0], [0, step], [0, -step], [step, step], [-step, -step]]) {
+          const e = err(x + dx, y + dy);
+          if (e < cur - 1e-12) { cur = e; x += dx; y += dy; moved = true; }
+        }
+      }
+    }
+    return { lh: Math.exp(x), la: Math.exp(y) };
+  }
 
   // Devuelve Map(clave -> {key, bet, best:{price,bookmaker}, mkt (probabilidad sin margen), books})
   function parseOdds(response) {
@@ -239,21 +282,46 @@
     }
     const out = new Map();
     const median = xs => { const s = xs.slice().sort((a, b) => a - b), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
-    for (const [k, list] of fairBy) {
-      const pin = list.find(x => /pinnacle/i.test(x.bk));
-      const med = median(list.map(x => x.p));
-      const ref = pin && (list.length < 3 || Math.abs(pin.p - med) <= MAX_GAP) ? pin.p : med;
+    // Mejor cuota y casas que pagan más que el precio justo (para «Mis casas» y la pestaña Valor).
+    const pickBest = (list, ref) => {
       let best = null;
-      const offers = []; // casas que pagan más que el precio justo (para «Mis casas» y la pestaña Valor)
+      const offers = [];
       for (const x of list) {
         if (Math.abs(x.p - ref) > MAX_GAP) continue;
         if (!best || x.price > best.price) best = { price: x.price, bookmaker: x.bk };
         if (x.price * ref - 1 > 0 && !/pinnacle/i.test(x.bk)) offers.push([x.bk, x.price]);
       }
       offers.sort((a, b) => b[1] - a[1]);
+      return { best, offers };
+    };
+    for (const [k, list] of fairBy) {
+      const pin = list.find(x => /pinnacle/i.test(x.bk));
+      const med = median(list.map(x => x.p));
+      const ref = pin && (list.length < 3 || Math.abs(pin.p - med) <= MAX_GAP) ? pin.p : med;
+      const { best, offers } = pickBest(list, ref);
       const bet = perBook.get(list[0].bk).get(k).bet;
       const sharp = !!(pin && ref === pin.p);
       if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length, sharp, offers });
+    }
+    // Mercados que las casas arman con fórmulas (goles de cada equipo, ambos marcan): si Pinnacle no los cotiza,
+    // el precio justo sale de su 1X2 y sus totales (los mercados donde más dinero profesional entra), pasados
+    // a goles esperados de cada equipo. Así se compara cada casa contra Pinnacle y no contra la mediana de casas
+    // que usan la misma fórmula.
+    const lam = sharpLambdas(out);
+    if (lam) {
+      const m = scoreMatrix(lam.lh, lam.la, -0.06);
+      for (const [k, list] of fairBy) {
+        const t = k.split(':')[0];
+        if (t !== 'tt' && t !== 'btts') continue;
+        const cur = out.get(k);
+        if (cur && cur.sharp) continue;
+        const bet = perBook.get(list[0].bk).get(k).bet, ref = betProbs(bet, m).p;
+        if (!isNum(ref)) continue;
+        // Las casas se comparan con su propia cuota sin margen; a la referencia derivada se le da más tolerancia.
+        const { best, offers } = pickBest(list.map(x => Object.assign({}, x, { p: Math.abs(x.p - ref) <= MAX_GAP + 0.05 ? ref : x.p })), ref);
+        if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length, sharp: true, derived: true, offers });
+      }
+      out.lambdas = lam;
     }
     // Doble oportunidad: precio sin margen sacado del 1X2; mejor cuota de las casas que la ofrecen.
     const h = out.get('1x2:home'), d = out.get('1x2:draw'), a = out.get('1x2:away');
@@ -296,7 +364,8 @@
     { id: 'low', title: 'Pocos goles', kind: 'goals' },
     { id: 'home', title: 'Gana {home}', kind: 'result' },
     { id: 'away', title: 'Gana {away}', kind: 'result' },
-    { id: 'other', title: 'Otros', kind: 'result' }
+    { id: 'other', title: 'Otros', kind: 'result' },
+    { id: 'team', title: 'Goles de cada equipo', kind: 'goals' }
   ];
   function groupOf(bet) {
     if (bet.type === 'total') return bet.side === 'over' ? 'high' : 'low';
@@ -304,6 +373,7 @@
     if (bet.type === '1x2') return bet.pick === 'draw' ? 'other' : bet.pick;
     if (bet.type === 'dc') return bet.pick === '1X' ? 'home' : bet.pick === 'X2' ? 'away' : 'other';
     if (bet.type === 'ah') return bet.side;
+    if (bet.type === 'tt') return 'team';
     return 'other';
   }
   const fmtLine = l => (l > 0 ? '+' : l < 0 ? '−' : '') + String(Math.abs(l)).replace('.', ',');
@@ -314,6 +384,7 @@
       case 'btts': return 'Ambos marcan ' + (bet.pick === 'yes' ? 'Sí' : 'No');
       case 'total': return (bet.side === 'over' ? 'Más de ' : 'Menos de ') + String(bet.line).replace('.', ',');
       case 'ah': return 'Hándicap ' + (bet.side === 'home' ? hn : an) + ' ' + fmtLine(bet.line);
+      case 'tt': return 'Goles ' + (bet.team === 'home' ? hn : an) + (bet.side === 'over' ? ': más de ' : ': menos de ') + String(bet.line).replace('.', ',');
       default: return '';
     }
   }
@@ -668,7 +739,7 @@
     kelly, settle, nameSim, matchFd, dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
     poissonPmf, scoreMatrix, summarize, lineParts, lineResult, betResult, betProbs, betScore, evaluate,
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
-    rps, outcome1x2, goalsRps, ece, backtestLeague, goalsSkill, marketSkill,
+    rps, outcome1x2, goalsRps, sharpLambdas, ece, backtestLeague, goalsSkill, marketSkill,
     FT_PRIOR, NEWCOMER_PRIOR, newcomerPriorMean, classifyNewcomer, rescaleTotal,
     MARKET_FIT, invert1x2, marketGames, marketCoverage
   };

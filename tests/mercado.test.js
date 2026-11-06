@@ -52,3 +52,30 @@ test('con datos reales: el modelo de mercado queda más cerca de Pinnacle que el
   assert.ok(n > 300, 'pocos partidos: ' + n);
   assert.ok(dMarket / n < 0.8 * dGoals / n, `mercado ${(dMarket / n).toFixed(4)} vs goles ${(dGoals / n).toFixed(4)}`);
 });
+
+test('goles de cada equipo: se leen, se resuelven y su precio justo sale del 1X2 y el total de Pinnacle', () => {
+  const lh = 1.7, la = 0.9, m = F.scoreMatrix(lh, la, -0.06), s = F.summarize(m);
+  const o25 = F.betProbs({ type: 'total', side: 'over', line: 2.5 }, m).p;
+  const odd = (p, mg) => (1 / (p * mg)).toFixed(3);
+  const book = (name, mg, extra) => ({ name, bets: [
+    { id: 1, name: 'Match Winner', values: [{ value: 'Home', odd: odd(s.home, mg) }, { value: 'Draw', odd: odd(s.draw, mg) }, { value: 'Away', odd: odd(s.away, mg) }] },
+    { id: 5, name: 'Goals Over/Under', values: [{ value: 'Over 2.5', odd: odd(o25, mg) }, { value: 'Under 2.5', odd: odd(1 - o25, mg) }] }].concat(extra || []) });
+  // La casa blanda paga de más «visitante más de 0,5» (le da 55% cuando lo justo es ~59%).
+  const pAway05 = 1 - Math.exp(-la);
+  const soft = { id: 17, name: 'Total - Away', values: [{ value: 'Over 0.5', odd: odd(0.55, 1.06) }, { value: 'Under 0.5', odd: odd(0.45, 1.06) }] };
+  const odds = F.parseOdds([{ fixture: { id: 1 }, bookmakers: [book('Pinnacle', 1.025), book('Bet365', 1.06, [soft])] }]);
+  close(odds.lambdas.lh, lh, 0.02); close(odds.lambdas.la, la, 0.02);
+  const x = odds.get('tt:away:over:0.5');
+  assert.ok(x && x.derived && x.sharp);
+  close(x.mkt, F.betProbs({ type: 'tt', team: 'away', side: 'over', line: 0.5 }, F.scoreMatrix(odds.lambdas.lh, odds.lambdas.la, -0.06)).p);
+  close(x.mkt, pAway05, 0.03);
+  assert.ok(x.offers.length && x.offers[0][0] === 'Bet365'); // paga más que lo justo
+  assert.equal(F.groupOf(x.bet), 'team');
+  assert.equal(F.betLabel(x.bet, 'Boca', 'River'), 'Goles River: más de 0,5');
+  assert.equal(F.betResult({ type: 'tt', team: 'away', side: 'over', line: 0.5 }, 3, 1), 1);
+  assert.equal(F.betResult({ type: 'tt', team: 'home', side: 'under', line: 1.5 }, 2, 0), -1);
+  assert.equal(F.betResult({ type: 'tt', team: 'home', side: 'over', line: 1 }, 1, 0), 0); // devuelve
+  // Sin Pinnacle no hay derivación: queda el precio de la mediana de las casas.
+  const noPin = F.parseOdds([{ fixture: { id: 1 }, bookmakers: [book('Bet365', 1.06, [soft])] }]);
+  assert.ok(!noPin.lambdas && !noPin.get('tt:away:over:0.5').derived);
+});
