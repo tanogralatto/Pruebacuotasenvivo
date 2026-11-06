@@ -269,7 +269,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>EV</b>: cuánto paga de más la casa frente a la cuota justa. +5% = en promedio ganarías $5 cada $100.</li>
       <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras).</li>
       <li><b>Match score</b>: como en Alpha, la mejor apuesta del partido más una parte de la segunda mejor (por eso puede ser unos puntos más alto que cualquier línea). 0 = sin valor; 65+ = muchas oportunidades. Con <b>Ordenar: Mayor score</b>, los mejores partidos quedan arriba.</li>
-      <li><b>✓ / ✕ en cada grupo</b>: si el modelo acierta en ese mercado en esa liga (pestaña Precisión). Confiá en los ✓.</li>
+      <li><b>✓ / ✕ en cada grupo</b>: si el modelo acierta en ese mercado en esa liga (pestaña Precisión). Con <b>Solo mercados con ✓</b> (activado de entrada), los mercados sin ✓ no se muestran ni cuentan para el match score: la app solo te recomienda lo que está comprobado.</li>
     </ul>
     <p class="small">Nada garantiza ganancia: anotá tus apuestas y mirá el resultado en Mis apuestas. Las rachas malas son normales: apostá montos chicos y parejos.</p>
   </details>
@@ -282,6 +282,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="status" id="uStatus"></div>
   <div class="filters box">
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
+    <label class="small row" style="gap:6px;margin:2px 0 8px"><input type="checkbox" id="aOk" style="accent-color:var(--acc)"> <b>Solo mercados con ✓</b>&nbsp;(probados en esa liga en Precisión)</label>
     <div class="fl" style="margin-top:4px"><div class="fl-h"><b>Ordenar</b></div><div class="seg" id="aSort"><button data-asort="league">Por liga y hora</button><button data-asort="score">Mayor score</button></div></div>
     <div class="fl"><div class="fl-h"><b>Match score mínimo</b> <span class="mono" id="aMinVal">0+</span></div><input type="range" id="aMin" min="0" max="95" step="5" value="0"></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
@@ -1335,14 +1336,16 @@ function aScore(ev,p){
   return Math.round(100*Math.pow(Math.tanh(ev/0.08),0.6)*Math.pow(p,0.7)*Math.min(1,p/0.55));
 }
 // Filas del partido como en Alpha: cuota de tus casas, cuota justa del modelo, EV y score.
+const onlyOk=()=>LS.get('tg:aok',true)!==false;
 function aRows(a){
-  return (a.rows||[]).filter(r=>r.p>0&&okCornerRow(r)).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p)})});
+  const st=leagueStatus(a.lid);
+  return (a.rows||[]).filter(r=>r.p>0&&okCornerRow(r)).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p),ok:st[stKey(r.k)]==='g'})});
 }
 // Match score (0-100) como Alpha: la mejor línea + 40% de lo que le falta para 100, multiplicado por la segunda
 // mejor línea. Reproduce a ±1 los 7 partidos de Alpha comparados (Hammarby, Gaziantep, Independiente, Venezia,
 // Everton y Hamburgo).
 function aEdge(rows){
-  const sc=rows.filter(r=>r.aev>=A_EV).map(r=>r.asc).sort((x,y)=>y-x);
+  const only=onlyOk(),sc=rows.filter(r=>r.aev>=A_EV&&(!only||r.ok)).map(r=>r.asc).sort((x,y)=>y-x);
   const s1=sc[0]||0,s2=sc[1]||0;
   return Math.round(s1+(100-s1)*(s2/100)*0.4);
 }
@@ -1369,6 +1372,7 @@ async function renderDash(){
     fx=d.fx;
   }
   const q=$('#q').value.trim().toLowerCase(),fv=favs(),lgSel=$('#lg').value,slot=LS.get('tg:slot','all'),minE=Number(LS.get('tg:amin',0));
+  $('#aOk').checked=onlyOk();
   $('#aMin').value=String(minE);$('#aMinVal').textContent=minE+'+';
   $$('#slot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===slot));
   const lgs=new Map();for(const a of fx)lgs.set(String(a.lid),a.lc+' · '+a.ln);
@@ -1444,6 +1448,12 @@ async function renderMatch(id){
     const gr=rows.filter(r=>r.g===g.id).sort((x,y)=>y.asc-x.asc||(y.aev!=null?y.aev:-9)-(x.aev!=null?x.aev:-9));
     if(!gr.length)continue;
     const st=g.kind==='goals'?(g.id==='team'?s.team:s.goals):g.kind==='corners'?s.corners:s.res;
+    const blocked=onlyOk()&&!gr.some(r=>r.ok)&&!open.has('ok:'+g.id);
+    if(blocked){
+      const why=st==='w'?'todavía faltan partidos para saber si acierta':st==='n'?(g.kind==='result'?'no acierta mejor que el mercado (Pinnacle)':'no acierta mejor que el promedio de la liga'):'no hay datos suficientes de esta liga';
+      h+=`<div class="grp"><div class="grp-h"><span class="n">${esc((TITLES[g.id]||g.title).replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${gr.length})</span>${statusChip(st,'en esta liga')}</div><div class="none">El modelo todavía no está probado en este mercado en esta liga: ${why}. No cuenta para el match score.</div><button class="more" data-more="ok:${g.id}">Mostrar igual</button></div>`;
+      continue;
+    }
     const val=gr.filter(r=>r.aev>=A_EV),all=open.has(g.id),show=all?gr:val;
     h+=`<div class="grp"><div class="grp-h"><span class="n">${esc((TITLES[g.id]||g.title).replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${gr.length})</span>${statusChip(st,'en esta liga')}</div>`;
     if(show.length){
@@ -1744,6 +1754,7 @@ $('#mkList').addEventListener('click',e=>{if(e.target.closest('[data-add],a,butt
 $('#mkGreen').addEventListener('change',e=>{LS.set('tg:mkgreen',e.target.checked);renderMk()});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();const i=b.dataset.add.indexOf('|');addBet(b.dataset.add.slice(0,i),b.dataset.add.slice(i+1))});
 ['q','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',()=>{showAllLeagues=false;renderDash()}));
+$('#aOk').addEventListener('change',e=>{LS.set('tg:aok',e.target.checked);showAllLeagues=false;renderDash()});
 $('#aSort').addEventListener('click',e=>{const b=e.target.closest('[data-asort]');if(!b)return;LS.set('tg:asort',b.dataset.asort);showAllLeagues=false;renderDash()});
 $('#aMin').addEventListener('input',e=>{LS.set('tg:amin',Number(e.target.value));showAllLeagues=false;renderDash()});
 $('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
