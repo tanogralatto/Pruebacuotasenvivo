@@ -1861,20 +1861,32 @@ function friendly(e){
   if(c==='auth/network-request-failed')return 'Sin conexión.';
   return (e&&e.message)||'Error desconocido.';
 }
+// Cada subida escribe sus pedazos con una versión nueva (id@versión~k) y devuelve {n, v}. El índice (meta) se
+// cambia recién al final: si una subida se corta, el índice sigue apuntando a la versión anterior, completa.
+// Antes los pedazos se pisaban en el lugar y una subida cortada dejaba una mezcla que no se podía leer.
+const partKey=(id,info,k)=>info&&typeof info==='object'?id+'@'+info.v+'~'+k:id+'~'+k;
 async function putText(id,obj){
-  const txt=JSON.stringify(obj),parts=[];
+  const txt=JSON.stringify(obj),parts=[],info={n:0,v:Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
   for(let i=0;i<txt.length;i+=MAXC)parts.push(txt.slice(i,i+MAXC));
   for(let k=0;k<parts.length;k+=10){
     const b=writeBatch(db);
-    parts.slice(k,k+10).forEach((p,j)=>b.set(ref(id+'~'+(k+j)),{v:p}));
+    parts.slice(k,k+10).forEach((p,j)=>b.set(ref(partKey(id,info,k+j)),{v:p}));
     await b.commit();
   }
-  return parts.length;
+  info.n=parts.length;
+  return info;
 }
-async function getText(id,n){
+async function getText(id,info){
+  const n=info&&typeof info==='object'?info.n:info;
   let txt='';
-  for(let k=0;k<n;k++){const d=await getDoc(ref(id+'~'+k));if(!d.exists())return null;txt+=d.data().v}
-  return txt?JSON.parse(txt):null;
+  for(let k=0;k<n;k++){const d=await getDoc(ref(partKey(id,info,k)));if(!d.exists())return null;txt+=d.data().v}
+  if(!txt)return null;
+  try{return JSON.parse(txt)}catch(e){console.warn('Dato de la cuenta ilegible, se saltea:',id,e);return null}
+}
+// Borra los pedazos de una versión vieja (solo las versionadas; las del formato anterior se pisaban en el lugar).
+async function dropText(id,info){
+  if(!info||typeof info!=='object')return;
+  for(let k=0;k<info.n;k+=10){const b=writeBatch(db);for(let j=k;j<Math.min(info.n,k+10);j++)b.delete(ref(partKey(id,info,j)));await b.commit()}
 }
 const C=window.tgCloud={user:null,
   async pushAll({bets,xg,days,prec,reg,fav,updated,bf}){
@@ -1894,6 +1906,14 @@ const C=window.tgCloud={user:null,
     for(const [m,x] of Object.entries(months))if(m>=recent||!meta.regMonths[m])meta.regMonths[m]=await putText('reg_'+m,x);
     await setDoc(ref('fav'),{v:JSON.stringify(fav||{}),ts:Date.now()});
     await setDoc(ref('meta'),{v:JSON.stringify(meta)});
+    // Limpieza de las versiones anteriores (si falla, no pasa nada: el índice ya apunta a las nuevas).
+    try{
+      const olds=[];
+      for(const [d,x] of Object.entries(prevMeta.days||{}))if(!meta.days[d]||JSON.stringify(meta.days[d])!==JSON.stringify(x))olds.push(['day_'+d,x]);
+      for(const k of ['prec','bets','xg'])if(prevMeta[k]&&JSON.stringify(prevMeta[k])!==JSON.stringify(meta[k]))olds.push([k,prevMeta[k]]);
+      for(const [m,x] of Object.entries(prevMeta.regMonths||{}))if(JSON.stringify(meta.regMonths[m])!==JSON.stringify(x))olds.push(['reg_'+m,x]);
+      for(const [id,x] of olds)await dropText(id,x);
+    }catch(e){console.warn('limpieza',e)}
     status();
   },
   async pullIfNewer(localUpdated,dates,seenTs){
