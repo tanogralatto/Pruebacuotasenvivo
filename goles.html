@@ -1042,11 +1042,19 @@ function parseKey(k){
   return null;
 }
 const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
+// Cuota de tus casas de una línea, para subirla a la cuenta: la guardada o, si no hay, la que se encuentre entre
+// la mejor cuota y las ofertas. 0 = ninguna de tus casas la ofrece.
+function packMy(r){
+  if(Array.isArray(r.my))return r.my;
+  const re=new RegExp(LS.get('tg:checkbooks','bet365|1xbet|betano'),'i');
+  if(re.test(r.bk||'')&&r.pr>1)return [r.pr,r.bk];
+  const x=(r.of||[]).find(([b])=>re.test(b));return x?[x[1],x[0]]:0;
+}
 function packDay(day){
-  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0,r.p>0?+r.p.toFixed(4):null,r.my===undefined?0:r.my,r.es==null?null:r.es]);return o})};
+  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0,r.p>0?+r.p.toFixed(4):null,packMy(r),r.es==null?null:r.es]);return o})};
 }
 function unpackDay(d){
-  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh,pp,my,es])=>{const bet=parseKey(k);const r={k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0,p:pp>0?pp:f>0?1/f:null};if(my!==undefined&&my!==0)r.my=my;else if(my===0)r.my=null;if(es!=null)r.es=es;return r});return o})};
+  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh,pp,my,es])=>{const bet=parseKey(k);const r={k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0,p:pp>0?pp:f>0?1/f:null};if(Array.isArray(my))r.my=my;if(es!=null)r.es=es;return r});return o})};
 }
 function mergeReg(local,cloud){
   for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
@@ -1059,13 +1067,15 @@ async function cloudPush(){
   const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
   await loadXg();
   await loadBets();
+  LS.set('tg:pulledTs',Date.now()+5000);
   await C.pushAll({bets:BETS,xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{})});
 }
 // Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
 async function cloudPull(force){
   const C=window.tgCloud;if(!C||!C.user||state.running)return false;
-  const got=await C.pullIfNewer(force?0:await getUpdated(),[dayStr(-1),dayStr(0),dayStr(1)]);
+  const got=await C.pullIfNewer(force?0:await getUpdated(),[dayStr(-1),dayStr(0),dayStr(1)],force?0:Number(LS.get('tg:pulledTs',0)));
   if(!got)return false;
+  if(got.ts)LS.set('tg:pulledTs',got.ts);
   for(const [d,x] of Object.entries(got.days||{})){const day=unpackDay(x);await DB.set('day:'+d,day);state.days[d]=day}
   if(got.prec){state.prec=got.prec;await DB.set('prec',got.prec)}
   if(got.fav)LS.set('tg:fav',got.fav);
@@ -1886,13 +1896,14 @@ const C=window.tgCloud={user:null,
     await setDoc(ref('meta'),{v:JSON.stringify(meta)});
     status();
   },
-  async pullIfNewer(localUpdated,dates){
+  async pullIfNewer(localUpdated,dates,seenTs){
     const m=await getDoc(ref('meta'));if(!m.exists())return null;
     const meta=JSON.parse(m.data().v);
     const out={updated:meta.updated,bf:meta.bf};
     const f=await getDoc(ref('fav'));if(f.exists())out.fav=JSON.parse(f.data().v);
     meta.updated=meta.updated||meta.ts||0;out.updated=meta.updated;
-    if(!(meta.updated>localUpdated))return out.fav?{fav:out.fav}:null;
+    out.ts=meta.ts||0;
+    if(!(meta.updated>localUpdated)&&!(out.ts>(seenTs||0)))return out.fav?{fav:out.fav}:null;
     out.days={};
     for(const d of dates)if(meta.days&&meta.days[d]){const x=await getText('day_'+d,meta.days[d]);if(x)out.days[d]=x}
     if(meta.prec)out.prec=await getText('prec',meta.prec);
