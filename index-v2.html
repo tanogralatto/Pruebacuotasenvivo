@@ -928,6 +928,7 @@ body.no-hints .poisson-metric .hint{display:none}
       <button type="button" class="alert-history-tab hidden" data-history-group="vip_legacy" role="tab" aria-selected="false">💎 VIP anteriores</button>
     </div>
     <div id="alertHistorySummary" class="alert-history-summary"></div>
+    <div id="alertResetBar" class="alert-move-bar hidden"></div>
     <div id="alertHistoryList" class="cards"><div class="empty">Cargando historial…</div></div>
     <div style="display:flex;justify-content:center;margin-top:14px"><button id="loadOlderAlerts" type="button">Cargar anteriores</button></div>
   </section>
@@ -2895,7 +2896,7 @@ function enterApp(user, isOwner) {
   }, e => setMsg(friendly(e), true));
   // El historial de alertas es visible para cualquier usuario autenticado y aprobado.
   q('#tabAlertHistory').classList.remove('hidden');
-  startAlertHistory();
+  startAlertHistory(isOwner);
   startV2Sync(user);
 
   if (isOwner) {
@@ -2930,8 +2931,38 @@ function fmtTs(ts) {
   catch (e) { return '—'; }
 }
 
-function startAlertHistory() {
+let unsubResets = null;
+function startAlertHistory(isOwner) {
   if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
+  if (unsubResets) { unsubResets(); unsubResets = null; }
+  // Reinicio del contador por pestaña: las alertas anteriores no se borran, solo dejan de contar.
+  // Se guarda en la configuración del dueño (tanoapp_telegram_config/global → history_reset).
+  const configRef = doc(db, 'tanoapp_telegram_config', 'global');
+  let resets = {};
+  const resetBar = q('#alertResetBar');
+  if (isOwner) unsubResets = onSnapshot(configRef, snap => { resets = (snap.exists() && snap.data().history_reset) || {}; renderHistory(); }, e => console.warn('No se pudo leer el reinicio del historial', e));
+  const tsMs = v => v && typeof v.toMillis === 'function' ? v.toMillis() : v instanceof Date ? v.getTime() : 0;
+  const groupName = { favorites: 'Favoritos', aeg: 'AEG', datagol: 'dataGol', vip_legacy: 'VIP anteriores' };
+  async function setReset(group, value) {
+    try {
+      await setDoc(configRef, { history_reset: { [group]: value } }, { merge: true });
+    } catch (e) {
+      alert('No se pudo guardar el reinicio: ' + friendly(e));
+      console.error('No se pudo guardar el reinicio del historial', e);
+    }
+  }
+  function renderResetBar(hidden) {
+    if (!resetBar) return;
+    resetBar.classList.toggle('hidden', !isOwner);
+    if (!isOwner) return;
+    const since = Number(resets[activeGroup]) || 0, name = groupName[activeGroup] || activeGroup;
+    resetBar.innerHTML = since
+      ? '<span>Contador de ' + esc(name) + ' reiniciado el ' + esc(fmtTs({ toDate: () => new Date(since) })) + '. ' + hidden + (hidden === 1 ? ' alerta anterior no cuenta' : ' alertas anteriores no cuentan') + ' (no se borraron).</span><button type="button" data-reset-undo>Deshacer reinicio</button><button type="button" data-reset-now>Reiniciar de nuevo</button>'
+      : '<span>¿Querés empezar de cero en ' + esc(name) + '? Las alertas anteriores no se borran: solo dejan de contar.</span><button type="button" data-reset-now>Reiniciar contador de ' + esc(name) + '</button>';
+    const now = resetBar.querySelector('[data-reset-now]'), undo = resetBar.querySelector('[data-reset-undo]');
+    if (now) now.onclick = () => { if (confirm('¿Reiniciar el contador de ' + name + ' desde ahora? Las alertas anteriores dejan de contar en el resumen y la lista, pero no se borran y podés deshacerlo.')) setReset(activeGroup, Date.now()); };
+    if (undo) undo.onclick = () => { if (confirm('¿Volver a contar todas las alertas de ' + name + '?')) setReset(activeGroup, 0); };
+  }
   const list = q('#alertHistoryList'), summary = q('#alertHistorySummary');
   const moreButton = q('#loadOlderAlerts');
   const unitInput = q('#alertUnitValue'), unitSave = q('#saveAlertUnitValue'), unitStatus = q('#alertUnitStatus');
@@ -3017,7 +3048,10 @@ function startAlertHistory() {
     const stratOf = a => a.favorite_group !== 'vip' ? 'favorites' : (['aeg', 'datagol'].includes(String(a.vip_strategy || '').toLowerCase()) ? String(a.vip_strategy).toLowerCase() : 'vip_legacy');
     const legacyTab = document.querySelector('[data-history-group="vip_legacy"]');
     if (legacyTab) legacyTab.classList.toggle('hidden', !alerts.some(a => stratOf(a) === 'vip_legacy') && activeGroup !== 'vip_legacy');
-    const groupAlerts = alerts.filter(a => stratOf(a) === activeGroup);
+    const since = Number(resets[activeGroup]) || 0;
+    const allGroup = alerts.filter(a => stratOf(a) === activeGroup);
+    const groupAlerts = since ? allGroup.filter(a => tsMs(a.created_at) >= since) : allGroup;
+    renderResetBar(allGroup.length - groupAlerts.length);
     // El período depende de la fecha original de la alerta, no del momento en que se liquida.
     const monthAlerts = groupAlerts.filter(a => monthKey(a.created_at) === selectedMonth);
     const settled = monthAlerts.filter(a => ['won', 'lost', 'push'].includes(a.result_status));
