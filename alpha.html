@@ -268,7 +268,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>Cuota justa</b>: 1 ÷ la probabilidad del modelo.</li>
       <li><b>EV</b>: cuánto paga de más la casa frente a la cuota justa. +5% = en promedio ganarías $5 cada $100.</li>
       <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras).</li>
-      <li><b>Match score</b>: como en Alpha, suma el valor de <b>todas</b> las apuestas con valor del partido, pesando más las cuotas bajas. 0 = sin valor; 65+ = muchas oportunidades. Puede ser más alto que cualquier línea sola. Con <b>Ordenar: Mayor score</b>, los mejores partidos quedan arriba.</li>
+      <li><b>Match score</b>: como en Alpha, la mejor apuesta del partido más una parte de la segunda mejor (por eso puede ser unos puntos más alto que cualquier línea). 0 = sin valor; 65+ = muchas oportunidades. Con <b>Ordenar: Mayor score</b>, los mejores partidos quedan arriba.</li>
       <li><b>✓ / ✕ en cada grupo</b>: si el modelo acierta en ese mercado en esa liga (pestaña Precisión). Confiá en los ✓.</li>
     </ul>
     <p class="small">Nada garantiza ganancia: anotá tus apuestas y mirá el resultado en Mis apuestas. Las rachas malas son normales: apostá montos chicos y parejos.</p>
@@ -1325,23 +1325,24 @@ function myPrice(r){
   const re=myRe();if(re.test(r.bk||''))return {pr:r.pr,bk:r.bk};
   const x=(r.of||[]).find(([b])=>re.test(b));return x?{pr:x[1],bk:x[0]}:null;
 }
-const A_EV=0.02; // EV mínimo para mostrar una apuesta como «con valor»
-// Score (0-100) en la escala de Alpha: crece con el EV, premia las cuotas bajas y medias, y castiga fuerte las
-// apuestas poco probables (menos de 45%). Ajustado con las líneas de Alpha de Hammarby–Elfsborg.
+const A_EV=0.0001; // como Alpha: cualquier línea con EV positivo cuenta como «con valor»
+// Score (0-100) en la escala de Alpha: crece con el EV, premia las cuotas bajas y medias, y castiga las apuestas
+// poco probables. Ajustado con 167 líneas de 6 partidos de Alpha (diferencia típica ±4 puntos).
 function aScore(ev,p){
   if(!(ev>0)||!(p>0))return 0;
-  return Math.round(100*Math.sqrt(Math.tanh(ev/0.10))*Math.pow(p,0.7)*Math.min(1,(p/0.45)**2));
+  return Math.round(100*Math.pow(Math.tanh(ev/0.08),0.6)*Math.pow(p,0.7)*Math.min(1,p/0.55));
 }
 // Filas del partido como en Alpha: cuota de tus casas, cuota justa del modelo, EV y score.
 function aRows(a){
   return (a.rows||[]).filter(r=>r.p>0).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p)})});
 }
-// Match score (0-100) como Alpha: «suma el valor de todos los mercados con desajuste, pesando más las cuotas
-// bajas». Se suman los Scores de todas las líneas con valor y se satura en 100. La constante 468 reproduce el 91 de
-// las dos lecturas de Alpha de Hammarby–Elfsborg (las líneas suman 1.140 y 1.127).
+// Match score (0-100) como Alpha: la mejor línea + 40% de lo que le falta para 100, multiplicado por la segunda
+// mejor línea. Reproduce a ±1 los 7 partidos de Alpha comparados (Hammarby, Gaziantep, Independiente, Venezia,
+// Everton y Hamburgo).
 function aEdge(rows){
-  let sum=0;for(const r of rows)if(r.aev>=A_EV)sum+=r.asc;
-  return Math.round(100*(1-Math.exp(-sum/468)));
+  const sc=rows.filter(r=>r.aev>=A_EV).map(r=>r.asc).sort((x,y)=>y-x);
+  const s1=sc[0]||0,s2=sc[1]||0;
+  return Math.round(s1+(100-s1)*(s2/100)*0.4);
 }
 function edgeHtml(v){
   const c=v>=65?'g':v>=35?'m':'d';
