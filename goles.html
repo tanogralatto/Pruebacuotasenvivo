@@ -1418,14 +1418,16 @@ async function renderDash(){
           const ev=r.m*pr-1;
           // Solo cuotas de 1,30 a 2,50: las altas se equivocan más y quedan viejas más rápido en la API.
           if(pr<1.30||pr>2.50)continue;
-          if(ev>=0.02&&ev<=0.15)cand.push({a,r,bk,pr,ev,sc:F.betScore(ev,r.m)});
+          // La misma Mínima que en toda la app (modelo y Pinnacle de acuerdo): la casa tiene que pagarla.
+          const mo=minOdd(r.p,r.m);if(!mo||pr<mo)continue;
+          if(ev>=0.02&&ev<=0.15)cand.push({a,r,bk,pr,ev,mo,sc:F.betScore(ev,r.m)});
         }
       }
     }
     // Primero las de cuota baja con ventaja clara (score de la app: crece con el EV y premia las más probables).
     cand.sort((u,v)=>v.sc-u.sc||v.ev-u.ev);
     const seen=new Set(),top=[];for(const c of cand){const k=c.a.id+'|'+c.r.k;if(seen.has(k))continue;seen.add(k);top.push(c);if(top.length>=10)break}
-    $('#dCheck').innerHTML=top.length?`<div class="box best"><h3 style="margin:0 0 4px;font-size:15px">Para revisar en tu casa <button class="info" data-tip="check">i</button></h3><div class="small">Cuotas de 1,30 a 2,50 donde, según API-Football, estas casas pagan más que el precio justo de Pinnacle. Arriba, las más seguras. Abrí tu casa y apostá solo si paga la <b>Mínima</b> o más.</div>${top.map(({a,r,bk,pr,ev})=>`<a class="bl" href="#/partido/${a.id}"><span class="t">${fmtTime(a.iso)}</span><span class="m"><div>${esc(a.hn)} <span class="vsw">vs</span> ${esc(a.an)}</div><div class="ln">${esc(r.l)}</div><div class="ln">${esc(bk)} en la API: <b class="mono">${dec(pr)}</b></div></span><span class="r"><span class="small" style="color:var(--muted)">Mínima</span><b style="display:block">${dec(1.02/r.m)}</b></span></a>`).join('')}</div>`:'';
+    $('#dCheck').innerHTML=top.length?`<div class="box best"><h3 style="margin:0 0 4px;font-size:15px">Para revisar en tu casa <button class="info" data-tip="check">i</button></h3><div class="small">Según API-Football, en estas líneas la casa paga la <b>Mínima</b> o más. Abrí tu casa: si paga la Mínima o más, apostá.</div>${top.map(({a,r,bk,pr,ev,mo})=>`<a class="bl" href="#/partido/${a.id}"><span class="t">${fmtTime(a.iso)}</span><span class="m"><div>${esc(a.hn)} <span class="vsw">vs</span> ${esc(a.an)}</div><div class="ln">${esc(r.l)}</div><div class="ln">${esc(bk)} en la API: <b class="mono">${dec(pr)}</b></div></span><span class="r"><span class="small" style="color:var(--muted)">Mínima</span><b style="display:block">${dec(mo)}</b></span></a>`).join('')}</div>`:'';
   }
   // «Lo mejor del día»: las 10 líneas creíbles (liga con ✓ en ese mercado, entre 2 y 10 puntos) de todos los mercados.
   {
