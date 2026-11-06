@@ -357,6 +357,7 @@ details.guide th{color:var(--muted);font-weight:600}
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
   </div>
+  <div id="dCheck"></div>
   <div id="dBest"></div>
   <div id="dList"></div>
 </section>
@@ -1404,6 +1405,25 @@ async function renderDash(){
     if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> para traer los partidos de todas las ligas.</div>';return}
     fx=d.fx;
   }
+  // «Para revisar en tu casa»: líneas donde Bet365, 1xBet o Betano (según API-Football) pagan más que el precio
+  // justo de Pinnacle. La cuota de la API puede no ser la de tu casa: es una pista para ir a mirar.
+  {
+    const now=Date.now(),re=new RegExp(LS.get('tg:checkbooks','bet365|1xbet|betano'),'i'),cand=[];
+    if(state.view!=='fav')for(const a of fx){
+      if(a.ts*1000<=now||!a.rows)continue;
+      for(const r of a.rows){
+        if(!r.sh||!(r.m>0))continue;
+        for(const [bk,pr] of r.of||[]){
+          if(!re.test(bk))continue;
+          const ev=r.m*pr-1;
+          if(ev>=0.02&&ev<=0.15)cand.push({a,r,bk,pr,ev});
+        }
+      }
+    }
+    cand.sort((u,v)=>v.ev-u.ev);
+    const seen=new Set(),top=[];for(const c of cand){const k=c.a.id+'|'+c.r.k;if(seen.has(k))continue;seen.add(k);top.push(c);if(top.length>=10)break}
+    $('#dCheck').innerHTML=top.length?`<div class="box best"><h3 style="margin:0 0 4px;font-size:15px">Para revisar en tu casa <button class="info" data-tip="check">i</button></h3><div class="small">Según API-Football, estas casas pagan más que el precio justo de Pinnacle. Abrí tu casa y apostá solo si paga la <b>Mínima</b> o más.</div>${top.map(({a,r,bk,pr,ev})=>`<a class="bl" href="#/partido/${a.id}"><span class="t">${fmtTime(a.iso)}</span><span class="m"><div>${esc(a.hn)} <span class="vsw">vs</span> ${esc(a.an)}</div><div class="ln">${esc(r.l)}</div><div class="ln">${esc(bk)} en la API: <b class="mono">${dec(pr)}</b></div></span><span class="r"><span class="small" style="color:var(--muted)">Mínima</span><b style="display:block">${dec(1.02/r.m)}</b></span></a>`).join('')}</div>`:'';
+  }
   // «Lo mejor del día»: las 10 líneas creíbles (liga con ✓ en ese mercado, entre 2 y 10 puntos) de todos los mercados.
   {
     const now=Date.now(),best=[];
@@ -1716,6 +1736,7 @@ const TIPS={
   sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
   clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
+  check:['Para revisar en tu casa','Líneas donde Bet365, 1xBet o Betano, según las cuotas que trae API-Football, pagan más que el precio justo de Pinnacle (sin margen) más 2%. API-Football trae la versión internacional de cada casa y se actualiza cada pocas horas: la cuota de tu casa puede ser otra. Usalo como pista: abrí tu casa y apostá solo si paga la Mínima (precio justo de Pinnacle + 2%) o más. Se descartan las diferencias de más de 15%, que casi siempre son cuotas viejas.'],
   best:['Lo mejor del día','Las 10 líneas donde el modelo ve más probabilidad que Pinnacle, solo en ligas donde el modelo acierta en ese mercado (✓ en Precisión) y con diferencias de 2 a 10 puntos (más de 10 casi siempre es error del modelo). A la derecha: la diferencia y la cuota Mínima que tiene que pagar tu casa.'],
   mkdiff:['Modelo contra Pinnacle','Modelo: la cuota justa según nuestro modelo (y su probabilidad). Pinnacle: la cuota justa de la casa más precisa del mundo, sin su margen; si Pinnacle no cotiza esa línea, sale de su 1X2 y sus totales (o de su línea principal de córners). Las dos son el precio «sin ganancia para nadie»: si tu casa paga más, la apuesta tiene valor.'],
   dif:['Diferencia','Puntos de probabilidad que el modelo ve de más (+) o de menos (−) contra Pinnacle. +5 = el modelo le da 5 puntos más (por ejemplo 60% contra 55%). Arriba de la lista van los partidos donde el modelo ve más que Pinnacle: ahí cree que el mercado se equivoca. Confiá más en las ligas con ✓.'],
