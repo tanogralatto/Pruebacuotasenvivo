@@ -591,10 +591,30 @@ const marketReady=(games,cutoff)=>!!(games&&games.mkt&&games.mkt.size)&&F.market
 async function fetchXg(leagues,budget,status){
   await loadXg();
   if(!(budget>0))return 0;
+  // Ligas sin estadísticas en API-Football: si ya se pidieron 20 o más partidos y ninguno trajo nada, la liga
+  // no se vuelve a pedir por 30 días (no gasta consultas en vano).
+  const NOST=LS.get('tg:nostats',{})||{},now=Date.now();
+  const hasStats=r=>r&&(r[2]||Number.isFinite(r[9]));
+  const ready=[];
+  for(const L of leagues){
+    let asked=0,ok=0;
+    for(const r of L.raw){const x=XG[r[0]];if(x){asked++;if(hasStats(x))ok++}}
+    if(asked>=20&&!ok){if(!NOST[L.lid])NOST[L.lid]=now}else if(ok)delete NOST[L.lid];
+    if(NOST[L.lid]&&now-NOST[L.lid]<30*864e5)continue;
+    if(NOST[L.lid])delete NOST[L.lid]; // pasaron 30 días: se vuelve a probar
+    // Faltan: sin bajar todavía, o con estadísticas de antes de que se guardaran los córners.
+    const miss=L.raw.filter(r=>!(r[0] in XG)||(XG[r[0]][2]&&XG[r[0]].length<11)).map(r=>({id:r[0],h:r[2],a:r[3],ts:r[1],cur:String(r[6])===String(L.season)}));
+    miss.sort((x,y)=>(y.cur-x.cur)||(y.ts-x.ts));
+    if(miss.length)ready.push({L,ok,miss});
+  }
+  LS.set('tg:nostats',NOST);
+  // Prioridad: completar liga por liga hasta 100 partidos con estadísticas (lo que necesita el modelo de córners),
+  // empezando por las que están más cerca de llegar; después, el resto.
+  const NEED=100;
+  ready.sort((x,y)=>(x.ok>=NEED)-(y.ok>=NEED)||y.ok-x.ok);
   const cand=[];
-  // Sin bajar todavía, o con estadísticas de antes de que se guardaran los córners (se vuelven a pedir una vez).
-  for(const L of leagues)for(const r of L.raw)if(!(r[0] in XG)||(XG[r[0]][2]&&XG[r[0]].length<11))cand.push({id:r[0],h:r[2],a:r[3],ts:r[1],cur:String(r[6])===String(L.season)});
-  cand.sort((x,y)=>(y.cur-x.cur)||(y.ts-x.ts));
+  for(const x of ready)cand.push(...x.miss.slice(0,Math.max(0,NEED-x.ok)));
+  for(const x of ready)cand.push(...x.miss.slice(Math.max(0,NEED-x.ok)));
   const pick=cand.slice(0,budget*20), byId=new Map(pick.map(x=>[x.id,x]));
   const batches=[];for(let i=0;i<pick.length;i+=20)batches.push(pick.slice(i,i+20));
   let got=0;
