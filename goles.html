@@ -165,6 +165,8 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .ev small{display:block;font-weight:400;color:var(--dim);font-size:11px}
 #cloudBtn{white-space:nowrap}
 @media (max-width:560px){.brand{font-size:12px;letter-spacing:.06em}nav{gap:0}nav a{padding:6px 6px;font-size:13.5px}#cloudBtn{max-width:64px;overflow:hidden;text-overflow:ellipsis;padding:6px 7px!important}}
+@media (max-width:430px){header .wrap{gap:6px;padding-left:10px;padding-right:10px}.brand{font-size:11px;letter-spacing:.02em}nav a{padding:6px 4px;font-size:12.5px}#cloudBtn{max-width:40px;padding:5px 6px!important}}
+@media (max-width:345px){.brand b{display:none}nav a{padding:6px 3px}}
 .vb{margin:8px 0}
 .vb-h{font-size:15px}
 .vb-h a{text-decoration:none;font-weight:700}
@@ -189,6 +191,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <nav>
     <a href="#/hoy" data-nav="dash">Partidos</a>
     <a href="#/valor" data-nav="val">Valor</a>
+    <a href="#/especiales" data-nav="esp">Especiales</a>
     <a href="#/precision" data-nav="prec">Precisión</a>
     <a href="#/ajustes" data-nav="cfg" aria-label="Ajustes">⚙︎</a>
   </nav>
@@ -297,7 +300,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
       <li><b>Aprende de Pinnacle</b>: en las ligas con cuotas de cierre de los partidos ya jugados (football-data.co.uk y las que guarda la app de API-Football), cada partido entra al ajuste con los goles esperados que implicaba Pinnacle (90%) y los goles reales (10%), dando mucho más peso a lo reciente. La cuota de cierre ya resume lesiones, rotaciones y forma, y un gol de suerte casi no la mueve. Probado con ~17.800 partidos de 38 ligas: la diferencia con la probabilidad de Pinnacle baja casi a la mitad (de 6,7 a 3,6 puntos en el local). En la ficha dice «+ cuotas de Pinnacle».</li>
       <li>Cada liga usa la combinación (con o sin xG, con o sin corrección, con o sin cuotas de Pinnacle) que <b>mejor acertó</b> en su historial.</li>
-      <li><b>Goles de cada equipo</b> («Local más de 1,5», «Visitante más de 0,5»…): las casas comunes los arman con una fórmula a partir de su 1X2 y su total, y ahí suelen fallar. Si Pinnacle no los cotiza, el precio justo sale de <b>su</b> 1X2 y sus totales (los mercados donde entra más dinero profesional), pasados a goles esperados de cada equipo. Lo mismo para «Ambos marcan» cuando Pinnacle no lo trae.</li>
+      <li><b>Goles de cada equipo</b> («Local más de 1,5», «Visitante más de 0,5»…): las casas comunes los arman con una fórmula a partir de su 1X2 y su total, y ahí suelen fallar. Si Pinnacle no los cotiza, el precio justo sale de <b>su</b> 1X2 y sus totales (los mercados donde entra más dinero profesional), pasados a goles esperados de cada equipo. Lo mismo para «Ambos marcan» cuando Pinnacle no lo trae. Están todos juntos en la pestaña <b>Especiales</b>, que también va a tener los córners.</li>
     </ul>
 
     <h3>Precisión: en qué ligas confiar en el modelo</h3>
@@ -396,6 +399,22 @@ details.guide th{color:var(--muted);font-weight:600}
   </div>
   <div class="status" id="vStatus"></div>
   <div id="vList"></div>
+</section>
+
+<!-- ============ ESPECIALES ============ -->
+<section id="v-esp" class="hidden">
+  <h1>Mercados especiales</h1>
+  <p class="small" style="margin-top:-4px">Mercados que las casas comunes arman <b>con una fórmula</b> y donde más se equivocan. El precio justo sale del <b>1X2 y los totales de Pinnacle</b> (los mercados donde más dinero profesional entra), pasados a goles esperados de cada equipo. No de la mediana de las casas, que suelen usar la misma fórmula y fallar juntas.</p>
+  <div class="row"><div class="seg" id="eday"><button data-eday="0">Hoy</button><button data-eday="1">Mañana</button></div></div>
+  <div class="row" style="margin-top:8px"><div class="seg" id="emk"><button data-emk="tt">Goles por equipo</button><button data-emk="btts">Ambos marcan</button><button data-emk="corners" disabled title="Próximamente">Córners · pronto</button></div></div>
+  <div class="filters box">
+    <div class="fl" style="margin-top:0"><div class="fl-h"><b>EV mínimo</b> <button class="info" data-tip="evmin">i</button></div><div class="seg" id="eevmin"><button data-ev="0.01">1%</button><button data-ev="0.02">2%</button><button data-ev="0.03">3%</button><button data-ev="0.05">5%</button></div></div>
+    <div class="fl"><div class="fl-h"><b>Cuota máxima</b> <button class="info" data-tip="maxodds">i</button></div><div class="seg" id="emax"><button data-max="2">2,00</button><button data-max="3">3,00</button><button data-max="5">5,00</button><button data-max="99">Todas</button></div></div>
+    <label class="small row" style="gap:6px;margin-top:10px"><input type="checkbox" id="eSharp" style="accent-color:var(--acc)"> Solo con precio de Pinnacle (más confiable) <button class="info" data-tip="sharp">i</button></label>
+    <div class="small" id="eBooks" style="margin-top:8px"></div>
+  </div>
+  <div class="status" id="eStatus"></div>
+  <div id="eList"></div>
 </section>
 
 <!-- ============ AJUSTES ============ -->
@@ -973,7 +992,7 @@ window.tgOnLogin=async()=>{
     else syncLine('☁︎ Al día con tu cuenta · última actualización guardada '+ago(meta.updated||meta.ts||0)+(changed?' (bajada recién)':''));
   }catch(e){syncLine('☁︎ No se pudo leer tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
 };
-function rerender(){const r=route();if(r.v==='val')renderVal();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
+function rerender(){const r=route();if(r.v==='val')renderVal();else if(r.v==='esp')renderEsp();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
 $('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
@@ -1306,36 +1325,51 @@ async function renderVal(){
   $$('#vday [data-vday]').forEach(b=>b.classList.toggle('on',b.dataset.vday===vv));
   $('#vFilters').classList.toggle('hidden',vv==='bets');
   if(vv==='bets'){await renderBets();return}
-  const em=Number(LS.get('tg:evMin',0.02)),mx=Number(LS.get('tg:vmax',3)),sharpOnly=LS.get('tg:vsharp',true);
-  $$('#vevmin [data-ev]').forEach(b=>b.classList.toggle('on',Math.abs(Number(b.dataset.ev)-em)<1e-9));
-  $$('#vmax [data-max]').forEach(b=>b.classList.toggle('on',Number(b.dataset.max)===mx));
-  $('#vSharp').checked=!!sharpOnly;
-  const mb=myBooks();
-  $('#vBooks').innerHTML=mb.size?`Mis casas: <b>${[...mb].map(esc).join(', ')}</b> · <a href="#/ajustes">cambiar</a>`:`Mostrando <b>todas las casas</b>. Marcá las tuyas en <a href="#/ajustes">⚙︎ → Mis casas</a>.`;
-  const d=await getDay(dayStr(Number(vv)));
+  const d=await valueFilters('v',Number(vv));
   if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para buscar valor.</div>';return}
-  await loadBets();
-  const bank=bankroll(),now=Date.now(),out=[];
+  await drawValue(list,$('#vStatus'),d,valueBets(d,()=>true),renderVal,false);
+}
+// Filtros compartidos por Valor (prefijo 'v') y Especiales ('e'): EV mínimo, cuota máxima, solo Pinnacle, mis casas.
+async function valueFilters(px,day){
+  const em=Number(LS.get('tg:evMin',0.02)),mx=Number(LS.get('tg:vmax',3)),sharpOnly=LS.get('tg:vsharp',true);
+  $$('#'+px+'evmin [data-ev]').forEach(b=>b.classList.toggle('on',Math.abs(Number(b.dataset.ev)-em)<1e-9));
+  $$('#'+px+'max [data-max]').forEach(b=>b.classList.toggle('on',Number(b.dataset.max)===mx));
+  $('#'+px+'Sharp').checked=!!sharpOnly;
+  const mb=myBooks();
+  $('#'+px+'Books').innerHTML=mb.size?`Mis casas: <b>${[...mb].map(esc).join(', ')}</b> · <a href="#/ajustes">cambiar</a>`:`Mostrando <b>todas las casas</b>. Marcá las tuyas en <a href="#/ajustes">⚙︎ → Mis casas</a>.`;
+  return getDay(dayStr(day));
+}
+// Apuestas que pagan más que el precio justo del mercado; keep(r) elige qué mercados entran.
+function valueBets(d,keep){
+  const em=Number(LS.get('tg:evMin',0.02)),mx=Number(LS.get('tg:vmax',3)),sharpOnly=LS.get('tg:vsharp',true);
+  const now=Date.now(),out=[];
   for(const a of d.fx){
     if(!a.rows||a.ts*1000<=now)continue;
     for(const r of a.rows){
-      if(!(r.m>0)||(sharpOnly&&!r.sh))continue;
+      if(!keep(r)||!(r.m>0)||(sharpOnly&&!r.sh))continue;
       const e=effPrice(r);if(!e)continue;
       const ev=r.m*e.pr-1;if(ev<Math.max(0.005,em)||e.pr>mx)continue;
       out.push({a,r,pr:e.pr,bk:e.bk,ev,fair:1/r.m,k:F.kelly(r.m,e.pr)});
     }
   }
-  out.sort((x,y)=>y.ev-x.ev);
-  $('#vStatus').textContent=out.length?`${out.length} apuestas con valor · cuotas leídas ${ago(d.ts)}. Verificá la cuota en tu casa antes de apostar.`:'';
+  return out.sort((x,y)=>y.ev-x.ev);
+}
+// Tarjetas de apuestas con «Anotar apuesta». withModel: muestra también el EV según el modelo.
+async function drawValue(list,status,d,out,rerender,withModel){
+  await loadBets();
+  const bank=bankroll();
+  status.textContent=out.length?`${out.length} apuestas con valor · cuotas leídas ${ago(d.ts)}. Verificá la cuota en tu casa antes de apostar.`:'';
   if(!out.length){list.innerHTML='<div class="empty">No hay apuestas con esos filtros. Probá bajar el EV mínimo, subir la cuota máxima o actualizar las cuotas.</div>';return}
   const done=new Set(BETS.filter(b=>!b.del).map(b=>b.fid+':'+b.k));
   list.innerHTML=out.slice(0,200).map(({a,r,pr,bk,ev,fair,k},i)=>{
     const amt=bank&&k>0?' · $'+Math.round(bank*k).toLocaleString('es-AR'):'';
     const sus=ev>0.08?'<span class="chip w" title="Puede ser una cuota vieja">⚠︎ verificar</span>':'';
+    const mEv=withModel&&r.p>0?r.p*pr-1:null;
+    const model=withModel?`<div class="small" style="margin-top:6px">Modelo: ${r.p>0?`${pct(r.p)} → EV <b class="${mEv>0?'c-g':'c-b'}">${spct(mEv)}</b>`:'sin modelo para este partido'}${mEv>0?' <span class="chip g">✓ coinciden</span>':''}</div>`:'';
     return `<div class="vb box"><div class="vb-h"><span class="mono muted">${fmtTime(a.iso)}</span> <a href="#/partido/${a.id}">${esc(a.hn)} vs ${esc(a.an)}</a></div>
       <div class="small">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)}</div>
       <div class="vb-m"><b>${esc(r.l)}</b> ${sus}</div>
-      <div class="vb-g"><div><span class="l">Casa</span><b>${esc(bk)}</b></div><div><span class="l">Cuota</span><b class="mono">${dec(pr)}</b></div><div><span class="l">Justa</span><b class="mono">${dec(fair)}</b></div><div><span class="l">EV</span><b class="mono c-m">${spct(ev)}</b></div><div><span class="l">Monto</span><b class="mono">${k>0?pct(k,1):'—'}</b><span class="l">${amt}</span></div></div>
+      <div class="vb-g"><div><span class="l">Casa</span><b>${esc(bk)}</b></div><div><span class="l">Cuota</span><b class="mono">${dec(pr)}</b></div><div><span class="l">Justa</span><b class="mono">${dec(fair)}</b></div><div><span class="l">EV</span><b class="mono c-m">${spct(ev)}</b></div><div><span class="l">Monto</span><b class="mono">${k>0?pct(k,1):'—'}</b><span class="l">${amt}</span></div></div>${model}
       <div class="row" style="margin-top:8px"><button class="btn" data-anotar="${i}" ${done.has(a.id+':'+r.k)?'disabled':''}>${done.has(a.id+':'+r.k)?'✓ Anotada':'Anotar apuesta'}</button><span class="small">No apuestes por debajo de ${dec(fair*1.02)} (justa + 2%).</span></div></div>`;
   }).join('');
   list.onclick=async e=>{
@@ -1347,9 +1381,21 @@ async function renderVal(){
     const amtTxt=prompt('¿Cuánto apostaste ($)?',String(sugg));if(amtTxt==null)return;
     const amount=Math.max(0,Number(String(amtTxt).replace(',','.'))||0);
     BETS.push({id:x.a.id+':'+x.r.k+':'+Date.now(),fid:x.a.id,k:x.r.k,l:x.r.l,hn:x.a.hn,an:x.a.an,ln:x.a.ln,lc:x.a.lc,kick:x.a.ts,bk:x.bk,pr:price,m:x.r.m,amount,at:Date.now()});
-    await saveBets();renderVal();
+    await saveBets();rerender();
     if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{});
   };
+}
+// Especiales: mercados que las casas arman con fórmulas. Córners se suma cuando esté el modelo.
+const ESP_KIND={tt:k=>k.startsWith('tt:'),btts:k=>k.startsWith('btts:')};
+async function renderEsp(){
+  const day=String(LS.get('tg:eday','0')),mk=ESP_KIND[LS.get('tg:emk','tt')]?LS.get('tg:emk','tt'):'tt',list=$('#eList');
+  $$('#eday [data-eday]').forEach(b=>b.classList.toggle('on',b.dataset.eday===day));
+  $$('#emk [data-emk]').forEach(b=>b.classList.toggle('on',b.dataset.emk===mk));
+  const d=await valueFilters('e',Number(day));
+  if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para buscar valor.</div>';$('#eStatus').textContent='';return}
+  const has=d.fx.some(a=>(a.rows||[]).some(r=>ESP_KIND[mk](r.k)));
+  if(!has){list.innerHTML=`<div class="empty">API-Football no trajo cuotas de «${mk==='tt'?'Goles por equipo':'Ambos marcan'}» para estos partidos. Probá con el otro día o actualizá más tarde.</div>`;$('#eStatus').textContent='';return}
+  await drawValue(list,$('#eStatus'),d,valueBets(d,r=>ESP_KIND[mk](r.k)),renderEsp,true);
 }
 async function renderBets(){
   await loadBets();
@@ -1377,6 +1423,11 @@ $('#vday').addEventListener('click',e=>{const b=e.target.closest('[data-vday]');
 $('#vevmin').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b)return;LS.set('tg:evMin',Number(b.dataset.ev));renderVal()});
 $('#vmax').addEventListener('click',e=>{const b=e.target.closest('[data-max]');if(!b)return;LS.set('tg:vmax',Number(b.dataset.max));renderVal()});
 $('#vSharp').addEventListener('change',e=>{LS.set('tg:vsharp',e.target.checked);renderVal()});
+$('#eday').addEventListener('click',e=>{const b=e.target.closest('[data-eday]');if(!b)return;LS.set('tg:eday',b.dataset.eday);renderEsp()});
+$('#emk').addEventListener('click',e=>{const b=e.target.closest('[data-emk]');if(!b||b.disabled)return;LS.set('tg:emk',b.dataset.emk);renderEsp()});
+$('#eevmin').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b)return;LS.set('tg:evMin',Number(b.dataset.ev));renderEsp()});
+$('#emax').addEventListener('click',e=>{const b=e.target.closest('[data-max]');if(!b)return;LS.set('tg:vmax',Number(b.dataset.max));renderEsp()});
+$('#eSharp').addEventListener('change',e=>{LS.set('tg:vsharp',e.target.checked);renderEsp()});
 
 /* ---------------- render: precisión ---------------- */
 function skillCell(sk,n){
@@ -1494,6 +1545,7 @@ function route(){
   if(h==='precision')return {v:'prec'};
   if(h==='ajustes')return {v:'cfg'};
   if(h==='valor')return {v:'val'};
+  if(h==='especiales')return {v:'esp'};
   return {v:'dash',view:h==='manana'?'1':h==='favoritos'?'fav':'0'};
 }
 function go(){
@@ -1505,6 +1557,7 @@ function go(){
   if(r.v==='match'){$('#v-match').classList.remove('hidden');$('#mBack').href=state.view==='1'?'#/manana':state.view==='fav'?'#/favoritos':'#/hoy';open.clear();renderMatch(r.id);window.scrollTo(0,0)}
   if(r.v==='prec'){$('#v-prec').classList.remove('hidden');renderPrec()}
   if(r.v==='val'){$('#v-val').classList.remove('hidden');renderVal()}
+  if(r.v==='esp'){$('#v-esp').classList.remove('hidden');renderEsp()}
   if(r.v==='cfg'){$('#v-cfg').classList.remove('hidden');renderCfg()}
 }
 window.addEventListener('hashchange',go);
