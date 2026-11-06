@@ -268,7 +268,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>Cuota justa</b>: 1 ÷ la probabilidad del modelo.</li>
       <li><b>EV</b>: cuánto paga de más la casa frente a la cuota justa. +5% = en promedio ganarías $5 cada $100.</li>
       <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras).</li>
-      <li><b>Match score</b>: el Score de la mejor apuesta del partido. Con <b>Ordenar: Mayor score</b>, los mejores partidos quedan arriba.</li>
+      <li><b>Match score</b>: como en Alpha, la mejor apuesta del partido más una parte de la mejor de otro grupo (por eso puede ser un poco más alto que cualquier línea). Con <b>Ordenar: Mayor score</b>, los mejores partidos quedan arriba.</li>
       <li><b>✓ / ✕ en cada grupo</b>: si el modelo acierta en ese mercado en esa liga (pestaña Precisión). Confiá en los ✓.</li>
     </ul>
     <p class="small">Nada garantiza ganancia: anotá tus apuestas y mirá el resultado en Mis apuestas. Las rachas malas son normales: apostá montos chicos y parejos.</p>
@@ -1336,10 +1336,12 @@ function aScore(ev,p){
 function aRows(a){
   return (a.rows||[]).filter(r=>r.p>0).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p)})});
 }
-// Match score (0-100): el Score de la mejor línea con valor del partido (lo que ves arriba al abrirlo).
+// Match score (0-100) como Alpha: la mejor línea más una parte de la mejor de otro grupo.
+// s1 + (100 - s1) * s2/100 * 0,4 reproduce las dos lecturas de Alpha de Hammarby–Elfsborg (86/83 y 87/85 → 91).
 function aEdge(rows){
-  let b=0;for(const r of rows)if(r.aev>=A_EV&&r.asc>b)b=r.asc;
-  return b;
+  const best={};for(const r of rows)if(r.aev>=A_EV&&r.asc>(best[r.g]||0))best[r.g]=r.asc;
+  const [s1=0,s2=0]=Object.values(best).sort((x,y)=>y-x);
+  return Math.round(s1+(100-s1)*(s2/100)*0.4);
 }
 function edgeHtml(v){
   const c=v>=65?'g':v>=35?'m':'d';
