@@ -1216,6 +1216,8 @@ function allowedGroups(lid){
 
 // Casas marcadas antes en Ajustes (ya no se usan para calcular; se conserva la lista guardada).
 const myBooks=()=>new Set(LS.get('tg:mybooks',[])||[]);
+// Córners mal leídos (análisis viejos): líneas imposibles o muy lejos del modelo no se muestran.
+const okCornerRow=r=>{if(!r||!r.k||!r.k.startsWith('c:'))return true;const t=r.k.split(':'),L=Number(t[3]);if(t[1]==='total'?!(L>=5.5&&L<=15.5):!(L>=1.5&&L<=9.5))return false;return !(r.p>0&&r.m>0&&Math.abs(r.p-r.m)>0.25)};
 /* ---------------- mercados: modelo contra Pinnacle ---------------- */
 // Pestañas de mercado: nombre, columna de Precisión que dice si el modelo acierta ahí, y texto del ✓.
 const MK_TABS={goles:{name:'Goles del partido',st:'goals',chip:'Goles'},ambos:{name:'Ambos marcan',st:'btts',chip:'Ambos marcan'},equipo:{name:'Goles por equipo',st:'team',chip:'Por equipo'},corners:{name:'Córners',st:'corners',chip:'Córners'}};
@@ -1510,7 +1512,7 @@ async function renderMatch(id){
   if(!a.rows&&!a.lam){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
   h+=`<p class="small" style="margin-top:14px">Cada mercado: <b>cuota justa del modelo</b> y de <b>Pinnacle</b> (sin margen), la diferencia y la <b>Mínima</b> que tiene que pagar tu casa para que haya valor. <button class="info" data-tip="mkdiff">i</button></p>`;
   // Las líneas de las pestañas de mercado se agregan aunque ninguna casa las cotice.
-  const lines=(a.rows||[]).map(r=>({k:r.k,g:r.g,l:r.l,p:r.p,pm:r.sh&&r.m>0?r.m:null,est:r.k.startsWith('c:')&&r.es!==0}));
+  const lines=(a.rows||[]).filter(okCornerRow).map(r=>({k:r.k,g:r.g,l:r.l,p:r.p,pm:r.sh&&r.m>0?r.m:null,est:r.k.startsWith('c:')&&r.es!==0}));
   const seen=new Set(lines.map(x=>x.k));
   for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(!seen.has(x.k)){seen.add(x.k);lines.push(Object.assign({g:F.groupOf(x.bet)},x,{s:null}))}
   const top=lines.filter(x=>x.p>0&&x.pm>0&&x.p-x.pm>0.005).sort((x,y)=>(y.p-y.pm)-(x.p-x.pm)).slice(0,3);

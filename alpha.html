@@ -1325,6 +1325,8 @@ function myPrice(r){
   const re=myRe();if(re.test(r.bk||''))return {pr:r.pr,bk:r.bk};
   const x=(r.of||[]).find(([b])=>re.test(b));return x?{pr:x[1],bk:x[0]}:null;
 }
+// Córners mal leídos (análisis viejos): líneas imposibles o muy lejos del modelo no se muestran.
+const okCornerRow=r=>{if(!r||!r.k||!r.k.startsWith('c:'))return true;const t=r.k.split(':'),L=Number(t[3]);if(t[1]==='total'?!(L>=5.5&&L<=15.5):!(L>=1.5&&L<=9.5))return false;return !(r.p>0&&r.m>0&&Math.abs(r.p-r.m)>0.25)};
 const A_EV=0.0001; // como Alpha: cualquier línea con EV positivo cuenta como «con valor»
 // Score (0-100) en la escala de Alpha: crece con el EV, premia las cuotas bajas y medias, y castiga las apuestas
 // poco probables. Ajustado con 167 líneas de 6 partidos de Alpha (diferencia típica ±4 puntos).
@@ -1334,7 +1336,7 @@ function aScore(ev,p){
 }
 // Filas del partido como en Alpha: cuota de tus casas, cuota justa del modelo, EV y score.
 function aRows(a){
-  return (a.rows||[]).filter(r=>r.p>0).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p)})});
+  return (a.rows||[]).filter(r=>r.p>0&&okCornerRow(r)).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p)})});
 }
 // Match score (0-100) como Alpha: la mejor línea + 40% de lo que le falta para 100, multiplicado por la segunda
 // mejor línea. Reproduce a ±1 los 7 partidos de Alpha comparados (Hammarby, Gaziantep, Independiente, Venezia,

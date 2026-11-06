@@ -138,11 +138,11 @@
     const n = String(name || '');
     if (!HALF.test(n)) {
       const nt = n.trim();
-      // Cualquier mercado de córners de más/menos (el nombre exacto cambia según la fuente); no entran los de
-      // 3 resultados, hándicap, par/impar, exactos, primero/último ni carreras.
-      if (/c[oó]rner/i.test(nt) && !/1x2|3\s*way|handicap|asian|odd|even|exact|first|last|race|range|match\s*bet|1st|2nd/i.test(nt)) {
-        return /\bhome\b|local/i.test(nt) ? 'c:home' : /\baway\b|visitante/i.test(nt) ? 'c:away' : 'c:total';
-      }
+      // Solo los mercados de más/menos de córners con nombre exacto. Aceptar cualquier nombre con «corner» metía
+      // otros mercados (hándicap, carreras, intervalos) leídos como si fueran el total de córners.
+      if (/^(corners over under|corners over\/under|total corners|corners o\/u)$/i.test(nt)) return 'c:total';
+      const mc = nt.match(/^(home|away) corners over\/?\s*under$|^(home|away) team corners$|^total corners - (home|away)$/i);
+      if (mc) return 'c:' + (mc[1] || mc[2] || mc[3]).toLowerCase();
     }
     if (HALF.test(n) || /corner|card|tarjeta|booking/i.test(n)) return null;
     if (/^(match winner|1x2|resultado( final)?|full ?time result)$/i.test(n.trim())) return '1x2';
@@ -186,7 +186,7 @@
       const scope = kind.slice(2), m = full.match(/^(over|under|más de|mas de|menos de)\s*([0-9]+(?:[.,][0-9]+)?)$/);
       if (!m) return null;
       const side = /^(over|más de|mas de)/.test(m[1]) ? 'over' : 'under', line = q4(num(m[2]));
-      if (!(line >= 0.5 && line <= 25)) return null;
+      if (scope === 'total' ? !(line >= 5.5 && line <= 15.5) : !(line >= 1.5 && line <= 9.5)) return null;
       return ['c:' + scope + ':' + side + ':' + line, { type: 'corners', scope, side, line }];
     }
     if (kind.startsWith('tt:')) {
@@ -721,6 +721,7 @@
       if (o.bet.type !== 'corners') continue;
       if (!o.sharp && kdist) { const q = cornerProbs(o.bet, kdist).p; const x = isNum(q) && reprice(o, q); if (x) o = Object.assign(x, { sharp: true, derived: true }); }
       const pm = mdist ? cornerProbs(o.bet, mdist) : null, e = pm ? evaluate(pm, o.best.price) : null;
+      if (pm && o.mkt > 0 && Math.abs(pm.p - o.mkt) > 0.25) continue;
       rows.push({ key: o.key, bet: o.bet, group: 'corners', label: betLabel(o.bet, names && names.home || 'Local', names && names.away || 'Visitante'),
         price: o.best.price, bookmaker: o.best.bookmaker, fair: e ? e.fair : null, p: e ? e.p : null, ev: e ? e.ev : null, score: e ? e.score : 0,
         mkt: o.mkt, sharp: !!o.sharp, est: !!o.derived, offers: o.offers, evMkt: o.mkt > 0 ? o.mkt * o.best.price - 1 : null });
