@@ -1067,8 +1067,10 @@ async function cloudPush(){
   const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
   await loadXg();
   await loadBets();
-  LS.set('tg:pulledTs',Date.now()+5000);
-  await C.pushAll({bets:BETS,xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{})});
+  LS.set('tg:pulledTs',Date.now()+5000);LS.set('tg:cfgts',Date.now());
+  const areg=state.areg||(await DB.get('areg'))||null;
+  const cfg={ts:Date.now(),bank:LS.get('tg:bank',0),aok:LS.get('tg:aok',true),checkbooks:LS.get('tg:checkbooks','bet365|1xbet|betano')};
+  await C.pushAll({bets:BETS,xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{}),areg,cfg});
 }
 // Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
 async function cloudPull(force){
@@ -1079,6 +1081,10 @@ async function cloudPull(force){
   for(const [d,x] of Object.entries(got.days||{})){const day=unpackDay(x);await DB.set('day:'+d,day);state.days[d]=day}
   if(got.prec){state.prec=got.prec;await DB.set('prec',got.prec)}
   if(got.fav)LS.set('tg:fav',got.fav);
+  // Ajustes que cambian las recomendaciones: los del último dispositivo que subió.
+  if(got.cfg&&got.cfg.ts>Number(LS.get('tg:cfgts',0))){LS.set('tg:cfgts',got.cfg.ts);if(got.cfg.bank!=null)LS.set('tg:bank',got.cfg.bank);if(got.cfg.aok!=null)LS.set('tg:aok',got.cfg.aok);if(got.cfg.checkbooks)LS.set('tg:checkbooks',got.cfg.checkbooks)}
+  // Lecturas selladas: se juntan (gana la que ya está liquidada).
+  if(got.areg){const loc=state.areg||(await DB.get('areg'))||{};for(const [k,e] of Object.entries(got.areg))if(!loc[k]||(!loc[k].res&&e.res))loc[k]=e;state.areg=loc;await DB.set('areg',loc)}
   if(got.bf)LS.set('tg:bf',Object.assign({},LS.get('tg:bf',{}),got.bf));
   if(got.updated)await setUpdated(got.updated);
   return true;
@@ -1726,7 +1732,7 @@ async function renderCfg(){
     $('#dbInfo').textContent=`${nl} ligas con historial · ${nx} partidos con xG · ${Object.keys(reg).length} predicciones guardadas`+(est?` · ${(est.usage/1048576).toFixed(1)} MB usados`:'');
   }catch(e){$('#dbInfo').textContent='No se pudo leer la base de datos del navegador: '+e.message}
 }
-$('#bank').addEventListener('change',e=>LS.set('tg:bank',Math.max(0,Number(e.target.value)||0)));
+$('#bank').addEventListener('change',e=>{LS.set('tg:bank',Math.max(0,Number(e.target.value)||0));LS.set('tg:cfgts',Date.now())});
 $('#booksList')&&$('#booksList').addEventListener('change',e=>{const cb=e.target.closest('[data-book]');if(!cb)return;const s=myBooks();cb.checked?s.add(cb.dataset.book):s.delete(cb.dataset.book);LS.set('tg:mybooks',[...s])});
 $('#xgBudget').addEventListener('change',e=>LS.set('tg:xgBudget',Math.max(0,Number(e.target.value)||0)));
 $('#btnKey').addEventListener('click',async()=>{
@@ -1889,11 +1895,13 @@ async function dropText(id,info){
   for(let k=0;k<info.n;k+=10){const b=writeBatch(db);for(let j=k;j<Math.min(info.n,k+10);j++)b.delete(ref(partKey(id,info,j)));await b.commit()}
 }
 const C=window.tgCloud={user:null,
-  async pushAll({bets,xg,days,prec,reg,fav,updated,bf}){
+  async pushAll({bets,xg,days,prec,reg,fav,updated,bf,areg,cfg}){
     const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
     const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
     for(const [d,x] of Object.entries(days))meta.days[d]=await putText('day_'+d,x);
     if(prec)meta.prec=await putText('prec',prec);
+    if(areg)meta.areg=await putText('areg',areg);else if(prevMeta.areg)meta.areg=prevMeta.areg;
+    if(cfg)await setDoc(ref('cfg'),{v:JSON.stringify(cfg)});
     if(bets)meta.bets=await putText('bets',bets);
     else if(prevMeta.bets)meta.bets=prevMeta.bets;
     // xG compacto: [xg local, xg visitante, fuente, tiros…] por partido (los que no tienen datos van como 0).
@@ -1910,7 +1918,7 @@ const C=window.tgCloud={user:null,
     try{
       const olds=[];
       for(const [d,x] of Object.entries(prevMeta.days||{}))if(!meta.days[d]||JSON.stringify(meta.days[d])!==JSON.stringify(x))olds.push(['day_'+d,x]);
-      for(const k of ['prec','bets','xg'])if(prevMeta[k]&&JSON.stringify(prevMeta[k])!==JSON.stringify(meta[k]))olds.push([k,prevMeta[k]]);
+      for(const k of ['prec','bets','xg','areg'])if(prevMeta[k]&&JSON.stringify(prevMeta[k])!==JSON.stringify(meta[k]))olds.push([k,prevMeta[k]]);
       for(const [m,x] of Object.entries(prevMeta.regMonths||{}))if(JSON.stringify(meta.regMonths[m])!==JSON.stringify(x))olds.push(['reg_'+m,x]);
       for(const [id,x] of olds)await dropText(id,x);
     }catch(e){console.warn('limpieza',e)}
@@ -1921,12 +1929,14 @@ const C=window.tgCloud={user:null,
     const meta=JSON.parse(m.data().v);
     const out={updated:meta.updated,bf:meta.bf};
     const f=await getDoc(ref('fav'));if(f.exists())out.fav=JSON.parse(f.data().v);
+    try{const c=await getDoc(ref('cfg'));if(c.exists())out.cfg=JSON.parse(c.data().v)}catch(e){}
     meta.updated=meta.updated||meta.ts||0;out.updated=meta.updated;
     out.ts=meta.ts||0;
-    if(!(meta.updated>localUpdated)&&!(out.ts>(seenTs||0)))return out.fav?{fav:out.fav}:null;
+    if(!(meta.updated>localUpdated)&&!(out.ts>(seenTs||0)))return out.fav||out.cfg?{fav:out.fav,cfg:out.cfg}:null;
     out.days={};
     for(const d of dates)if(meta.days&&meta.days[d]){const x=await getText('day_'+d,meta.days[d]);if(x)out.days[d]=x}
     if(meta.prec)out.prec=await getText('prec',meta.prec);
+    if(meta.areg)out.areg=await getText('areg',meta.areg);
     return out;
   },
   async peek(){const m=await getDoc(ref('meta'));return m.exists()?JSON.parse(m.data().v):null},
