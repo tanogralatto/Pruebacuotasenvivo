@@ -2999,6 +2999,14 @@ function startAlertHistory() {
     return { odd, stakeUnits, result, profitUnits };
   }
 
+  // Cuota promedio con la que la app mandó las alertas de cada mercado (la cuota original de la alerta).
+  function avgOddStats(alerts) {
+    return [['over05', 'Cuota media +0,5 1T'], ['over10', 'Cuota media +1,0 1T']].map(([type, label]) => {
+      const odds = alerts.filter(a => a.market_type === type).map(a => Number(a.odd)).filter(o => Number.isFinite(o) && o > 1);
+      return [label, odds.length ? (odds.reduce((t, o) => t + o, 0) / odds.length).toFixed(2) + ' (' + odds.length + ')' : '—'];
+    });
+  }
+
   function renderHistory() {
     const allDocs = [...latestDocs, ...olderPages.flat()];
     const seen = new Set();
@@ -3036,7 +3044,8 @@ function startAlertHistory() {
       ['Balance', (balanceUnits > 0 ? '+' : '') + balanceUnits.toFixed(2) + ' u.'],
       ['Balance estimado ARS', (balanceArs > 0 ? '+' : '') + balanceArs.toLocaleString('es-AR',{maximumFractionDigits:2})],
       ['ROI', (stakedUnits ? (roi > 0 ? '+' : '') + roi.toFixed(1) + '%' : '—')],
-      ['Acierto', (counts.won + counts.lost) ? (counts.won/(counts.won+counts.lost)*100).toFixed(1)+'%' : '—']
+      ['Acierto', (counts.won + counts.lost) ? (counts.won/(counts.won+counts.lost)*100).toFixed(1)+'%' : '—'],
+      ...avgOddStats(monthAlerts)
     ].map(([label, value]) => '<div class="alert-stat"><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>').join('');
 
     if (!monthAlerts.length) {
