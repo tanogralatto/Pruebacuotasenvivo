@@ -564,17 +564,34 @@ function marketOf(L){
   if(L._mkt&&L._mktN===L.raw.length&&L._mktR===state.reg&&L._mktF===FD)return L._mkt;
   const m=new Map(),reg=state.reg||{};
   for(const [id,r] of Object.entries(reg))if(r&&String(r.lid)===String(L.lid)&&r.m1x2)m.set(String(id),r.m1x2);
-  const fdl=FD&&FD.leagues&&FD.leagues[L.lid];
-  if(fdl){
-    const rest=L.raw.filter(r=>!m.has(String(r[0]))).map(r=>({id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5]}));
-    for(const [id,q] of F.matchFd(rest,fdl,L.names))m.set(String(id),q);
-  }
+  for(const [id,row] of fdRowsOf(L))if(!m.has(String(id)))m.set(String(id),[row[3]/1000,row[4]/1000,row[5]/1000]);
   L._mkt=m;L._mktN=L.raw.length;L._mktR=state.reg;L._mktF=FD;
   return m;
 }
-// Córners de cada partido jugado (de las estadísticas bajadas junto con el xG).
-const cornersOf=id=>{const r=XG&&XG[id];return r&&Number.isFinite(r[9])&&Number.isFinite(r[10])?[r[9],r[10]]:null};
+// Partidos de la liga emparejados con football-data.co.uk: Map(id -> fila). La fila trae las probabilidades de
+// cierre y, en las ligas principales, los córners (que se guardan en FDC).
+const FDC=new Map();
+function fdRowsOf(L){
+  if(L._fdr&&L._fdrN===L.raw.length&&L._fdrF===FD)return L._fdr;
+  const fdl=FD&&FD.leagues&&FD.leagues[L.lid];
+  const m=fdl?F.matchFdRows(L.raw.map(r=>({id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5]})),fdl,L.names):new Map();
+  for(const [id,row] of m)if(Number.isInteger(row[8])&&Number.isInteger(row[9]))FDC.set(String(id),[row[8],row[9]]);
+  L._fdr=m;L._fdrN=L.raw.length;L._fdrF=FD;
+  return m;
+}
+// ¿Coinciden los córners de football-data con los de API-Football en los partidos que tienen los dos?
+// Si con 30 o más partidos menos del 80% coincide (±1 por equipo), no se usan los de football-data.
+let fdcChk=null;
+function fdcCheck(){
+  if(fdcChk&&fdcChk.size===FDC.size&&Date.now()-fdcChk.t<60000)return fdcChk;
+  const pairs=[];for(const [id,c] of FDC){const r=XG&&XG[id];if(r&&Number.isFinite(r[9])&&Number.isFinite(r[10]))pairs.push([c[0],c[1],r[9],r[10]])}
+  const ag=F.cornerAgreement(pairs);
+  return fdcChk=Object.assign(ag,{size:FDC.size,t:Date.now(),ok:!(ag.n>=30&&ag.near<0.8)});
+}
+// Córners de cada partido jugado: las estadísticas de API-Football y, si no hay, los de football-data.
+const cornersOf=id=>{const r=XG&&XG[id];if(r&&Number.isFinite(r[9])&&Number.isFinite(r[10]))return [r[9],r[10]];const c=FDC.get(String(id));return c&&fdcCheck().ok?c:null};
 function cornerGames(L){
+  fdRowsOf(L);
   const out=[];
   for(const r of L.raw){const c=cornersOf(r[0]);if(c)out.push({id:r[0],ts:r[1],h:r[2],a:r[3],hg:c[0],ag:c[1],season:r[6],leagueId:L.lid})}
   return out;
@@ -597,8 +614,8 @@ async function fetchXg(leagues,budget,status){
   const hasStats=r=>r&&(r[2]||Number.isFinite(r[9]));
   const ready=[];
   for(const L of leagues){
-    let asked=0,ok=0;
-    for(const r of L.raw){const x=XG[r[0]];if(x){asked++;if(hasStats(x))ok++}}
+    let asked=0,ok=0;fdRowsOf(L);
+    for(const r of L.raw){const x=XG[r[0]];if(x){asked++;if(hasStats(x))ok++}else if(FDC.has(String(r[0]))&&fdcCheck().ok)ok++}
     if(asked>=20&&!ok){if(!NOST[L.lid])NOST[L.lid]=now}else if(ok)delete NOST[L.lid];
     if(NOST[L.lid]&&now-NOST[L.lid]<30*864e5)continue;
     if(NOST[L.lid])delete NOST[L.lid]; // pasaron 30 días: se vuelve a probar
@@ -1562,6 +1579,7 @@ async function renderPrec(){
     <div class="tile"><div class="l">Ambos marcan <button class="info" data-tip="skillBtts">i</button></div><div class="v ${(S.btts||{}).skill>0?'c-g':'c-d'}">${(S.btts||{}).n?spct(S.btts.skill):'—'}</div><div class="small">${(S.btts||{}).n||0} partidos</div></div>
     <div class="tile"><div class="l">Goles por equipo <button class="info" data-tip="skillTeam">i</button></div><div class="v ${(S.team||{}).skill>0?'c-g':'c-d'}">${spct((S.team||{}).skill)}</div><div class="small">${(S.team||{}).n||0} partidos</div></div>
     <div class="tile"><div class="l">Córners <button class="info" data-tip="skillCorners">i</button></div><div class="v ${(S.corners||{}).skill>0?'c-g':'c-d'}">${(S.corners||{}).n?spct(S.corners.skill):'—'}</div><div class="small">${(S.corners||{}).n||0} partidos</div></div></div>`;
+  {const ck=fdcCheck();if(FDC.size)h+=`<p class="small">Córners de football-data.co.uk: ${FDC.size.toLocaleString('es-AR')} partidos. ${ck.n?`Comparados con API-Football en ${ck.n} partidos: coinciden exacto ${pct(ck.exact,0)} y con ±1 córner ${pct(ck.near,0)}. ${ck.ok?'Se usan.':'<b class="c-b">No se usan: coinciden poco.</b>'}`:'Todavía no hay partidos con las dos fuentes para compararlos.'}</p>`}
   h+=await espHtml();
   h+=`<h2>Explorá cada liga <button class="info" data-tip="table">i</button></h2>
     <div class="tools"><input type="search" id="pq" placeholder="Buscar liga o país" value="${esc(precQ)}"><select id="psort"><option value="n"${precSort==='n'?' selected':''}>Más partidos</option><option value="res"${precSort==='res'?' selected':''}>Mejor en 1X2</option><option value="goals"${precSort==='goals'?' selected':''}>Mejor en goles</option><option value="btts"${precSort==='btts'?' selected':''}>Mejor en ambos marcan</option><option value="team"${precSort==='team'?' selected':''}>Mejor en goles por equipo</option><option value="corners"${precSort==='corners'?' selected':''}>Mejor en córners</option></select></div>`;

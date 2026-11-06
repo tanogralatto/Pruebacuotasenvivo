@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Baja de football-data.co.uk las cuotas de cierre 1X2 (Pinnacle o promedio de las casas) y los resultados
- * de las últimas dos temporadas, y arma data/fd-1x2.json para la pestaña Precisión de goles.html.
+ * de las últimas dos temporadas (y los córners de las ligas principales), y arma data/fd-1x2.json para goles.html.
  * Uso: node scripts/football-data.js   (Node 18+; lo corre también la tarea semanal de GitHub)
  */
 'use strict';
@@ -48,7 +48,7 @@ async function get(url) {
   return res.text();
 }
 (async () => {
-  const out = { source: 'football-data.co.uk', built: new Date().toISOString().slice(0, 10), note: 'fila = [día (desde 1970), goles local, goles visitante, p local, p empate, p visitante (por mil, sin margen), local, visitante]', leagues: {} };
+  const out = { source: 'football-data.co.uk', built: new Date().toISOString().slice(0, 10), note: 'fila = [día (desde 1970), goles local, goles visitante, p local, p empate, p visitante (por mil, sin margen), local, visitante, córners local, córners visitante (si hay)]', leagues: {} };
   const jobs = [];
   for (const [lid, code] of Object.entries(MAIN)) for (const s of seasonCodes()) jobs.push({ lid, url: BASE + 'mmz4281/' + s + '/' + code + '.csv', kind: 'main' });
   for (const [lid, code] of Object.entries(EXTRA)) jobs.push({ lid, url: BASE + 'new/' + code + '.csv', kind: 'extra' });
@@ -61,7 +61,9 @@ async function get(url) {
       const hg = Number(j.kind === 'main' ? r.FTHG : r.HG), ag = Number(j.kind === 'main' ? r.FTAG : r.AG);
       if (!Number.isInteger(hg) || !Number.isInteger(ag)) continue;
       const p = probs(r); if (!p) continue;
-      list.push([Math.round(t / 864e5), hg, ag, p[0], p[1], p[2], j.kind === 'main' ? r.HomeTeam : r.Home, j.kind === 'main' ? r.AwayTeam : r.Away]);
+      // Córners (HC/AC): solo vienen en los archivos de las ligas principales; si no hay, no se agregan.
+      const hc = Number(r.HC), ac = Number(r.AC), corners = r.HC !== undefined && r.HC !== '' && Number.isInteger(hc) && Number.isInteger(ac) ? [hc, ac] : [];
+      list.push([Math.round(t / 864e5), hg, ag, p[0], p[1], p[2], j.kind === 'main' ? r.HomeTeam : r.Home, j.kind === 'main' ? r.AwayTeam : r.Away, ...corners]);
     }
     await new Promise(r => setTimeout(r, 300));
   }

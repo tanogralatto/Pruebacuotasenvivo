@@ -738,6 +738,18 @@
     }
     return n ? { n, skill: 1 - m / b, rpsModel: m / n, rpsBase: b / n, expCorners: exp / n, realCorners: real / n } : { n: 0, skill: null };
   }
+  // Compara los córners de dos fuentes (football-data y las estadísticas de API-Football) en los mismos partidos.
+  // pairs = [[local A, visitante A, local B, visitante B], …]. Devuelve qué parte coincide exacto y con ±1 por equipo.
+  function cornerAgreement(pairs) {
+    let n = 0, exact = 0, near = 0;
+    for (const [a, b, c, d] of pairs || []) {
+      if (![a, b, c, d].every(isNum)) continue;
+      n++;
+      if (a === c && b === d) exact++;
+      if (Math.abs(a - c) <= 1 && Math.abs(b - d) <= 1) near++;
+    }
+    return { n, exact: n ? exact / n : null, near: n ? near / n : null };
+  }
   // Habilidad en «ambos marcan» (error de Brier) contra decir siempre el promedio de la liga.
   function bttsSkill(rows, rho) {
     let m = 0, b = 0, n = 0;
@@ -859,6 +871,12 @@
   // ([día, gl, gv, pL, pE, pV, local, visitante]): misma fecha (±1 día por el huso horario) y mismo resultado;
   // si hay más de uno, deciden los nombres. Devuelve Map(id -> [pL, pE, pV]).
   function matchFd(rows, fd, names) {
+    const out = new Map();
+    for (const [id, row] of matchFdRows(rows, fd, names)) out.set(id, [row[3] / 1000, row[4] / 1000, row[5] / 1000]);
+    return out;
+  }
+  // Igual que matchFd, pero devuelve la fila completa de football-data (con los córners, si los trae).
+  function matchFdRows(rows, fd, names) {
     const byDay = new Map();
     (fd || []).forEach((r, i) => { if (!byDay.has(r[0])) byDay.set(r[0], []); byDay.get(r[0]).push(i); });
     const used = new Set(), out = new Map();
@@ -874,7 +892,7 @@
       } else if (cand.length === 1) pick = cand[0];
       if (pick === null) continue;
       used.add(pick);
-      out.set(r.id, [fd[pick][3] / 1000, fd[pick][4] / 1000, fd[pick][5] / 1000]);
+      out.set(r.id, fd[pick]);
     }
     return out;
   }
@@ -893,7 +911,7 @@
   }
 
   const api = {
-    kelly, settle, nameSim, matchFd, dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
+    kelly, settle, nameSim, matchFd, matchFdRows, cornerAgreement, dcTau, withProbs, fitRho, backtestError, readStats, proxyXg, fitProxy, XG_DEFAULT,
     poissonPmf, scoreMatrix, summarize, lineParts, lineResult, betResult, betProbs, betScore, evaluate,
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
     rps, outcome1x2, goalsRps, sharpLambdas, ece, backtestLeague, goalsSkill, marketSkill,
