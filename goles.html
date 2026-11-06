@@ -297,6 +297,7 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
       <li><b>Aprende de Pinnacle</b>: en las ligas con cuotas de cierre de los partidos ya jugados (football-data.co.uk y las que guarda la app de API-Football), cada partido entra al ajuste con los goles esperados que implicaba Pinnacle (90%) y los goles reales (10%), dando mucho más peso a lo reciente. La cuota de cierre ya resume lesiones, rotaciones y forma, y un gol de suerte casi no la mueve. Probado con ~17.800 partidos de 38 ligas: la diferencia con la probabilidad de Pinnacle baja casi a la mitad (de 6,7 a 3,6 puntos en el local). En la ficha dice «+ cuotas de Pinnacle».</li>
       <li>Cada liga usa la combinación (con o sin xG, con o sin corrección, con o sin cuotas de Pinnacle) que <b>mejor acertó</b> en su historial.</li>
+      <li><b>Goles de cada equipo</b> («Local más de 1,5», «Visitante más de 0,5»…): las casas comunes los arman con una fórmula a partir de su 1X2 y su total, y ahí suelen fallar. Si Pinnacle no los cotiza, el precio justo sale de <b>su</b> 1X2 y sus totales (los mercados donde entra más dinero profesional), pasados a goles esperados de cada equipo. Lo mismo para «Ambos marcan» cuando Pinnacle no lo trae.</li>
     </ul>
 
     <h3>Precisión: en qué ligas confiar en el modelo</h3>
@@ -898,6 +899,7 @@ function parseKey(k){
   if(t==='btts')return {type:'btts',pick:a};
   if(t==='total')return {type:'total',side:a,line:Number(b)};
   if(t==='ah')return {type:'ah',side:a,line:Number(b)};
+  if(t==='tt')return {type:'tt',team:a,side:b,line:Number(k.split(':')[3])};
   return null;
 }
 const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
@@ -1056,7 +1058,7 @@ function statusChip(st,label){
 }
 function allowedGroups(lid){
   const s=leagueStatus(lid),set=new Set();
-  if(s.goals==='g'){set.add('high');set.add('low')}
+  if(s.goals==='g'){set.add('high');set.add('low');set.add('team')}
   if(s.res==='g'){set.add('home');set.add('away');set.add('other')}
   return set;
 }
