@@ -92,6 +92,8 @@
       case 'total': return bet.side === 'over' ? lineResult(i + j, -bet.line) : lineResult(-(i + j), bet.line);
       case 'ah': return bet.side === 'home' ? lineResult(i - j, bet.line) : lineResult(j - i, bet.line);
       case 'tt': { const x = bet.team === 'home' ? i : j; return bet.side === 'over' ? lineResult(x, -bet.line) : lineResult(-x, bet.line); }
+      // Córners: i, j = córners del local y del visitante (no goles).
+      case 'corners': { const x = bet.scope === 'home' ? i : bet.scope === 'away' ? j : i + j; return bet.side === 'over' ? lineResult(x, -bet.line) : lineResult(-x, bet.line); }
       default: return null;
     }
   }
@@ -134,6 +136,12 @@
 
   function betKind(name) {
     const n = String(name || '');
+    if (!HALF.test(n)) {
+      const nt = n.trim();
+      if (/^(corners?\s*(over\s*\/?\s*under|o\/u)|total\s*corners|c[oó]rners?\s*(m[aá]s\/menos|totales))$/i.test(nt)) return 'c:total';
+      const mc = nt.match(/^(home|away)\s*(?:team\s*)?corners?(?:\s*over\s*\/?\s*under)?$/i) || nt.match(/^total\s*corners\s*-\s*(home|away)$/i);
+      if (mc) return 'c:' + mc[1].toLowerCase();
+    }
     if (HALF.test(n) || /corner|card|tarjeta|booking/i.test(n)) return null;
     if (/^(match winner|1x2|resultado( final)?|full ?time result)$/i.test(n.trim())) return '1x2';
     // Goles de un solo equipo («Total - Home» / «Total - Away» en API-Football).
@@ -170,6 +178,13 @@
       if (!(line >= 0.5 && line <= 8)) return null;
       return ['total:' + side + ':' + line, { type: 'total', side, line }];
     }
+    if (kind.startsWith('c:')) {
+      const scope = kind.slice(2), m = lv.match(/^(over|under|más de|mas de|menos de)\s*([0-9]+(?:[.,][0-9]+)?)$/);
+      if (!m) return null;
+      const side = /^(over|más de|mas de)/.test(m[1]) ? 'over' : 'under', line = q4(num(m[2]));
+      if (!(line >= 0.5 && line <= 25)) return null;
+      return ['c:' + scope + ':' + side + ':' + line, { type: 'corners', scope, side, line }];
+    }
     if (kind.startsWith('tt:')) {
       const team = kind.slice(3), m = lv.match(/^(over|under|más de|mas de|menos de)\s*([0-9]+(?:[.,][0-9]+)?)$/);
       if (!m) return null;
@@ -200,6 +215,7 @@
     if (t === 'total') return 'total:' + b;
     if (t === 'ah') return 'ah:' + (a === 'home' ? Number(b) : -Number(b));
     if (t === 'tt') return 'tt:' + a + ':' + key.split(':')[3];
+    if (t === 'c') return 'c:' + a + ':' + key.split(':')[3];
     return null; // doble oportunidad: se saca del 1X2
   }
 
@@ -301,7 +317,7 @@
       const { best, offers } = pickBest(list, ref);
       const bet = perBook.get(list[0].bk).get(k).bet;
       const sharp = !!(pin && ref === pin.p);
-      if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length, sharp, offers });
+      if (best) out.set(k, { key: k, bet, best, mkt: ref, books: list.length, sharp, offers, all: list.map(x => [x.bk, x.price, x.p]) });
     }
     // Mercados que las casas arman con fórmulas (goles de cada equipo, ambos marcan): si Pinnacle no los cotiza,
     // el precio justo sale de su 1X2 y sus totales (los mercados donde más dinero profesional entra), pasados
@@ -365,7 +381,8 @@
     { id: 'home', title: 'Gana {home}', kind: 'result' },
     { id: 'away', title: 'Gana {away}', kind: 'result' },
     { id: 'other', title: 'Otros', kind: 'result' },
-    { id: 'team', title: 'Goles de cada equipo', kind: 'goals' }
+    { id: 'team', title: 'Goles de cada equipo', kind: 'goals' },
+    { id: 'corners', title: 'Córners', kind: 'corners' }
   ];
   function groupOf(bet) {
     if (bet.type === 'total') return bet.side === 'over' ? 'high' : 'low';
@@ -374,6 +391,7 @@
     if (bet.type === 'dc') return bet.pick === '1X' ? 'home' : bet.pick === 'X2' ? 'away' : 'other';
     if (bet.type === 'ah') return bet.side;
     if (bet.type === 'tt') return 'team';
+    if (bet.type === 'corners') return 'corners';
     return 'other';
   }
   const fmtLine = l => (l > 0 ? '+' : l < 0 ? '−' : '') + String(Math.abs(l)).replace('.', ',');
@@ -384,6 +402,7 @@
       case 'btts': return 'Ambos marcan ' + (bet.pick === 'yes' ? 'Sí' : 'No');
       case 'total': return (bet.side === 'over' ? 'Más de ' : 'Menos de ') + String(bet.line).replace('.', ',');
       case 'ah': return 'Hándicap ' + (bet.side === 'home' ? hn : an) + ' ' + fmtLine(bet.line);
+      case 'corners': return 'Córners ' + (bet.scope === 'home' ? hn + ' ' : bet.scope === 'away' ? an + ' ' : '') + (bet.side === 'over' ? 'más de ' : 'menos de ') + String(bet.line).replace('.', ',');
       case 'tt': return 'Goles ' + (bet.team === 'home' ? hn : an) + (bet.side === 'over' ? ': más de ' : ': menos de ') + String(bet.line).replace('.', ',');
       default: return '';
     }
@@ -395,6 +414,7 @@
     const rows = [];
     if (!m || !odds) return { rows, matrix: m };
     for (const o of odds.values()) {
+      if (o.bet.type === 'corners') continue; // van con su propio modelo (cornerMarkets)
       const probs = betProbs(o.bet, m);
       const e = evaluate(probs, o.best.price);
       if (!e) continue;
@@ -606,6 +626,123 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* 5c. Córners                                                         */
+  /* ------------------------------------------------------------------ */
+  // Mismo ajuste de ataque y defensa que los goles, pero con córners (sacados de las estadísticas de cada
+  // partido). Los córners varían más que un Poisson, así que cada equipo sigue una binomial negativa
+  // (size = cuánto se parece a un Poisson: más grande, menos dispersión), estimada con el historial.
+  const CORNERS = Object.freeze({ priorMatches: 6, halfLifeDays: 240, size: 12, maxK: 30, minGames: 40 });
+
+  // Probabilidades de 0..maxK córners (el último lugar junta «maxK o más»).
+  function nbPmf(mu, size, maxK) {
+    const K = maxK || CORNERS.maxK, r = size > 0 ? size : CORNERS.size, out = new Array(K + 1).fill(0);
+    if (!(mu > 0)) { out[0] = 1; return out; }
+    const q = mu / (r + mu);
+    let p = Math.pow(r / (r + mu), r), acc = 0;
+    for (let k = 0; k < K; k++) { out[k] = p; acc += p; p *= (k + r) / (k + 1) * q; }
+    out[K] = Math.max(0, 1 - acc);
+    return out;
+  }
+  // Córners del local, del visitante y del total (suma de las dos, independientes).
+  function cornerDist(ch, ca, size) {
+    const h = nbPmf(ch, size), a = nbPmf(ca, size), K = CORNERS.maxK, tot = new Array(K + 1).fill(0);
+    for (let i = 0; i <= K; i++) for (let j = 0; j <= K; j++) tot[Math.min(K, i + j)] += h[i] * a[j];
+    return { home: h, away: a, total: tot, ch, ca };
+  }
+  // Como betProbs, pero con la distribución de córners.
+  function cornerProbs(bet, dist) {
+    const pmf = dist && dist[bet.scope];
+    if (!pmf) return null;
+    const o = { win: 0, halfWin: 0, push: 0, halfLose: 0, lose: 0 };
+    pmf.forEach((q, x) => {
+      const r = bet.side === 'over' ? lineResult(x, -bet.line) : lineResult(-x, bet.line);
+      if (r > 0.75) o.win += q; else if (r > 0.25) o.halfWin += q; else if (r > -0.25) o.push += q; else if (r > -0.75) o.halfLose += q; else o.lose += q;
+    });
+    o.W = o.win + o.halfWin / 2; o.L = o.lose + o.halfLose / 2;
+    o.p = o.W + o.L > 0 ? o.W / (o.W + o.L) : null;
+    o.fair = o.p > 0 ? 1 / o.p : null;
+    return o;
+  }
+  // size por momentos con las predicciones del backtest (lh, la = córners esperados; hg, ag = córners reales).
+  // Con pocos datos se acerca al valor típico.
+  function fitCornerSize(rows) {
+    let num = 0, den = 0, n = 0;
+    for (const r of rows || []) for (const [mu, x] of [[r.lh, r.hg], [r.la, r.ag]]) {
+      if (!(mu > 0) || !isNum(x)) continue;
+      num += mu * mu; den += (x - mu) * (x - mu) - mu; n++;
+    }
+    const raw = den > 0 ? Math.min(60, Math.max(3, num / den)) : 60;
+    const w = Math.min(1, n / 600);
+    return { size: w * raw + (1 - w) * CORNERS.size, raw: n ? raw : null, n };
+  }
+  // Media del total de córners que reproduce la probabilidad de «más de L» (bisección).
+  function cornerMeanFor(line, pOver, size) {
+    let lo = 1, hi = 30;
+    for (let i = 0; i < 40; i++) {
+      const mu = (lo + hi) / 2, p = cornerProbs({ scope: 'total', side: 'over', line }, cornerDist(mu / 2, mu / 2, size)).p;
+      if (p < pOver) lo = mu; else hi = mu;
+    }
+    return (lo + hi) / 2;
+  }
+  // Pasa una apuesta a otra referencia (probabilidad justa): mejor cuota y casas que pagan más que eso.
+  function reprice(o, ref) {
+    let best = null;
+    const offers = [];
+    for (const [bk, price, p] of o.all || []) {
+      if (Math.abs(p - ref) > MAX_GAP + 0.05) continue;
+      if (!best || price > best.price) best = { price, bookmaker: bk };
+      if (price * ref - 1 > 0 && !/pinnacle/i.test(bk)) offers.push([bk, price]);
+    }
+    offers.sort((a, b) => b[1] - a[1]);
+    return best ? Object.assign({}, o, { mkt: ref, best, offers }) : null;
+  }
+  // Filas de córners de un partido. clam = {home, away} córners esperados del modelo (o null si no hay modelo).
+  // Precio justo: Pinnacle si cotiza esa línea; si no, se arma con su línea principal de total de córners
+  // (la proporción local/visitante sale del modelo); si Pinnacle no tiene córners, la mediana de las casas.
+  function cornerMarkets(clam, odds, names, size) {
+    const sz = size > 0 ? size : CORNERS.size, rows = [];
+    if (!odds) return { rows, mean: null };
+    const sharpTot = [];
+    for (const o of odds.values()) if (o.bet.type === 'corners' && o.sharp && o.bet.scope === 'total' && o.bet.side === 'over') sharpTot.push(cornerMeanFor(o.bet.line, o.mkt, sz));
+    const mean = sharpTot.length ? sharpTot.reduce((a, b) => a + b, 0) / sharpTot.length : null;
+    const share = clam && clam.home > 0 && clam.away > 0 ? clam.home / (clam.home + clam.away) : 0.53;
+    const mdist = clam ? cornerDist(clam.home, clam.away, sz) : null;
+    const kdist = mean ? cornerDist(mean * share, mean * (1 - share), sz) : null;
+    for (let o of odds.values()) {
+      if (o.bet.type !== 'corners') continue;
+      if (!o.sharp && kdist) { const q = cornerProbs(o.bet, kdist).p; const x = isNum(q) && reprice(o, q); if (x) o = Object.assign(x, { sharp: true, derived: true }); }
+      const pm = mdist ? cornerProbs(o.bet, mdist) : null, e = pm ? evaluate(pm, o.best.price) : null;
+      rows.push({ key: o.key, bet: o.bet, group: 'corners', label: betLabel(o.bet, names && names.home || 'Local', names && names.away || 'Visitante'),
+        price: o.best.price, bookmaker: o.best.bookmaker, fair: e ? e.fair : null, p: e ? e.p : null, ev: e ? e.ev : null, score: e ? e.score : 0,
+        mkt: o.mkt, sharp: !!o.sharp, offers: o.offers, evMkt: o.mkt > 0 ? o.mkt * o.best.price - 1 : null });
+    }
+    rows.sort((a, b) => b.score - a.score || (b.evMkt || -9) - (a.evMkt || -9));
+    return { rows, mean };
+  }
+  // Habilidad del modelo de córners (total del partido) contra decir siempre el promedio de la liga.
+  function cornerSkill(rows, size) {
+    let m = 0, b = 0, n = 0, exp = 0, real = 0;
+    for (const r of rows || []) {
+      if (!(r.lh > 0) || !(r.la > 0) || !isNum(r.hg) || !isNum(r.ag)) continue;
+      const t = Math.min(CORNERS.maxK, r.hg + r.ag);
+      m += rps(cornerDist(r.lh, r.la, size).total, t); b += rps(cornerDist(r.muH, r.muA, size).total, t); n++;
+      exp += r.lh + r.la; real += r.hg + r.ag;
+    }
+    return n ? { n, skill: 1 - m / b, rpsModel: m / n, rpsBase: b / n, expCorners: exp / n, realCorners: real / n } : { n: 0, skill: null };
+  }
+  // Habilidad en goles de cada equipo (los mercados «Local/Visitante más de…») contra el promedio de la liga.
+  function teamGoalsSkill(rows) {
+    let m = 0, b = 0, n = 0;
+    const dist = l => { const d = []; let acc = 0; for (let k = 0; k < 6; k++) { const q = poissonPmf(k, l); d.push(q); acc += q; } d.push(Math.max(0, 1 - acc)); return d; };
+    for (const r of rows || []) {
+      if (!(r.lh > 0) || !(r.la > 0) || !isNum(r.hg) || !isNum(r.ag)) continue;
+      m += rps(dist(r.lh), Math.min(6, r.hg)) + rps(dist(r.la), Math.min(6, r.ag));
+      b += rps(dist(r.muH), Math.min(6, r.hg)) + rps(dist(r.muA), Math.min(6, r.ag)); n++;
+    }
+    return n ? { n, skill: 1 - m / b } : { n: 0, skill: null };
+  }
+
+  /* ------------------------------------------------------------------ */
   /* 6. xG                                                               */
   /* ------------------------------------------------------------------ */
   // Lee las estadísticas de un partido (/fixtures?ids=… o /fixtures/statistics): xG de la API si viene, y tiros.
@@ -625,6 +762,7 @@
         else if (type === 'shots insidebox') t.sib = v;
         else if (type === 'shots outsidebox') t.sob = v;
         else if (type === 'total shots') t.shots = v;
+        else if (type === 'corner kicks' || type === 'corners') t.ck = v;
       }
       out[side] = t;
     }
@@ -741,7 +879,8 @@
     betKind, parseOdds, market1x2, GROUPS, groupOf, betLabel, matchMarkets, matchEdge,
     rps, outcome1x2, goalsRps, sharpLambdas, ece, backtestLeague, goalsSkill, marketSkill,
     FT_PRIOR, NEWCOMER_PRIOR, newcomerPriorMean, classifyNewcomer, rescaleTotal,
-    MARKET_FIT, invert1x2, marketGames, marketCoverage
+    MARKET_FIT, invert1x2, marketGames, marketCoverage,
+    CORNERS, nbPmf, cornerDist, cornerProbs, fitCornerSize, cornerMeanFor, reprice, cornerMarkets, cornerSkill, teamGoalsSkill
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoFT = api;

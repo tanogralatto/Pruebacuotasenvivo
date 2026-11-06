@@ -144,6 +144,8 @@ svg text{fill:var(--muted);font:11px var(--mono)}
 }
 </style>
 <style>
+.xs{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+.xs table.lg td:first-child{min-width:130px}
 .upd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
 .upd .small{flex:1;min-width:160px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
@@ -300,7 +302,9 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
       <li><b>Aprende de Pinnacle</b>: en las ligas con cuotas de cierre de los partidos ya jugados (football-data.co.uk y las que guarda la app de API-Football), cada partido entra al ajuste con los goles esperados que implicaba Pinnacle (90%) y los goles reales (10%), dando mucho más peso a lo reciente. La cuota de cierre ya resume lesiones, rotaciones y forma, y un gol de suerte casi no la mueve. Probado con ~17.800 partidos de 38 ligas: la diferencia con la probabilidad de Pinnacle baja casi a la mitad (de 6,7 a 3,6 puntos en el local). En la ficha dice «+ cuotas de Pinnacle».</li>
       <li>Cada liga usa la combinación (con o sin xG, con o sin corrección, con o sin cuotas de Pinnacle) que <b>mejor acertó</b> en su historial.</li>
-      <li><b>Goles de cada equipo</b> («Local más de 1,5», «Visitante más de 0,5»…): las casas comunes los arman con una fórmula a partir de su 1X2 y su total, y ahí suelen fallar. Si Pinnacle no los cotiza, el precio justo sale de <b>su</b> 1X2 y sus totales (los mercados donde entra más dinero profesional), pasados a goles esperados de cada equipo. Lo mismo para «Ambos marcan» cuando Pinnacle no lo trae. Están todos juntos en la pestaña <b>Especiales</b>, que también va a tener los córners.</li>
+      <li><b>Goles de cada equipo</b> («Local más de 1,5», «Visitante más de 0,5»…): las casas comunes los arman con una fórmula a partir de su 1X2 y su total, y ahí suelen fallar. Si Pinnacle no los cotiza, el precio justo sale de <b>su</b> 1X2 y sus totales (los mercados donde entra más dinero profesional), pasados a goles esperados de cada equipo. Lo mismo para «Ambos marcan» cuando Pinnacle no lo trae. Están todos juntos en la pestaña <b>Especiales</b>.</li>
+      <li><b>Córners</b>: el mismo ajuste de ataque y defensa, pero con los córners de cada partido (salen de las estadísticas que se bajan con el xG). Como los córners varían más que los goles, se usa una binomial negativa. Si Pinnacle cotiza la línea principal de córners, las demás líneas (y las de cada equipo) toman el precio justo de ahí.</li>
+      <li><b>Historial</b>: en Precisión, las columnas <b>Equipo</b> y <b>Córners</b> dicen si el modelo acierta mejor que el promedio de la liga, y la tabla <b>Especiales: modelo contra mercado</b> guarda cada predicción antes del partido y mide si le ganó a Pinnacle y qué ganancia habría dejado.</li>
     </ul>
 
     <h3>Precisión: en qué ligas confiar en el modelo</h3>
@@ -406,7 +410,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <h1>Mercados especiales</h1>
   <p class="small" style="margin-top:-4px">Mercados que las casas comunes arman <b>con una fórmula</b> y donde más se equivocan. El precio justo sale del <b>1X2 y los totales de Pinnacle</b> (los mercados donde más dinero profesional entra), pasados a goles esperados de cada equipo. No de la mediana de las casas, que suelen usar la misma fórmula y fallar juntas.</p>
   <div class="row"><div class="seg" id="eday"><button data-eday="0">Hoy</button><button data-eday="1">Mañana</button></div></div>
-  <div class="row" style="margin-top:8px"><div class="seg" id="emk"><button data-emk="tt">Goles por equipo</button><button data-emk="btts">Ambos marcan</button><button data-emk="corners" disabled title="Próximamente">Córners · pronto</button></div></div>
+  <div class="row" style="margin-top:8px"><div class="seg" id="emk"><button data-emk="tt">Goles por equipo</button><button data-emk="btts">Ambos marcan</button><button data-emk="corners">Córners</button></div></div>
   <div class="filters box">
     <div class="fl" style="margin-top:0"><div class="fl-h"><b>EV mínimo</b> <button class="info" data-tip="evmin">i</button></div><div class="seg" id="eevmin"><button data-ev="0.01">1%</button><button data-ev="0.02">2%</button><button data-ev="0.03">3%</button><button data-ev="0.05">5%</button></div></div>
     <div class="fl"><div class="fl-h"><b>Cuota máxima</b> <button class="info" data-tip="maxodds">i</button></div><div class="seg" id="emax"><button data-max="2">2,00</button><button data-max="3">3,00</button><button data-max="5">5,00</button><button data-max="99">Todas</button></div></div>
@@ -601,12 +605,28 @@ function marketOf(L){
   L._mkt=m;L._mktN=L.raw.length;L._mktR=state.reg;L._mktF=FD;
   return m;
 }
+// Córners de cada partido jugado (de las estadísticas bajadas junto con el xG).
+const cornersOf=id=>{const r=XG&&XG[id];return r&&Number.isFinite(r[9])&&Number.isFinite(r[10])?[r[9],r[10]]:null};
+function cornerGames(L){
+  const out=[];
+  for(const r of L.raw){const c=cornersOf(r[0]);if(c)out.push({id:r[0],ts:r[1],h:r[2],a:r[3],hg:c[0],ag:c[1],season:r[6],leagueId:L.lid})}
+  return out;
+}
+// Modelo de córners de una liga (ataque y defensa con córners). null si hay pocos partidos con córners.
+function cornerFitAt(L,cutoff,season){
+  const cg=cornerGames(L);if(cg.length<F.CORNERS.minGames)return null;
+  const fm=T.buildFitMatches(cg,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:F.CORNERS.halfLifeDays});
+  const fit=T.fitLeague(fm,{priorMatches:F.CORNERS.priorMatches});
+  return fit.ok?fit:null;
+}
+const cornerSize=lid=>{const c=state.prec&&state.prec.cfg&&state.prec.cfg[lid];return c&&c.csize>0?c.csize:F.CORNERS.size};
 const marketReady=(games,cutoff)=>!!(games&&games.mkt&&games.mkt.size)&&F.marketCoverage(games,games.mkt,cutoff).share>=F.MARKET_FIT.minCoverage;
 async function fetchXg(leagues,budget,status){
   await loadXg();
   if(!(budget>0))return 0;
   const cand=[];
-  for(const L of leagues)for(const r of L.raw)if(!(r[0] in XG))cand.push({id:r[0],h:r[2],a:r[3],ts:r[1],cur:String(r[6])===String(L.season)});
+  // Sin bajar todavía, o con estadísticas de antes de que se guardaran los córners (se vuelven a pedir una vez).
+  for(const L of leagues)for(const r of L.raw)if(!(r[0] in XG)||(XG[r[0]][2]&&XG[r[0]].length<11))cand.push({id:r[0],h:r[2],a:r[3],ts:r[1],cur:String(r[6])===String(L.season)});
   cand.sort((x,y)=>(y.cur-x.cur)||(y.ts-x.ts));
   const pick=cand.slice(0,budget*20), byId=new Map(pick.map(x=>[x.id,x]));
   const batches=[];for(let i=0;i<pick.length;i+=20)batches.push(pick.slice(i,i+20));
@@ -618,10 +638,10 @@ async function fetchXg(leagues,budget,status){
       const id=f.fixture.id,c=byId.get(id);if(!c)continue;seen.add(id);
       const s=F.readStats(f.statistics,f.teams.home.id,f.teams.away.id);
       if(!s){XG[id]=[null,null,0];continue}
-      const H=s.home,A=s.away;
-      if(Number.isFinite(H.xg)&&Number.isFinite(A.xg))XG[id]=[H.xg,A.xg,1,H.sot,H.sib,H.sob,A.sot,A.sib,A.sob];
-      else if(Number.isFinite(H.sot)&&Number.isFinite(A.sot))XG[id]=[null,null,2,H.sot,H.sib,H.sob,A.sot,A.sib,A.sob];
-      else XG[id]=[null,null,0];
+      const H=s.home,A=s.away,ck=Number.isFinite(H.ck)&&Number.isFinite(A.ck)?[H.ck,A.ck]:[null,null];
+      if(Number.isFinite(H.xg)&&Number.isFinite(A.xg))XG[id]=[H.xg,A.xg,1,H.sot,H.sib,H.sob,A.sot,A.sib,A.sob,...ck];
+      else if(Number.isFinite(H.sot)&&Number.isFinite(A.sot))XG[id]=[null,null,2,H.sot,H.sib,H.sob,A.sot,A.sib,A.sob,...ck];
+      else XG[id]=ck[0]!=null?[null,null,0,null,null,null,null,null,null,...ck]:[null,null,0];
       got++;
     }
     for(const x of b)if(!seen.has(x.id))XG[x.id]=[null,null,0];
@@ -720,6 +740,55 @@ function leagueCfg(lid,games,season){
   return {xg:false,rho:F.fitRho(rows).rho,market:!!fit.market};
 }
 
+/* ---------------- registro de Especiales ---------------- */
+// Antes de cada partido se guarda, por mercado especial, la línea principal (la más pareja) con la probabilidad
+// del modelo, la de Pinnacle (o la derivada de Pinnacle) y la mejor cuota. Después del partido se liquida.
+// Así se mide con datos propios si el modelo le gana al mercado y si apostar donde hay EV deja ganancia.
+const espFamily=k=>{const t=k.split(':');if(t[0]==='tt'&&t[2]==='over')return 'tt:'+t[1];if(t[0]==='c'&&t[2]==='over')return 'c:'+t[1];if(t[0]==='btts'&&t[1]==='yes')return 'btts';return null};
+function recordEsp(a,esp){
+  if(!a.rows||a.ts*1000<=Date.now())return;
+  const fam=new Map();
+  for(const r of a.rows){
+    const f=espFamily(r.k);if(!f||!(r.m>0)||!r.sh)continue;
+    if(f!=='btts'&&Math.abs(Number(r.k.split(':')[3])%1-0.5)>1e-9)continue; // solo líneas sin devolución
+    const c=fam.get(f);if(!c||Math.abs(r.m-0.5)<Math.abs(c.m-0.5))fam.set(f,r);
+  }
+  for(const [f,r] of fam){
+    for(const id of Object.keys(esp))if(esp[id].fid===a.id&&espFamily(esp[id].k)===f&&esp[id].y==null)delete esp[id];
+    esp[a.id+'|'+r.k]={fid:a.id,k:r.k,l:r.l,lid:a.lid,ts:a.ts,hn:a.hn,an:a.an,p:r.p>0?+r.p.toFixed(4):null,m:+r.m.toFixed(4),pr:r.pr,bk:r.bk};
+  }
+}
+// Liquida lo guardado con los goles del historial y los córners de las estadísticas.
+function settleEsp(esp,gameById){
+  let n=0;
+  for(const e of Object.values(esp)){
+    if(e.y!=null||e.ts*1000>Date.now()-2*3600e3)continue;
+    const bet=parseKey(e.k),x=gameById.get(String(e.fid));if(!bet||!x)continue;
+    let h=x.r[4],a=x.r[5];
+    if(bet.type==='corners'){const c=cornersOf(e.fid);if(!c)continue;[h,a]=c}
+    const r=F.betResult(bet,h,a);if(r==null)continue;
+    e.y=r>0?1:0;n++;
+  }
+  const ids=Object.keys(esp);if(ids.length>20000)ids.sort((a,b)=>esp[a].ts-esp[b].ts).slice(0,ids.length-20000).forEach(k=>delete esp[k]);
+  return n;
+}
+// Resumen por tipo de mercado: Brier del modelo y del mercado, y ganancia si se hubiera apostado con EV ≥ 2%.
+function espSummary(esp){
+  const out={};
+  for(const e of Object.values(esp||{})){
+    if(e.y==null)continue;
+    const t=e.k.startsWith('c:')?'corners':e.k.startsWith('tt:')?'tt':'btts';
+    const o=out[t]||(out[t]={n:0,nb:0,bm:0,bk:0,bets:{mkt:[0,0],model:[0,0],both:[0,0]}});
+    o.n++;
+    if(e.p>0){o.nb++;o.bm+=(e.p-e.y)**2;o.bk+=(e.m-e.y)**2}
+    const prof=e.y?e.pr-1:-1,evK=e.m*e.pr-1,evM=e.p>0?e.p*e.pr-1:null;
+    if(evK>=0.02){o.bets.mkt[0]++;o.bets.mkt[1]+=prof}
+    if(evM!=null&&evM>=0.02){o.bets.model[0]++;o.bets.model[1]+=prof}
+    if(evK>=0.02&&evM!=null&&evM>=0.02){o.bets.both[0]++;o.bets.both[1]+=prof}
+  }
+  return out;
+}
+
 /* ---------------- mis apuestas y casas vistas ---------------- */
 let BETS=[],betsDirty=false;
 const BOOKS=new Set(LS.get('tg:books',[])||[]);
@@ -738,7 +807,11 @@ async function settleBets(){
         const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
         const hg=Number.isInteger(ft.home)?ft.home:gl.home,ag=Number.isInteger(ft.away)?ft.away:gl.away;
         if(!Number.isInteger(hg)||!Number.isInteger(ag))continue;
-        for(const b of BETS)if(String(b.fid)===String(f.fixture.id)&&!b.res){const bet=parseKey(b.k);const st=bet&&F.settle(bet,hg,ag,b.pr);if(st){b.res=st;b.hg=hg;b.ag=ag;betsDirty=true}}
+        for(const b of BETS)if(String(b.fid)===String(f.fixture.id)&&!b.res){
+          const bet=parseKey(b.k);if(!bet)continue;
+          // Córners: se resuelven con las estadísticas del partido (si la API todavía no las tiene, queda pendiente).
+          let x=hg,y=ag;if(bet.type==='corners'){const s=F.readStats(f.statistics,f.teams.home.id,f.teams.away.id);if(!s||!Number.isFinite(s.home.ck)||!Number.isFinite(s.away.ck))continue;x=s.home.ck;y=s.away.ck}
+          const st=F.settle(bet,x,y,b.pr);if(st){b.res=st;b.hg=hg;b.ag=ag;betsDirty=true}}
       }
     }catch(e){if(e.fatal)throw e}
   }
@@ -751,8 +824,11 @@ function buildRows(a,o,first){
   const fr=first[a.id]||(first[a.id]={ts:a.ts});
   let rows;
   if(a.lam)rows=F.matchMarkets(a.lam,o,{home:a.hn,away:a.an}).rows;
-  else rows=[...o.values()].map(x=>({key:x.key,group:F.groupOf(x.bet),label:F.betLabel(x.bet,a.hn,a.an),price:x.best.price,bookmaker:x.best.bookmaker,fair:null,p:null,ev:null,score:0,mkt:x.mkt}));
-  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(x.offers||[]).slice(0,6),sh:x.sharp?1:0}});
+  else rows=[...o.values()].filter(x=>x.bet.type!=='corners').map(x=>({key:x.key,group:F.groupOf(x.bet),label:F.betLabel(x.bet,a.hn,a.an),price:x.best.price,bookmaker:x.best.bookmaker,fair:null,p:null,ev:null,score:0,mkt:x.mkt}));
+  // Córners: modelo propio (si la liga tiene córners) y precio justo armado con la línea principal de Pinnacle.
+  const cm=F.cornerMarkets(a.clam||null,o,{home:a.hn,away:a.an},a.clam&&a.clam.size);
+  rows=rows.concat(cm.rows);if(cm.mean)a.cmean=cm.mean;
+  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(r.offers||x.offers||[]).slice(0,6),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0}});
   a.edge=a.lam?F.matchEdge(rows):0;
   // Cuota de cierre de mis apuestas: la última lectura antes del partido.
   if(a.ts*1000>Date.now())for(const b of BETS)if(String(b.fid)===String(a.id)&&!b.res){const x=o.get(b.k);if(x&&x.mkt>0){b.mClose=x.mkt;b.closeAt=Date.now();betsDirty=true}}
@@ -800,6 +876,7 @@ async function updateAll(){
     say('Calculando mercados…');
     const first=(await DB.get('first'))||{};
     try{localStorage.removeItem('tg:first')}catch(e){}
+    const esp=state.esp=(await DB.get('esp'))||{};
     for(const d of dates){
       const day={date:d,ts:Date.now(),fx:[]};
       const byL=new Map();for(const f of fixtures[d])if(odds[d].has(String(f.id))){if(!byL.has(f.lid))byL.set(f.lid,[]);byL.get(f.lid).push(f)}
@@ -810,8 +887,10 @@ async function updateAll(){
         const fit=games.length>=40?fitLeagueAt(games,Math.min(...fxs.map(f=>f.ts)),fxs[0].season,cfg):null;
         const cur=games.filter(g=>String(g.season)===String(fxs[0].season));
         const ls=leagueStats(cur.length>=40?cur:games);
+        const cfitL=L?cornerFitAt(L,Math.min(...fxs.map(f=>f.ts)),fxs[0].season):null;
         for(const f of fxs){
           const a=Object.assign({},f,{readAt:Date.now()});
+          if(cfitL){const cp=T.predictMatch(cfitL,f.hid,f.aid,{});if(cp.ok)a.clam={home:cp.lambdaHome,away:cp.lambdaAway,size:cornerSize(lid)}}
           if(!fit||!fit.ok)a.reason='La liga tiene pocos partidos en la API para calcular.';
           else{
             const pr=predictFt(fit,f.hid,f.aid);
@@ -825,7 +904,7 @@ async function updateAll(){
               a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
               if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
               else{
-                buildRows(a,o,first);
+                buildRows(a,o,first);recordEsp(a,esp);
                 const m1x2=F.market1x2(o);
                 if(m1x2&&f.ts*1000>Date.now()&&!(reg[f.id]&&Number.isFinite(reg[f.id].hg))){
                   const s=F.summarize(F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho));
@@ -835,7 +914,7 @@ async function updateAll(){
             }
           }
           // Sin modelo, igual se muestran los mercados con el precio de las casas.
-          if(!a.lam){const o=F.parseOdds(odds[d].get(String(f.id)));if(o.size){a.noModel=a.reason;buildRows(a,o,first)}}
+          if(!a.lam){const o=F.parseOdds(odds[d].get(String(f.id)));if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp)}}
           day.fx.push(a);
         }
         await sleep(0);
@@ -881,6 +960,7 @@ async function updateAll(){
     for(const [id,r] of Object.entries(reg)){if(Number.isFinite(r.hg))continue;const x=gameById.get(id);if(x){r.hg=x.r[4];r.ag=x.r[5]}}
     const ids=Object.keys(reg);if(ids.length>40000)ids.sort((a,b)=>reg[a].ts-reg[b].ts).slice(0,ids.length-40000).forEach(k=>delete reg[k]);
     await DB.set('reg',reg);
+    settleEsp(esp,gameById);await DB.set('esp',esp);
     prog(7,8);
     // 7) Precisión de todas las ligas con historial.
     await computePrecision(allLeagues,reg,t=>say(t));
@@ -919,6 +999,7 @@ function parseKey(k){
   if(t==='total')return {type:'total',side:a,line:Number(b)};
   if(t==='ah')return {type:'ah',side:a,line:Number(b)};
   if(t==='tt')return {type:'tt',team:a,side:b,line:Number(k.split(':')[3])};
+  if(t==='c')return {type:'corners',scope:a,side:b,line:Number(k.split(':')[3])};
   return null;
 }
 const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
@@ -969,7 +1050,7 @@ async function cloudMergeXg(){
     say('Bajando el xG guardado en tu cuenta…');
     const x=await C.pullXg();if(!x)return;
     await loadXg();let n=0;
-    for(const [id,r] of Object.entries(x.map||{}))if(!XG[id]||(!XG[id][2]&&r[2])){XG[id]=r;n++}
+    for(const [id,r] of Object.entries(x.map||{}))if(r&&(!XG[id]||(!XG[id][2]&&r[2])||(XG[id].length<11&&r.length>=11))){XG[id]=r;n++}
     if(n)await DB.set('xg',XG);
     if(x.coef&&x.coef.fitted&&!(XGCOEF&&XGCOEF.fitted&&XGCOEF.n>=x.coef.n)){XGCOEF=x.coef;await DB.set('xgcoef',XGCOEF)}
   }catch(e){console.warn(e)}
@@ -1049,11 +1130,20 @@ async function computePrecision(leagues,reg,status){
       for(const r of best.pr){const q=m.get(r.id);if(q&&!seen.has(String(r.id))){mrows.push({p1x2:r.p1x2,m1x2:q,hg:r.hg,ag:r.ag});nFd++}}
     }
     for(const r of mrows)allMarket.push(r);
+    // Goles de cada equipo (con las mismas predicciones) y córners (su propio backtest, si hay estadísticas).
+    const team=F.teamGoalsSkill(best.pr);
+    let corners=null;
+    const cg=cornerGames(L);
+    if(cg.length>=F.CORNERS.minGames+20){
+      const crows=F.backtestLeague(cg,T,{priorMatches:F.CORNERS.priorMatches,halfLifeDays:F.CORNERS.halfLifeDays});
+      const sz=F.fitCornerSize(crows),ck=F.cornerSkill(crows,sz.size);
+      if(ck.n){corners={n:ck.n,skill:ck.skill,exp:ck.expCorners,real:ck.realCorners};out.cfg[L.lid].csize=sz.size}
+    }
     const ms=F.marketSkill(mrows);
     const e=F.ece(best.pr.slice(-500));
     const nm=names[L.lid]||[('Liga '+L.lid),''];
     if(nm[0].startsWith('Liga ')&&prev.leagues&&prev.leagues[L.lid])nm[0]=prev.leagues[L.lid].name,nm[1]=prev.leagues[L.lid].country;
-    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,market:best.market,rho:best.rho,fd:nFd};
+    out.leagues[L.lid]={name:nm[0],country:nm[1],goals:{n:gs.n,skill:gs.skill},res:{n:ms.n,skill:ms.skill},ece:e.ece,xg:best.xg,market:best.market,rho:best.rho,fd:nFd,team:{n:team.n,skill:team.skill},corners};
     for(const r of best.pr.slice(-400))allRows.push(r);
   }
   const g=F.goalsSkill(allRows),c=F.ece(allRows);
@@ -1061,13 +1151,15 @@ async function computePrecision(leagues,reg,status){
   const keepOld=prev.summary&&prev.summary.goals&&prev.summary.goals.n>g.n;
   // Ligas que este dispositivo no recalculó: su 1X2 se conserva de la precisión anterior.
   const mk=F.marketSkill(allMarket),keepMk=prev.summary&&prev.summary.market&&prev.summary.market.n>mk.n;
-  out.summary={market:keepMk?prev.summary.market:mk,goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,leagues:Object.keys(out.leagues).length};
+  // Equipo y córners: promedio de las ligas pesado por partidos.
+  const wavg=key=>{let s=0,n=0;for(const l of Object.values(out.leagues)){const x=l[key];if(x&&x.n&&Number.isFinite(x.skill)){s+=x.skill*x.n;n+=x.n}}return {n,skill:n?s/n:null}};
+  out.summary={market:keepMk?prev.summary.market:mk,goals:keepOld?prev.summary.goals:g,calib:keepOld?prev.summary.calib:c,team:wavg('team'),corners:wavg('corners'),leagues:Object.keys(out.leagues).length};
   state.prec=out;await DB.set('prec',out);
 }
 function leagueStatus(lid){
   const l=state.prec&&state.prec.leagues&&state.prec.leagues[lid];
   const st=(s,n)=>!Number.isFinite(n)||n===0?null:n<MIN_N?'w':s>0?'g':'n';
-  return l?{goals:st(l.goals.skill,l.goals.n),res:st(l.res.skill,l.res.n),l}:{goals:null,res:null,l:null};
+  return l?{goals:st(l.goals.skill,l.goals.n),res:st(l.res.skill,l.res.n),corners:l.corners?st(l.corners.skill,l.corners.n):null,l}:{goals:null,res:null,corners:null,l:null};
 }
 function statusChip(st,label){
   if(st==='g')return `<span class="chip g">✓ ${label}</span>`;
@@ -1078,6 +1170,7 @@ function statusChip(st,label){
 function allowedGroups(lid){
   const s=leagueStatus(lid),set=new Set();
   if(s.goals==='g'){set.add('high');set.add('low');set.add('team')}
+  if(s.corners==='g')set.add('corners');
   if(s.res==='g'){set.add('home');set.add('away');set.add('other')}
   return set;
 }
@@ -1207,7 +1300,7 @@ async function renderMatch(id){
   const refresh=upcoming&&state.key?`<button class="btn" id="btnOdds">↻ Cuotas de este partido</button>`:'';
   if(!a.lam&&!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">Sin análisis disponible: ${esc(a.reason||'')}</div>`+(refresh?`<div class="row" style="margin-top:10px">${refresh}</div><div class="small" id="oddsMsg"></div>`:'');return}
   if(a.lam){
-    h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}${a.mkt?' + cuotas de Pinnacle':''}</div>`;
+    h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}${a.mkt?' + cuotas de Pinnacle':''}${a.clam?` · córners esperados ${dec(a.clam.home)} – ${dec(a.clam.away)}`:''}${a.cmean?` (Pinnacle: ${dec(a.cmean)} en total)`:''}</div>`;
     h+=`<div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">${open.has('study')?'Ocultar estudio':'Ver estudio del partido'}</button>${refresh}</div>`;
   }else h+=`<div class="none" style="margin-top:10px;text-align:left">Sin modelo para este partido (${esc(a.noModel||a.reason||'')}). Se puede usar igual con <b>Cuota justa: De las casas</b>.</div><div class="row" style="margin-top:10px">${refresh}</div>`;
   h+=`<div class="small" id="oddsMsg" style="margin-top:6px"></div>`;
@@ -1219,9 +1312,9 @@ async function renderMatch(id){
   if(src!=='model'&&!a.rows.some(r=>r.m>0))h+=`<div class="none" style="margin-top:10px">Este análisis es anterior a la cuota justa de las casas. Tocá ↻ Actualizar todo para verla.</div>`;
   for(const g of F.GROUPS){
     const rows=a.rows.filter(r=>r.g===g.id).map(r=>Object.assign({},r,{v:view(r,src)})).sort((x,y)=>y.v.score-x.v.score||(y.v.ev||-9)-(x.v.ev||-9));if(!rows.length)continue;
-    const st=g.kind==='goals'?s.goals:s.res;
+    const st=g.kind==='goals'?s.goals:g.kind==='corners'?s.corners:s.res;
     const val=rows.filter(r=>hasValue(r.v,src)),all=open.has(g.id),show=all?rows:val;
-    h+=`<div class="grp"><div class="grp-h"><span class="n">${esc(g.title.replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${rows.length})</span>${statusChip(st,g.kind==='goals'?'Goles en esta liga':'1X2 en esta liga')}</div>`;
+    h+=`<div class="grp"><div class="grp-h"><span class="n">${esc(g.title.replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${rows.length})</span>${statusChip(st,g.kind==='goals'?'Goles en esta liga':g.kind==='corners'?'Córners en esta liga':'1X2 en esta liga')}</div>`;
     if(show.length){
       h+=`<table class="mk"><thead><tr><th>Mercado</th><th>Cuota</th><th>Justa <button class="info" data-tip="fair">i</button></th><th>EV <button class="info" data-tip="ev">i</button></th><th>Score <button class="info" data-tip="score">i</button></th></tr></thead><tbody>`;
       for(const r of show){
@@ -1386,7 +1479,8 @@ async function drawValue(list,status,d,out,rerender,withModel){
   };
 }
 // Especiales: mercados que las casas arman con fórmulas. Córners se suma cuando esté el modelo.
-const ESP_KIND={tt:k=>k.startsWith('tt:'),btts:k=>k.startsWith('btts:')};
+const ESP_KIND={tt:k=>k.startsWith('tt:'),btts:k=>k.startsWith('btts:'),corners:k=>k.startsWith('c:')};
+const ESP_NAME={tt:'Goles por equipo',btts:'Ambos marcan',corners:'Córners'};
 async function renderEsp(){
   const day=String(LS.get('tg:eday','0')),mk=ESP_KIND[LS.get('tg:emk','tt')]?LS.get('tg:emk','tt'):'tt',list=$('#eList');
   $$('#eday [data-eday]').forEach(b=>b.classList.toggle('on',b.dataset.eday===day));
@@ -1394,7 +1488,7 @@ async function renderEsp(){
   const d=await valueFilters('e',Number(day));
   if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para buscar valor.</div>';$('#eStatus').textContent='';return}
   const has=d.fx.some(a=>(a.rows||[]).some(r=>ESP_KIND[mk](r.k)));
-  if(!has){list.innerHTML=`<div class="empty">API-Football no trajo cuotas de «${mk==='tt'?'Goles por equipo':'Ambos marcan'}» para estos partidos. Probá con el otro día o actualizá más tarde.</div>`;$('#eStatus').textContent='';return}
+  if(!has){list.innerHTML=`<div class="empty">API-Football no trajo cuotas de «${ESP_NAME[mk]}» para estos partidos. Probá con el otro día o actualizá más tarde.</div>`;$('#eStatus').textContent='';return}
   await drawValue(list,$('#eStatus'),d,valueBets(d,r=>ESP_KIND[mk](r.k)),renderEsp,true);
 }
 async function renderBets(){
@@ -1451,6 +1545,22 @@ function goalsSvg(exp,real){
   return s+'</svg>';
 }
 let precQ='',precSort='n';
+// Tabla del registro propio de Especiales (ver recordEsp).
+async function espHtml(){
+  const esp=state.esp||(state.esp=(await DB.get('esp'))||{});
+  const all=Object.values(esp),pend=all.filter(e=>e.y==null).length,S=espSummary(esp);
+  let h=`<h2>Especiales: modelo contra mercado <button class="info" data-tip="espReg">i</button></h2>`;
+  if(!all.length)return h+`<div class="none">Todavía no hay nada guardado. Desde ahora, cada <b>↻ Actualizar todo</b> guarda la línea principal de cada mercado especial antes del partido y la liquida después.</div>`;
+  const roi=x=>x[0]?`${spct(x[1]/x[0])} <span class="cn">${x[0]} apuestas</span>`:'—';
+  h+=`<div class="xs"><table class="lg"><thead><tr><th>Mercado</th><th>Partidos</th><th>Modelo vs mercado</th><th>EV ≥ 2% según mercado</th><th>según modelo</th><th>los dos</th></tr></thead><tbody>`;
+  for(const [t,name] of [['tt','Goles por equipo'],['btts','Ambos marcan'],['corners','Córners']]){
+    const o=S[t];if(!o){h+=`<tr><td>${name}</td><td>0</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`;continue}
+    const imp=o.nb?1-o.bm/o.bk:null;
+    h+=`<tr><td>${name}</td><td>${o.n}</td>${skillCell(imp,o.nb)}<td>${roi(o.bets.mkt)}</td><td>${roi(o.bets.model)}</td><td>${roi(o.bets.both)}</td></tr>`;
+  }
+  h+=`</tbody></table></div><p class="small">${pend} pendientes de liquidar. «Modelo vs mercado»: positivo = el modelo acertó mejor que Pinnacle (error de Brier). Las columnas de apuestas son la ganancia promedio por apuesta (ROI) a la mejor cuota que había. Con menos de unas 200 apuestas, el ROI es casi todo suerte.</p>`;
+  return h;
+}
 async function renderPrec(){
   const p=state.prec=state.prec||await DB.get('prec'), body=$('#pBody');
   $('#pWhen').textContent=p?'Actualizada '+ago(p.ts)+' · '+(p.summary&&p.summary.leagues||0)+' ligas':'';
@@ -1459,16 +1569,20 @@ async function renderPrec(){
   let h=`<h2>Resumen</h2><div class="tiles">
     <div class="tile"><div class="l">Habilidad 1X2 <button class="info" data-tip="skill1x2">i</button></div><div class="v ${mk.n>=MIN_N?(mk.skill>0?'c-g':'c-d'):'c-m'}">${mk.n?spct(mk.skill):'—'}</div><div class="small">${mk.n||0} partidos</div></div>
     <div class="tile"><div class="l">Habilidad en goles <button class="info" data-tip="skillGoals">i</button></div><div class="v ${g.skill>0?'c-g':'c-d'}">${spct(g.skill)}</div><div class="small">${g.n||0} partidos</div></div>
-    <div class="tile"><div class="l">Calibración <button class="info" data-tip="ece">i</button></div><div class="v">${pct(c.ece)}</div><div class="small">error 1X2</div></div></div>`;
+    <div class="tile"><div class="l">Calibración <button class="info" data-tip="ece">i</button></div><div class="v">${pct(c.ece)}</div><div class="small">error 1X2</div></div></div>
+    <div class="tiles" style="margin-top:8px">
+    <div class="tile"><div class="l">Goles por equipo <button class="info" data-tip="skillTeam">i</button></div><div class="v ${(S.team||{}).skill>0?'c-g':'c-d'}">${spct((S.team||{}).skill)}</div><div class="small">${(S.team||{}).n||0} partidos</div></div>
+    <div class="tile"><div class="l">Córners <button class="info" data-tip="skillCorners">i</button></div><div class="v ${(S.corners||{}).skill>0?'c-g':'c-d'}">${(S.corners||{}).n?spct(S.corners.skill):'—'}</div><div class="small">${(S.corners||{}).n||0} partidos</div></div></div>`;
+  h+=await espHtml();
   h+=`<h2>Explorá cada liga <button class="info" data-tip="table">i</button></h2>
-    <div class="tools"><input type="search" id="pq" placeholder="Buscar liga o país" value="${esc(precQ)}"><select id="psort"><option value="n"${precSort==='n'?' selected':''}>Más partidos</option><option value="res"${precSort==='res'?' selected':''}>Mejor en 1X2</option><option value="goals"${precSort==='goals'?' selected':''}>Mejor en goles</option></select></div>`;
+    <div class="tools"><input type="search" id="pq" placeholder="Buscar liga o país" value="${esc(precQ)}"><select id="psort"><option value="n"${precSort==='n'?' selected':''}>Más partidos</option><option value="res"${precSort==='res'?' selected':''}>Mejor en 1X2</option><option value="goals"${precSort==='goals'?' selected':''}>Mejor en goles</option><option value="corners"${precSort==='corners'?' selected':''}>Mejor en córners</option></select></div>`;
   const q=precQ.toLowerCase();
-  const val=(l,k)=>l[k].n>=MIN_N&&Number.isFinite(l[k].skill)?l[k].skill:-9;
+  const val=(l,k)=>l[k]&&l[k].n>=MIN_N&&Number.isFinite(l[k].skill)?l[k].skill:-9;
   const rows=Object.values(p.leagues||{}).filter(l=>!q||(l.name+' '+l.country).toLowerCase().includes(q))
-    .sort((a,b)=>precSort==='n'?(b.goals.n-a.goals.n):precSort==='res'?(val(b,'res')-val(a,'res'))||(b.res.n-a.res.n):(val(b,'goals')-val(a,'goals')));
-  h+=`<table class="lg"><thead><tr><th>Liga</th><th>Habilidad 1X2</th><th>Habilidad goles</th><th class="hide-s">ECE</th><th>Lecturas</th></tr></thead><tbody>`;
-  for(const l of rows.slice(0,300))h+=`<tr><td>${flag(l.country)} ${esc(l.name)}<span class="cn">${esc(l.country)}${l.market?' · aprende de Pinnacle':l.xg?' · usa xG':''}</span></td>${skillCell(l.res.skill,l.res.n)}${skillCell(l.goals.skill,l.goals.n)}<td class="hide-s">${pct(l.ece)}</td><td>${l.goals.n||0}</td></tr>`;
-  h+='</tbody></table>';
+    .sort((a,b)=>precSort==='n'?(b.goals.n-a.goals.n):precSort==='res'?(val(b,'res')-val(a,'res'))||(b.res.n-a.res.n):precSort==='corners'?(val(b,'corners')-val(a,'corners')):(val(b,'goals')-val(a,'goals')));
+  h+=`<div class="xs"><table class="lg"><thead><tr><th>Liga</th><th>1X2</th><th>Goles</th><th>Equipo</th><th>Córners</th><th class="hide-s">ECE</th><th class="hide-s">Lecturas</th></tr></thead><tbody>`;
+  for(const l of rows.slice(0,300))h+=`<tr><td>${flag(l.country)} ${esc(l.name)}<span class="cn">${esc(l.country)}${l.market?' · aprende de Pinnacle':l.xg?' · usa xG':''}</span></td>${skillCell(l.res.skill,l.res.n)}${skillCell(l.goals.skill,l.goals.n)}${skillCell(l.team?l.team.skill:null,l.team?l.team.n:0)}${skillCell(l.corners?l.corners.skill:null,l.corners?l.corners.n:0)}<td class="hide-s">${pct(l.ece)}</td><td class="hide-s">${l.goals.n||0}</td></tr>`;
+  h+='</tbody></table></div>';
   if(rows.length>300)h+=`<p class="small">Se muestran 300 de ${rows.length}. Usá el buscador para ver las demás.</p>`;
   h+=`<p class="small"><b class="c-g">Verde</b> = el modelo acierta mejor: podés apostar ese tipo de mercado en esa liga. <b>Gris</b> = no acierta mejor. <b class="c-m">⏳</b> = todavía faltan partidos (la columna 1X2 se llena sola con cada actualización).</p>`;
   if(c.bins&&c.bins.length)h+=`<h2>Calibración (1X2) <button class="info" data-tip="calib">i</button></h2><div class="box">${calibSvg(c.bins)}<div class="small">Horizontal: la probabilidad que dio el modelo. Vertical: cuántas veces pasó. Cuanto más cerca de la línea punteada, mejor.</div></div>`;
@@ -1521,6 +1635,9 @@ const TIPS={
   sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
   clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
+  skillTeam:['Goles por equipo','Cuánto mejor acierta el modelo los goles de cada equipo (los mercados «Local/Visitante más de…») que decir siempre el promedio de la liga. Cada partido se predice solo con los anteriores.'],
+  skillCorners:['Córners','Cuánto mejor acierta el modelo el total de córners de cada partido que decir siempre el promedio de la liga. Necesita las estadísticas de los partidos: se bajan junto con el xG en cada actualización.'],
+  espReg:['Registro de Especiales','Antes de cada partido la app guarda la línea principal de cada mercado especial: lo que decía el modelo, lo que decía Pinnacle (o el precio armado con sus mercados principales) y la mejor cuota. Después del partido lo liquida. «Modelo vs mercado» positivo = el modelo acertó mejor que Pinnacle. Las columnas de apuestas muestran qué habría pasado apostando en cada caso con EV de 2% o más.'],
   skillGoals:['Habilidad en goles','Cuánto mejor acierta el modelo la cantidad de goles de cada partido que decir siempre el promedio de la liga. Positivo = distingue partidos de muchos y pocos goles.'],
   ece:['Calibración (ECE)','Si el modelo dice 60%, ¿pasa el 60% de las veces? Es la diferencia promedio. Menos de 3% es bueno.'],
   table:['Cómo leer la tabla','Habilidad 1X2 = ganador, doble oportunidad y hándicap. Habilidad en goles = más/menos goles y ambos marcan. Verde = podés usar esos mercados en esa liga. Lecturas = partidos que respaldan el número de goles. «usa xG» = en esa liga el modelo acierta mejor mezclando xG.'],
@@ -1627,7 +1744,7 @@ const C=window.tgCloud={user:null,
     if(bets)meta.bets=await putText('bets',bets);
     else if(prevMeta.bets)meta.bets=prevMeta.bets;
     // xG compacto: [xg local, xg visitante, fuente, tiros…] por partido (los que no tienen datos van como 0).
-    if(xg){const map={};for(const [id,r] of Object.entries(xg.map||{}))map[id]=r[2]?r:0;meta.xg=await putText('xg',{map,coef:xg.coef})}
+    if(xg){const map={};for(const [id,r] of Object.entries(xg.map||{}))map[id]=r[2]||r[9]!=null?r:0;meta.xg=await putText('xg',{map,coef:xg.coef})}
     else if(prevMeta.xg)meta.xg=prevMeta.xg;
     const months={};
     for(const [id,e] of Object.entries(reg)){const m=new Date(e.ts*1000).toISOString().slice(0,7);(months[m]=months[m]||{})[id]=e}
