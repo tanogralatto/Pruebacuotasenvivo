@@ -163,6 +163,12 @@ table.mk td.dp{font-family:var(--mono);font-weight:700}
 @media (max-width:560px){.mkc table.mk,.grp table.mk{font-size:12.5px}.mkc table.mk th,.mkc table.mk td,.grp table.mk th,.grp table.mk td{padding:7px 4px}.mkc,.mkc.box{padding:10px 8px}}
 .addb{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px;padding:2px 7px}
 .oddsbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
+.quota-bar{max-width:860px;margin:0 auto;padding:3px 14px 5px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.quota-bar .qdot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+.quota-bar b{color:var(--text)}
+.quota-bar .qtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.show-s{display:none}
+@media (max-width:560px){.show-s{display:inline}}
 .upd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
 .upd .small{flex:1;min-width:160px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
@@ -219,6 +225,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <button class="btn" id="cloudBtn" style="padding:6px 10px;font-size:13px" title="Sincronizar con tu cuenta de Google">☁︎ Entrar</button>
 </div>
 <div class="mkbar" id="mkbar"><div class="mkbar-in"><a href="#/m/goles" data-nav="mk:goles">Goles</a><a href="#/m/ambos" data-nav="mk:ambos">Ambos marcan</a><a href="#/m/equipo" data-nav="mk:equipo">Por equipo</a><a href="#/m/corners" data-nav="mk:corners">Córners</a></div></div>
+<div class="quota-bar" id="quotaBar" role="status" aria-live="polite"><span class="qdot" aria-hidden="true"></span><span class="qtxt">Consultas API-Football: cargá tu clave en ⚙︎ para ver el consumo.</span></div>
 </header>
 
 <main class="wrap">
@@ -462,7 +469,7 @@ async function api(path,params){
       if(netFails<=4){say(`La API no respondió (${what}). Reintento en ${netFails*10} s…`);await sleep(netFails*10000);continue}
       const er=new Error('No se pudo conectar con API-Football ('+what+'). Revisá la conexión y volvé a tocar Actualizar todo: lo ya bajado queda guardado.');er.fatal=true;throw er;
     }
-    state.calls++;
+    if(path!=='/status')state.calls++;
     if(res.status===429){say('La API pidió esperar un poco (límite por minuto)…');await sleep(15000);continue}
     if(res.status>=500){await sleep(5000);continue}
     let j;try{j=await res.json()}catch(e){throw new Error('Respuesta inválida de la API (HTTP '+res.status+').')}
@@ -472,10 +479,27 @@ async function api(path,params){
       if(/rateLimit/i.test(keys)){await sleep(10000);continue}
       const er=new Error(msg);if(/token|requests|access|plan|suspend/i.test(keys+' '+msg))er.fatal=true;throw er;
     }
+    if(path!=='/status')scheduleQuota();
     return j;
   }
   throw new Error('La API limitó las consultas por minuto.');
 }
+// Barra de consultas: cuántas lleva hoy la clave, según API-Football (/status).
+function renderQuota(rq,msg){
+  const bar=$('#quotaBar');if(!bar)return;
+  const dot=bar.querySelector('.qdot'),txt=bar.querySelector('.qtxt');
+  const cur=rq&&rq.current!=null?Number(rq.current):NaN,lim=rq&&rq.limit_day!=null?Number(rq.limit_day):NaN;
+  if(!Number.isFinite(cur)||!Number.isFinite(lim)||lim<=0){dot.style.background='var(--dim)';txt.textContent=msg||'Consultas API-Football: cargá tu clave en ⚙︎ para ver el consumo.';return}
+  const pc=cur*100/lim,left=Math.max(0,lim-cur),f=n=>n.toLocaleString('es-AR');
+  dot.style.background=pc>=90?'var(--bad)':pc>=70?'var(--mid)':'var(--good)';
+  txt.innerHTML=`<span class="hide-s">Consultas </span>API hoy: <b class="mono">${f(cur)}/${f(lim)}</b> · quedan <b class="mono">${f(left)}</b><span class="hide-s"> (${Math.round(pc)}%)</span>`+(state.lastCalls?` · <span class="hide-s">última actualización</span><span class="show-s">última</span>: ${f(state.lastCalls)}`:'');
+}
+async function checkQuota(){
+  if(!state.key)return;
+  try{const j=await api('/status');renderQuota((j.response||{}).requests)}catch(e){renderQuota(null,'Consultas API-Football: '+e.message)}
+}
+let quotaTimer=null;
+function scheduleQuota(){clearTimeout(quotaTimer);quotaTimer=setTimeout(()=>{if(!state.running)checkQuota()},2500)}
 // Corre tareas con CONC en paralelo. Un error fatal (clave, límite diario) corta todo.
 async function pool(tasks,onDone){
   let i=0,done=0,fatal=null;
@@ -911,6 +935,7 @@ async function updateAll(){
     await computePrecision(allLeagues,reg,t=>say(t));
     await setUpdated(Date.now());
     try{await cloudPush();if(window.tgCloud&&window.tgCloud.user)syncLine('☁︎ Guardado en tu cuenta recién: tus otros dispositivos ya lo pueden ver.')}catch(e){warn.push('No se pudo guardar en tu cuenta: '+e.message);syncLine('☁︎ No se pudo guardar en tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
+    state.lastCalls=state.calls;scheduleQuota();
     say(`Listo · ${state.calls} consultas a la API`+(warn.length?' · avisos: '+warn.slice(0,2).join(' | '):''));
   }catch(e){say(e.message,true)}
   prog(1,1);state.running=false;$('#btnUpdate').disabled=false;renderDash();
@@ -1239,7 +1264,7 @@ async function refreshAllOdds(){
       day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
     }
     await DB.set('first',first);await DB.set('esp',esp);if(betsDirty)await saveBets();
-    st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`;
+    st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`;state.lastCalls=state.calls;scheduleQuota();
   }catch(e){st.textContent=e.message;st.classList.add('err')}
   pg.classList.add('hidden');state.running=false;$('#btnMkOdds').disabled=false;
   const keep=st.textContent,err=st.classList.contains('err');await renderMk();st.textContent=keep;st.classList.toggle('err',err);
@@ -1553,7 +1578,7 @@ $('#xgBudget').addEventListener('change',e=>LS.set('tg:xgBudget',Math.max(0,Numb
 $('#btnKey').addEventListener('click',async()=>{
   state.key=$('#key').value.trim();LS.set('o05:key',state.key);
   const s=$('#kStatus');s.classList.remove('err');s.textContent='Probando…';
-  try{const j=await api('/status');const r=j.response||{},rq=r.requests||{};s.textContent='Clave válida'+(rq.limit_day!=null?' · consultas hoy: '+rq.current+' de '+rq.limit_day:'')}
+  try{const j=await api('/status');const r=j.response||{},rq=r.requests||{};s.textContent='Clave válida'+(rq.limit_day!=null?' · consultas hoy: '+rq.current+' de '+rq.limit_day:'');renderQuota(rq)}
   catch(e){s.textContent=e.message;s.classList.add('err')}
 });
 $('#btnWipe').addEventListener('click',async()=>{
@@ -1651,6 +1676,7 @@ $('#mBody').addEventListener('click',e=>{
 });
 if(!state.key&&!location.hash)location.hash='#/ajustes';
 go();
+checkQuota();
 </script>
 <script type="module">
 // Misma cuenta y misma base que la app de +0,5 1T. Datos en tanoapp_v2_datos/{uid}/goles/…
