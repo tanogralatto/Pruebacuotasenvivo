@@ -146,6 +146,21 @@ svg text{fill:var(--muted);font:11px var(--mono)}
 <style>
 .xs{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
 .xs table.lg td:first-child{min-width:130px}
+.nav-mk{display:inline-flex;gap:4px}
+.nav-mkshort{display:none}
+.mkbar{display:none}
+.mkbar-in{max-width:860px;margin:0 auto;display:flex;gap:4px;padding:6px 14px;overflow-x:auto}
+.mkbar a{padding:6px 11px;border-radius:8px;text-decoration:none;color:var(--muted);font-size:14px;white-space:nowrap;border:1px solid var(--line)}
+.mkbar a.on{color:#04211e;background:var(--acc);border-color:var(--acc)}
+nav a{white-space:nowrap}
+@media (max-width:820px){.nav-mk{display:none}.nav-mkshort{display:inline-block}.mkbar.show{display:block;border-top:1px solid var(--line)}}
+.mkc{margin:10px 0}
+.mkc-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mkc-h a{text-decoration:none;font-weight:700}
+table.mk td.dp{font-family:var(--mono);font-weight:700}
+@media (max-width:560px){.mkc table.mk,.grp table.mk{font-size:12.5px}.mkc table.mk th,.mkc table.mk td,.grp table.mk th,.grp table.mk td{padding:7px 4px}.mkc,.mkc.box{padding:10px 8px}}
+.addb{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px;padding:2px 7px}
+.oddsbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
 .upd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
 .upd .small{flex:1;min-width:160px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
@@ -168,7 +183,8 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 #cloudBtn{white-space:nowrap}
 @media (max-width:560px){.brand{font-size:12px;letter-spacing:.06em}nav{gap:0}nav a{padding:6px 6px;font-size:13.5px}#cloudBtn{max-width:64px;overflow:hidden;text-overflow:ellipsis;padding:6px 7px!important}}
 @media (max-width:430px){header .wrap{gap:6px;padding-left:10px;padding-right:10px}.brand{font-size:11px;letter-spacing:.02em}nav a{padding:6px 4px;font-size:12.5px}#cloudBtn{max-width:40px;padding:5px 6px!important}}
-@media (max-width:345px){.brand b{display:none}nav a{padding:6px 3px}}
+@media (max-width:430px){.brand{display:none}nav{margin-left:0}nav a{padding:6px 5px}#cloudBtn{margin-left:auto}}
+@media (max-width:345px){nav a{padding:6px 3px;font-size:12px}}
 .vb{margin:8px 0}
 .vb-h{font-size:15px}
 .vb-h a{text-decoration:none;font-weight:700}
@@ -192,13 +208,16 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="brand">TANO<b>APP</b><span class="hide-s"> · GOLES</span></div>
   <nav>
     <a href="#/hoy" data-nav="dash">Partidos</a>
-    <a href="#/valor" data-nav="val">Valor</a>
-    <a href="#/especiales" data-nav="esp">Especiales</a>
+    <span class="nav-mk"><a href="#/m/goles" data-nav="mk:goles">Goles</a><a href="#/m/ambos" data-nav="mk:ambos">Ambos marcan</a><a href="#/m/equipo" data-nav="mk:equipo">Por equipo</a><a href="#/m/corners" data-nav="mk:corners">Córners</a></span>
+    <a href="#/mercados" data-nav="mk" class="nav-mkshort">Mercados</a>
+    <a href="#/apuestas" data-nav="bets">Mis apuestas</a>
     <a href="#/precision" data-nav="prec">Precisión</a>
     <a href="#/ajustes" data-nav="cfg" aria-label="Ajustes">⚙︎</a>
   </nav>
   <button class="btn" id="cloudBtn" style="padding:6px 10px;font-size:13px" title="Sincronizar con tu cuenta de Google">☁︎ Entrar</button>
-</div></header>
+</div>
+<div class="mkbar" id="mkbar"><div class="mkbar-in"><a href="#/m/goles" data-nav="mk:goles">Goles</a><a href="#/m/ambos" data-nav="mk:ambos">Ambos marcan</a><a href="#/m/equipo" data-nav="mk:equipo">Por equipo</a><a href="#/m/corners" data-nav="mk:corners">Córners</a></div></div>
+</header>
 
 <main class="wrap">
 
@@ -206,91 +225,33 @@ details.guide th{color:var(--muted);font-weight:600}
 <section id="v-dash" class="hidden">
   <h1>Partidos</h1>
   <details class="guide" id="guide">
-    <summary>📘 Cómo funciona la app (y en qué se diferencia de Alpha)</summary>
+    <summary>📘 Cómo funciona la app</summary>
 
     <h3>Qué hace</h3>
-    <p>Busca apuestas donde una casa <b>paga más de lo que debería</b>. Cubre todas las ligas que trae API-Football, con mercados de partido completo: goles (más/menos y ambos marcan), 1X2, doble oportunidad y hándicap asiático. La estrategia de +0,5 goles en el 1T sigue en la otra app.</p>
-    <p>El «precio justo» con el que se compara cada cuota puede salir de dos lugares: de <b>las propias casas</b> (sin su margen) o de <b>nuestro modelo</b>. Lo elegís con <b>Cuota justa</b> (se explica abajo).</p>
+    <p>Como Alpha: para cada partido calcula con <b>nuestro modelo</b> la probabilidad y la <b>cuota justa</b> de cada mercado. Al lado muestra la cuota justa de <b>Pinnacle</b> (la casa más precisa, sin su margen) como referencia. Vos comparás con tu casa: si paga la <b>Mínima</b> o más, hay valor. La app no muestra cuotas de otras casas, porque las que trae API-Football casi nunca coinciden con las de tu casa.</p>
 
-    <h3>La pestaña Valor (lo principal)</h3>
-    <p>Es una lista de <b>apuestas de valor</b>: casas que pagan <b>más que el precio justo del mercado</b> (Pinnacle sin margen), en todas las ligas y mercados. No depende del modelo: es el método que usan los apostadores profesionales.</p>
-    <ol>
-      <li>Una sola vez: en <b>⚙︎ → Mis casas</b> marcá las casas donde podés apostar, y cargá tu <b>Banca</b>.</li>
-      <li>Tocá <b>↻ Actualizar todo</b> (en Partidos).</li>
-      <li>En <b>Valor</b>, elegí Hoy o Mañana. Filtros: <b>EV mínimo</b> (2%), <b>Cuota máxima</b> (3,00) y <b>Solo con precio de Pinnacle</b>.</li>
-      <li>Cada tarjeta dice: <b>Casa</b>, <b>Cuota</b>, <b>Justa</b>, <b>EV</b> y <b>Monto</b> (¼ de Kelly sobre tu banca, tope 3%). Abajo: la cuota mínima a la que todavía conviene.</li>
-      <li>Abrí tu casa: si paga <b>igual o más</b> que esa cuota mínima, apostá el monto sugerido. Si no, salteala.</li>
-      <li>Tocá <b>Anotar apuesta</b> y escribí la cuota y el monto reales.</li>
-      <li>En <b>Mis apuestas</b> ves el resultado y el <b>CLV</b>: si en promedio es positivo, le estás ganando al mercado.</li>
-    </ol>
-    <p class="small">⚠︎ verificar = EV de más de 8%: casi siempre es una cuota vieja. Mirala en tu casa antes.</p>
-
-    <h3>Uso diario (paso a paso)</h3>
-    <ol>
-      <li>Tocá <b>↻ Actualizar todo</b> una o dos veces por día: a la mañana y antes de los partidos de la tarde o la noche.</li>
-      <li>En los filtros, dejá <b>Cuota justa: De las casas</b> (la más confiable), <b>EV mínimo: 2%</b> y subí el <b>Edge mínimo</b> a 40+. Si querés, elegí <b>Horario</b> o una liga.</li>
-      <li>Tocá un partido de la lista y elegí <b>una sola apuesta: la de mayor Score</b> de todo el partido (ver «Qué apuesta elegir»).</li>
-      <li>Justo antes de apostar, tocá <b>↻ Cuotas de este partido</b> y fijate que <b>tu casa pague igual o más</b> que la cuota de la app, y más que la cuota justa. Abajo de cada cuota dice en qué casa está.</li>
-      <li>Si usás <b>Del modelo</b>, apostá solo en los grupos que dicen <b>✓</b> (liga aprobada para ese mercado).</li>
-      <li>Guardá con la <b>☆</b> los que sigas: aparecen en <b>★ Favoritos</b>.</li>
-    </ol>
-
-    <h3>Los filtros</h3>
+    <h3>Las pestañas</h3>
     <ul>
-      <li><b>Hoy / Mañana / ★ Favoritos</b>: qué partidos ver.</li>
-      <li><b>Buscar equipo</b> y <b>Todas las ligas</b>: para ir directo a un partido o a una liga.</li>
-      <li><b>Cuota justa</b>: de dónde sale el precio justo.
-        <ul>
-          <li><b>De las casas</b> (recomendado): Pinnacle, o la mediana de todas las casas, sin su margen. Si otra casa paga más, hay valor. <b>No depende del modelo</b>, así que sirve en <b>todas las ligas</b>. Es la ventaja más probada, porque las casas comunes tardan en mover sus cuotas. Los EV son chicos (1 a 5%), pero reales.</li>
-          <li><b>Del modelo</b>: el precio según nuestro modelo, como Alpha. Los EV salen más grandes, pero solo valen en las ligas en verde de Precisión.</li>
-          <li><b>Coinciden</b>: solo apuestas con valor según las dos. Salen menos, pero son las más sólidas.</li>
-        </ul></li>
-      <li><b>EV mínimo</b>: las apuestas con menos valor que esto no se muestran ni cuentan para el edge. Con «De las casas», dejalo en <b>2%</b>: por debajo, el valor puede desaparecer con el mínimo movimiento de la cuota.</li>
-      <li><b>Edge mínimo</b>: oculta los partidos con menos valor. Con «De las casas» los números son más bajos: empezá por 40+. Con «Del modelo», por 55+.</li>
-      <li><b>Horario</b> (hora de Argentina): Mañana hasta las 11:59, Tarde de 12 a 18:59, Noche desde las 19.</li>
-      <li><b>Solo ligas en verde</b>: deja solo las ligas donde el modelo acierta, y el edge cuenta solo los mercados aprobados. Sirve con «Del modelo» y «Coinciden»; con «De las casas» no hace falta (queda gris).</li>
+      <li><b>Partidos</b>: todos los partidos de hoy y mañana por liga y horario. A la derecha, la mayor diferencia que ve el modelo contra Pinnacle en ese partido. Tocá uno para ver la ficha con todos sus mercados.</li>
+      <li><b>Goles · Ambos marcan · Por equipo · Córners</b> (en el celular, dentro de <b>Mercados</b>): un mercado en todos los partidos. Arriba van los partidos donde el modelo ve <b>más probabilidad que Pinnacle</b>. El <b>✓</b> marca las ligas donde el modelo acierta en ese mercado (según Precisión). <b>↻ Actualizar cuotas</b> baja solo las cuotas (rápido, pocas consultas).</li>
+      <li><b>Mis apuestas</b>: lo que anotaste con <b>＋</b>, con el resultado, la ganancia y el CLV.</li>
+      <li><b>Precisión</b>: en qué ligas y mercados acierta el modelo.</li>
     </ul>
-    <p>La app recuerda cómo dejaste la cuota justa, el EV mínimo, el edge mínimo, el horario y «Solo ligas en verde».</p>
+
+    <h3>Uso diario</h3>
+    <ol>
+      <li>Una vez por día, tocá <b>↻ Actualizar todo</b> (acá en Partidos).</li>
+      <li>Entrá a la pestaña del mercado que te interesa. Mirá los de arriba, mejor en ligas con <b>✓</b>.</li>
+      <li>Antes de apostar, tocá <b>↻ Actualizar cuotas</b> y fijate que <b>tu casa pague la Mínima o más</b>. Si no, salteala.</li>
+      <li>Tocá <b>＋</b> y anotá la cuota y el monto reales.</li>
+    </ol>
 
     <h3>Qué significa cada número</h3>
     <ul>
-      <li><b>Cuota</b>: la mejor entre las casas (descarta las que se alejan mucho del resto, casi siempre cuotas viejas). ▲▼ = cómo se movió desde la primera lectura.</li>
-      <li><b>Cuota justa</b>: 1 ÷ la probabilidad, según la fuente elegida. Si la casa paga más, hay valor.</li>
-      <li><b>EV</b>: probabilidad × cuota − 1. +5% = en promedio ganarías $5 por cada $100 si apostaras muchas veces así. Abajo, en chico, el EV según la otra fuente («modelo» o «casas»).</li>
-      <li><b>Score (0-100)</b>: ordena las apuestas. Sube con el EV y premia las cuotas bajas (más seguras). 0 si no hay valor.</li>
-      <li><b>Edge del partido (0-100)</b>: el número de la lista. Combina el mejor score de los dos grupos de mercados con más valor, con la fuente elegida. Verde (65+) = buenas oportunidades; amarillo (35-64) = algo hay; gris = poco o nada.</li>
-    </ul>
-
-    <h3>Qué apuesta elegir dentro de un partido</h3>
-    <ol>
-      <li><b>La de mayor Score</b>, no la de mayor EV. El Score combina el valor con la chance de ganar. El EV más alto suele estar en cuotas altas (hándicap −2, más de 4,5 goles), que se pierden muy seguido y donde un error chico del cálculo desarma el valor. Con el mismo EV, una cuota de 1,60 es mucho más segura que una de 4,00.</li>
-      <li><b>Una sola apuesta por partido.</b> Las líneas parecidas (Hándicap −0,5 y −0,75 del mismo equipo, Más de 2,5 y Más de 3) son casi la misma apuesta: si ponés varias, apostás lo mismo dos veces.</li>
-      <li><b>Nunca grupos opuestos</b> en el mismo partido: no «Muchos goles» y «Pocos goles», ni «Gana local» y «Gana visitante».</li>
-      <li>Con «De las casas», <b>al menos +2% de EV</b> (es el filtro EV mínimo).</li>
-      <li><b>Un EV muy alto con «De las casas»</b> (más de 6 u 8%) casi siempre es una cuota vieja o que la casa ya cambió: verificá en la casa antes de apostar.</li>
-      <li>Justo antes de apostar, <b>↻ Cuotas de este partido</b>: si tu casa ya no paga más que la cuota justa, no hay valor.</li>
-    </ol>
-
-    <h3>Por qué hay edge con «De las casas»</h3>
-    <p>El edge mide el valor según la fuente elegida. Con «Del modelo»: cuánto pagan las casas por encima de lo que dice el modelo. Con «De las casas»: cuánto paga alguna casa por encima del precio justo del mercado (Pinnacle o la mediana, sin margen). Un edge alto ahí quiere decir que hay casas pagando bastante más que el resto, sobre todo en cuotas bajas.</p>
-
-    <h3>Por qué la cuota puede no coincidir con tu casa</h3>
-    <ul>
-      <li>Las cuotas son las de tu última actualización («Última lectura» en cada partido).</li>
-      <li>API-Football renueva las cuotas cada pocas horas, no al instante.</li>
-      <li>La API trae las versiones internacionales de las casas; la de tu país puede pagar algo distinto.</li>
-      <li>Siempre manda la cuota de tu casa en ese momento.</li>
-    </ul>
-
-    <h3>La ficha del partido</h3>
-    <ul>
-      <li>Arriba: liga, hora, edge y la ☆. Debajo del nombre: el modelo que usa esa liga (por ejemplo «Poisson + corrección Dixon-Coles + xG»).</li>
-      <li><b>Cuota justa</b>: el mismo selector que en la lista; cambiarlo acá también lo cambia allá.</li>
-      <li>Grupos: <b>Muchos goles</b>, <b>Pocos goles</b>, <b>Gana local</b>, <b>Gana visitante</b> y <b>Otros</b>. Al lado de cada uno, si la liga está aprobada para ese mercado: ✓ sí, ✕ no, ⏳ faltan partidos.</li>
-      <li>Solo se ven los mercados con valor; <b>Mostrar todos</b> abre el resto.</li>
-      <li><b>↻ Cuotas de este partido</b>: pide las cuotas de ese partido solo (1 consulta), sin actualizar todo. API-Football renueva las cuotas cada pocas horas, así que pueden diferir de las que ves en tu casa en este momento: manda siempre la de tu casa.</li>
-      <li>Si un partido dice <b>Sin modelo</b> (pasa en copas, donde los equipos jugaron poco en esa competencia), igual se puede usar con <b>Cuota justa: De las casas</b>.</li>
-      <li><b>Ver estudio del partido</b>: goles esperados, resultado (local, empate, visitante), contexto de liga, matriz de marcadores y ratings de ataque y defensa.</li>
+      <li><b>Modelo</b>: la cuota justa según nuestro modelo (abajo, su probabilidad).</li>
+      <li><b>Pinnacle</b>: la cuota justa según Pinnacle, sin margen. Si Pinnacle no cotiza esa línea, sale de su 1X2 y sus totales (o de su línea principal de córners).</li>
+      <li><b>Dif.</b>: puntos de probabilidad que el modelo ve de más (+) o de menos (−) contra Pinnacle.</li>
+      <li><b>Mínima</b>: la cuota que tiene que pagar tu casa para que haya valor según los dos: la más alta de las dos cuotas justas, + 2%.</li>
     </ul>
 
     <h3>Cómo calcula la probabilidad (el modelo)</h3>
@@ -302,9 +263,9 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>xG</b>: si la API trae xG, se usa; si no, se aproxima con los tiros (al arco, dentro y fuera del área). Se mezcla mitad goles, mitad xG.</li>
       <li><b>Aprende de Pinnacle</b>: en las ligas con cuotas de cierre de los partidos ya jugados (football-data.co.uk y las que guarda la app de API-Football), cada partido entra al ajuste con los goles esperados que implicaba Pinnacle (90%) y los goles reales (10%), dando mucho más peso a lo reciente. La cuota de cierre ya resume lesiones, rotaciones y forma, y un gol de suerte casi no la mueve. Probado con ~17.800 partidos de 38 ligas: la diferencia con la probabilidad de Pinnacle baja casi a la mitad (de 6,7 a 3,6 puntos en el local). En la ficha dice «+ cuotas de Pinnacle».</li>
       <li>Cada liga usa la combinación (con o sin xG, con o sin corrección, con o sin cuotas de Pinnacle) que <b>mejor acertó</b> en su historial.</li>
-      <li><b>Goles de cada equipo</b> («Local más de 1,5», «Visitante más de 0,5»…): las casas comunes los arman con una fórmula a partir de su 1X2 y su total, y ahí suelen fallar. Si Pinnacle no los cotiza, el precio justo sale de <b>su</b> 1X2 y sus totales (los mercados donde entra más dinero profesional), pasados a goles esperados de cada equipo. Lo mismo para «Ambos marcan» cuando Pinnacle no lo trae. Están todos juntos en la pestaña <b>Especiales</b>.</li>
+      <li><b>Goles de cada equipo</b> («Local más de 1,5», «Visitante más de 0,5»…): las casas comunes los arman con una fórmula a partir de su 1X2 y su total, y ahí suelen fallar. Si Pinnacle no los cotiza, el precio justo sale de <b>su</b> 1X2 y sus totales (los mercados donde entra más dinero profesional), pasados a goles esperados de cada equipo. Lo mismo para «Ambos marcan» cuando Pinnacle no lo trae. Cada uno tiene su pestaña (Por equipo, Ambos marcan).</li>
       <li><b>Córners</b>: el mismo ajuste de ataque y defensa, pero con los córners de cada partido (salen de las estadísticas que se bajan con el xG). Como los córners varían más que los goles, se usa una binomial negativa. Si Pinnacle cotiza la línea principal de córners, las demás líneas (y las de cada equipo) toman el precio justo de ahí.</li>
-      <li><b>Historial</b>: en Precisión, las columnas <b>Equipo</b> y <b>Córners</b> dicen si el modelo acierta mejor que el promedio de la liga, y la tabla <b>Especiales: modelo contra mercado</b> guarda cada predicción antes del partido y mide si le ganó a Pinnacle y qué ganancia habría dejado.</li>
+      <li><b>Historial</b>: en Precisión, las columnas <b>Equipo</b> y <b>Córners</b> dicen si el modelo acierta mejor que el promedio de la liga, y la tabla <b>Registro: modelo contra Pinnacle</b> guarda cada predicción antes del partido y mide si le ganó a Pinnacle y qué ganancia habría dejado.</li>
     </ul>
 
     <h3>Precisión: en qué ligas confiar en el modelo</h3>
@@ -312,13 +273,13 @@ details.guide th{color:var(--muted);font-weight:600}
       <li><b>Habilidad 1X2</b>: cuánto mejor acierta el modelo el ganador que las casas sin margen. Usa cuotas de cierre históricas de <b>football-data.co.uk</b> (38 ligas, dos temporadas, se renuevan solas cada lunes) y las cuotas que la app guarda en cada actualización (todas las ligas, se va llenando).</li>
       <li><b>Habilidad en goles</b>: cuánto mejor acierta la cantidad de goles que decir siempre el promedio de la liga. Sale del historial, así que ya tiene datos en todas las ligas.</li>
       <li><b>ECE</b>: calibración. Si dice 60%, ¿pasa el 60% de las veces? Menos de 3% es bueno.</li>
-      <li><b>Verde</b> = acierta mejor → podés usar «Del modelo» en ese tipo de mercado y liga. <b>Gris</b> = no. <b>⏳</b> = menos de 30 partidos: todavía puede ser suerte.</li>
-      <li>Ganarle a las casas en 1X2 es muy difícil (a Alpha también le da negativo en casi todas las ligas). Por eso, para 1X2 y hándicap conviene <b>De las casas</b>.</li>
+      <li><b>Verde</b> = acierta mejor: en ese mercado y liga podés confiar en el modelo (es el ✓ de las pestañas). <b>Gris</b> = no: guiate por Pinnacle. <b>⏳</b> = menos de 30 partidos: todavía puede ser suerte.</li>
+      <li>Ganarle a Pinnacle en 1X2 es muy difícil (a Alpha también le da negativo en casi todas las ligas). Por eso, en 1X2 y hándicap pesa más la columna Pinnacle.</li>
       <li>Todo se juzga con lo que el modelo sabía <b>antes</b> de cada partido: nunca mira el resultado.</li>
     </ul>
 
     <h3>Actualizar todo: qué hace y cuánto gasta</h3>
-    <p>Partidos y cuotas de hoy y mañana → historial de cada liga → xG que falta → mercados y edge → cuotas de los últimos 7 días (la API las borra después de una semana) → resultados → Precisión → se guarda en tu cuenta.</p>
+    <p>Partidos y cuotas de hoy y mañana → historial de cada liga → xG y córners que faltan → modelo y mercados → cuotas de los últimos 7 días (la API las borra después de una semana) → resultados → Precisión → se guarda en tu cuenta.</p>
     <ul>
       <li>La <b>primera vez en cada dispositivo</b> es la que más consultas gasta (unos cientos), por el historial de las ligas. Después se renueva una vez por día y gasta mucho menos.</li>
       <li>El xG se baja de a poco: hasta 150 consultas por vez (se cambia en ⚙︎).</li>
@@ -335,8 +296,7 @@ details.guide th{color:var(--muted);font-weight:600}
 
     <h3>Ajustes (⚙︎)</h3>
     <ul>
-      <li><b>Mis casas</b>: las casas donde podés apostar. Todo el valor (Partidos y Valor) se calcula solo con sus cuotas. Sin ninguna marcada, usa todas.</li>
-      <li><b>Banca</b>: con ella se calcula el monto sugerido.</li>
+      <li><b>Banca</b>: con ella se sugiere el monto al anotar una apuesta (¼ de Kelly, tope 3%).</li>
       <li><b>Clave de API-Football</b>: se guarda solo en ese dispositivo.</li>
       <li><b>xG</b>: cuántas consultas usar para bajar xG en cada actualización.</li>
       <li><b>Datos guardados</b>: cuántas ligas, partidos con xG y predicciones tiene ese dispositivo. «Borrar» los quita (la clave se mantiene).</li>
@@ -348,15 +308,14 @@ details.guide th{color:var(--muted);font-weight:600}
       <tr><td>Modelo</td><td>Poisson con ataque/defensa y «correlación» (Dixon-Coles), entrenado con ~9 años. No publica la fórmula.</td><td>Poisson con ataque/defensa + Dixon-Coles por liga + xG (de la API o aproximado) o, donde hay cuotas de cierre, lo que implicaba Pinnacle en cada partido. Temporada actual y anterior.</td></tr>
       <tr><td>Ajustes extra</td><td>Clima (altitud, temperatura, viento…)</td><td>No usa clima.</td></tr>
       <tr><td>Ligas</td><td>Las que elige Alpha</td><td>Todas las que trae tu API-Football</td></tr>
-      <tr><td>Cuota justa</td><td>Del modelo</td><td>Elegís: de las casas (sin margen), del modelo, o cuando coinciden</td></tr>
-      <tr><td>Edge y score</td><td>Fórmula propia (suma los EV de todos los mercados con valor, pesando las cuotas bajas)</td><td>Fórmula propia parecida: combina los dos grupos con más valor (no suma líneas casi iguales para no inflar el número). Los números no son comparables 1 a 1.</td></tr>
-      <tr><td>Filtros</td><td>Liga, match score mínimo, horario</td><td>Lo mismo + buscar equipo, cuota justa, EV mínimo y solo ligas en verde</td></tr>
-      <tr><td>Cuotas</td><td>«Lectura» en Inicial / 4 h / 1 h, sellada</td><td>La mejor cuota de cada actualización; ▲▼ contra la primera lectura.</td></tr>
+      <tr><td>Cuota justa</td><td>Del modelo</td><td>Del modelo, con la de Pinnacle al lado como referencia</td></tr>
+      <tr><td>Mercados</td><td>Goles, 1X2, hándicap…</td><td>Lo mismo + goles por equipo y córners, cada uno en su pestaña</td></tr>
+      <tr><td>Filtros</td><td>Liga, match score mínimo, horario</td><td>Liga, horario, buscar equipo y solo ligas con ✓</td></tr>
       <tr><td>Precisión</td><td>Solo con lecturas guardadas desde junio 2026</td><td>Historial (goles) + cuotas de cierre históricas y guardadas (1X2). Tiene datos desde el primer día.</td></tr>
       <tr><td>Estudio</td><td>Distribución de goles, timeline por minuto, clima</td><td>Goles esperados, resultado, contexto de liga, matriz de marcadores y ratings.</td></tr>
       <tr><td>Costo</td><td>Tokens</td><td>Tus consultas de API-Football</td></tr>
     </table>
-    <p class="small">Nada garantiza ganancia. Con «De las casas», la ventaja viene de encontrar una casa que paga más que el precio justo del mercado; con «Del modelo», solo existe si el modelo acierta en esa liga, y eso es lo que mide Precisión. Las rachas malas son normales: apostá montos chicos y parejos.</p>
+    <p class="small">Nada garantiza ganancia. La ventaja solo existe si tu casa paga más que el precio justo, y el modelo solo sirve en las ligas donde acierta (eso mide Precisión). Las rachas malas son normales: apostá montos chicos y parejos.</p>
   </details>
   <div class="row">
     <div class="seg"><button data-day="0">Hoy</button><button data-day="1">Mañana</button><button data-day="fav">★ Favoritos</button></div>
@@ -367,11 +326,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="status" id="uStatus"></div>
   <div class="filters box">
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
-    <div class="fl" style="margin-top:4px"><div class="fl-h"><b>Cuota justa</b> <button class="info" data-tip="src">i</button></div><div class="seg" id="src"><button data-src="mkt">De las casas</button><button data-src="model">Del modelo</button><button data-src="both">Coinciden</button></div><div class="small" id="srcHint" style="margin-top:6px"></div></div>
-    <div class="fl"><div class="fl-h"><b>EV mínimo</b> <button class="info" data-tip="evmin">i</button></div><div class="seg" id="evmin"><button data-ev="0">Todos</button><button data-ev="0.01">1%</button><button data-ev="0.02">2%</button><button data-ev="0.03">3%</button><button data-ev="0.05">5%</button></div></div>
-    <div class="fl"><div class="fl-h"><b>Edge mínimo</b> <button class="info" data-tip="edge">i</button> <span class="mono" id="minEdgeVal">0+</span></div><input type="range" id="minEdge" min="0" max="95" step="5" value="0"></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
-    <label class="small row" id="greenWrap" style="gap:6px;margin-top:10px"><input type="checkbox" id="onlyGreen" style="accent-color:var(--acc)"> Solo ligas en verde (donde el modelo acierta; no aplica con «De las casas»)</label>
   </div>
   <div id="dList"></div>
 </section>
@@ -390,35 +345,24 @@ details.guide th{color:var(--muted);font-weight:600}
   <div id="pBody"></div>
 </section>
 
-<!-- ============ VALOR ============ -->
-<section id="v-val" class="hidden">
-  <h1>Apuestas de valor</h1>
-  <p class="small" style="margin-top:-4px">Casas que pagan <b>más que el precio justo del mercado</b> (Pinnacle sin margen). No depende del modelo. Se actualiza con <b>↻ Actualizar todo</b> (en Partidos).</p>
-  <div class="row"><div class="seg" id="vday"><button data-vday="0">Hoy</button><button data-vday="1">Mañana</button><button data-vday="bets">Mis apuestas</button></div></div>
-  <div class="filters box" id="vFilters">
-    <div class="fl" style="margin-top:0"><div class="fl-h"><b>EV mínimo</b> <button class="info" data-tip="evmin">i</button></div><div class="seg" id="vevmin"><button data-ev="0.01">1%</button><button data-ev="0.02">2%</button><button data-ev="0.03">3%</button><button data-ev="0.05">5%</button></div></div>
-    <div class="fl"><div class="fl-h"><b>Cuota máxima</b> <button class="info" data-tip="maxodds">i</button></div><div class="seg" id="vmax"><button data-max="2">2,00</button><button data-max="3">3,00</button><button data-max="5">5,00</button><button data-max="99">Todas</button></div></div>
-    <label class="small row" style="gap:6px;margin-top:10px"><input type="checkbox" id="vSharp" style="accent-color:var(--acc)"> Solo con precio de Pinnacle (más confiable) <button class="info" data-tip="sharp">i</button></label>
-    <div class="small" id="vBooks" style="margin-top:8px"></div>
-  </div>
-  <div class="status" id="vStatus"></div>
-  <div id="vList"></div>
+<!-- ============ MERCADOS ============ -->
+<section id="v-mk" class="hidden">
+  <h1 id="mkTitle">Mercados</h1>
+  <p class="small" style="margin-top:-4px">Cada partido con la probabilidad y la <b>cuota justa del modelo</b> y, al lado, la de <b>Pinnacle</b> (sin margen). Arriba van los partidos donde el modelo ve <b>más probabilidad que Pinnacle</b>. Si tu casa paga la <b>Mínima</b> o más, hay valor. <button class="info" data-tip="mkdiff">i</button></p>
+  <div class="row"><div class="seg" id="mkday"><button data-mkday="0">Hoy</button><button data-mkday="1">Mañana</button></div></div>
+  <div class="oddsbar"><button class="btn pri" id="btnMkOdds">↻ Actualizar cuotas</button><span class="small" id="mkOddsWhen"></span></div>
+  <div class="prog hidden" id="mkProg"><i></i></div>
+  <div class="tools"><input type="search" id="mkq" placeholder="Buscar equipo o liga"><label class="small row" style="gap:6px"><input type="checkbox" id="mkGreen" style="accent-color:var(--acc)"> Solo ligas con ✓</label></div>
+  <div class="status" id="mkStatus"></div>
+  <div id="mkList"></div>
 </section>
 
-<!-- ============ ESPECIALES ============ -->
-<section id="v-esp" class="hidden">
-  <h1>Mercados especiales</h1>
-  <p class="small" style="margin-top:-4px">Mercados que las casas comunes arman <b>con una fórmula</b> y donde más se equivocan. El precio justo sale del <b>1X2 y los totales de Pinnacle</b> (los mercados donde más dinero profesional entra), pasados a goles esperados de cada equipo. No de la mediana de las casas, que suelen usar la misma fórmula y fallar juntas.</p>
-  <div class="row"><div class="seg" id="eday"><button data-eday="0">Hoy</button><button data-eday="1">Mañana</button></div></div>
-  <div class="row" style="margin-top:8px"><div class="seg" id="emk"><button data-emk="tt">Goles por equipo</button><button data-emk="btts">Ambos marcan</button><button data-emk="corners">Córners</button></div></div>
-  <div class="filters box">
-    <div class="fl" style="margin-top:0"><div class="fl-h"><b>EV mínimo</b> <button class="info" data-tip="evmin">i</button></div><div class="seg" id="eevmin"><button data-ev="0.01">1%</button><button data-ev="0.02">2%</button><button data-ev="0.03">3%</button><button data-ev="0.05">5%</button></div></div>
-    <div class="fl"><div class="fl-h"><b>Cuota máxima</b> <button class="info" data-tip="maxodds">i</button></div><div class="seg" id="emax"><button data-max="2">2,00</button><button data-max="3">3,00</button><button data-max="5">5,00</button><button data-max="99">Todas</button></div></div>
-    <label class="small row" style="gap:6px;margin-top:10px"><input type="checkbox" id="eSharp" style="accent-color:var(--acc)"> Solo con precio de Pinnacle (más confiable) <button class="info" data-tip="sharp">i</button></label>
-    <div class="small" id="eBooks" style="margin-top:8px"></div>
-  </div>
-  <div class="status" id="eStatus"></div>
-  <div id="eList"></div>
+<!-- ============ MIS APUESTAS ============ -->
+<section id="v-bets" class="hidden">
+  <h1>Mis apuestas</h1>
+  <p class="small" style="margin-top:-4px">Anotá cada apuesta (desde una pestaña de mercado o la ficha del partido, con el botón <b>＋</b>) con la cuota y el monto <b>reales</b> de tu casa. Se liquidan solas con <b>↻ Actualizar todo</b>.</p>
+  <div class="status" id="bStatus"></div>
+  <div id="bList"></div>
 </section>
 
 <!-- ============ AJUSTES ============ -->
@@ -427,9 +371,6 @@ details.guide th{color:var(--muted);font-weight:600}
   <h2>Clave de API-Football</h2>
   <div class="field"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu clave (x-apisports-key)"><button class="btn pri" id="btnKey">Guardar y probar</button></div>
   <div class="status" id="kStatus"></div>
-  <h2>Mis casas</h2>
-  <p class="small">Marcá las casas donde podés apostar. La app calcula el valor solo con sus cuotas (en Partidos y en Valor). Sin ninguna marcada, usa todas. La lista se completa sola con cada actualización.</p>
-  <div class="lgl" id="booksList" style="max-height:300px"></div>
   <h2>Banca</h2>
   <div class="field"><label class="small" for="bank" style="align-self:center">Tu banca para apostar ($): con ella se calcula el monto sugerido</label><input id="bank" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000" style="max-width:160px"></div>
   <h2>xG</h2>
@@ -828,6 +769,7 @@ function buildRows(a,o,first){
   // Córners: modelo propio (si la liga tiene córners) y precio justo armado con la línea principal de Pinnacle.
   const cm=F.cornerMarkets(a.clam||null,o,{home:a.hn,away:a.an},a.clam&&a.clam.size);
   if(o.cornerNames&&o.cornerNames.length)a.cnames=o.cornerNames;
+  if(o.lambdas)a.plam=o.lambdas; // goles esperados que implican el 1X2 y los totales de Pinnacle
   rows=rows.concat(cm.rows);if(cm.mean)a.cmean=cm.mean;
   a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(r.offers||x.offers||[]).slice(0,6),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0}});
   a.edge=a.lam?F.matchEdge(rows):0;
@@ -1074,7 +1016,7 @@ window.tgOnLogin=async()=>{
     else syncLine('☁︎ Al día con tu cuenta · última actualización guardada '+ago(meta.updated||meta.ts||0)+(changed?' (bajada recién)':''));
   }catch(e){syncLine('☁︎ No se pudo leer tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
 };
-function rerender(){const r=route();if(r.v==='val')renderVal();else if(r.v==='esp')renderEsp();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
+function rerender(){const r=route();if(r.v==='mk')renderMk();else if(r.v==='bets')renderBets();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
 $('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
@@ -1160,7 +1102,7 @@ async function computePrecision(leagues,reg,status){
 function leagueStatus(lid){
   const l=state.prec&&state.prec.leagues&&state.prec.leagues[lid];
   const st=(s,n)=>!Number.isFinite(n)||n===0?null:n<MIN_N?'w':s>0?'g':'n';
-  return l?{goals:st(l.goals.skill,l.goals.n),res:st(l.res.skill,l.res.n),corners:l.corners?st(l.corners.skill,l.corners.n):null,l}:{goals:null,res:null,corners:null,l:null};
+  return l?{goals:st(l.goals.skill,l.goals.n),res:st(l.res.skill,l.res.n),corners:l.corners?st(l.corners.skill,l.corners.n):null,team:l.team?st(l.team.skill,l.team.n):null,l}:{goals:null,res:null,corners:null,team:null,l:null};
 }
 function statusChip(st,label){
   if(st==='g')return `<span class="chip g">✓ ${label}</span>`;
@@ -1176,50 +1118,139 @@ function allowedGroups(lid){
   return set;
 }
 
-/* ---------------- render: partidos ---------------- */
-function edgeHtml(v){
-  const c=v>=65?'g':v>=35?'m':'d';
-  return `<span class="edge"><span class="bar"><i class="bg-${c}" style="width:${Math.max(3,v)}%"></i></span><b class="c-${c}">${v}</b></span>`;
-}
-// De dónde sale la cuota justa: 'mkt' = de las casas (Pinnacle o mediana, sin margen), 'model' = del modelo,
-// 'both' = solo cuando hay valor según las dos.
-const SRC_NAME={mkt:'De las casas',model:'Del modelo',both:'Coinciden'};
-const srcNow=()=>LS.get('tg:src','mkt');
-// Casas donde podés apostar (⚙︎ → Mis casas). Vacío = todas.
+// Casas marcadas antes en Ajustes (ya no se usan para calcular; se conserva la lista guardada).
 const myBooks=()=>new Set(LS.get('tg:mybooks',[])||[]);
-// Mejor cuota disponible para mí: con «Mis casas», la mejor de esas casas que paga más que el precio justo.
-function effPrice(r){
-  const mb=myBooks();
-  if(!mb.size)return {pr:r.pr,bk:r.bk};
-  if(mb.has(r.bk))return {pr:r.pr,bk:r.bk};
-  const x=(r.of||[]).find(([bk])=>mb.has(bk));
-  return x?{pr:x[1],bk:x[0]}:null;
+/* ---------------- mercados: modelo contra Pinnacle ---------------- */
+// Pestañas de mercado: nombre, columna de Precisión que dice si el modelo acierta ahí, y texto del ✓.
+const MK_TABS={goles:{name:'Goles del partido',st:'goals',chip:'Goles'},ambos:{name:'Ambos marcan',st:'goals',chip:'Goles'},equipo:{name:'Goles por equipo',st:'team',chip:'Por equipo'},corners:{name:'Córners',st:'corners',chip:'Córners'}};
+// Nombre corto dentro de una pestaña o grupo (el título ya dice el mercado).
+const lineTxt=l=>String(l).replace('.',',');
+const shortLabel=(b,hn,an)=>b.type==='total'||b.type==='corners'&&b.scope==='total'?(b.side==='over'?'Más de ':'Menos de ')+lineTxt(b.line):b.type==='btts'?(b.pick==='yes'?'Sí':'No'):b.type==='tt'?(b.team==='home'?hn:an)+' más de '+lineTxt(b.line):F.betLabel(b,hn,an);
+const betKey=b=>b.type==='total'?`total:${b.side}:${b.line}`:b.type==='btts'?'btts:'+b.pick:b.type==='tt'?`tt:${b.team}:${b.side}:${b.line}`:b.type==='corners'?`c:${b.scope}:${b.side}:${b.line}`:'';
+// Líneas de una pestaña para un partido: [{k, bet, l, p (modelo), pm (Pinnacle sin margen)}].
+// Pinnacle: su cuota de esa línea si la cotiza; si no, la que sale de sus mercados principales (1X2 y totales,
+// o la línea principal de córners) pasados a goles o córners esperados.
+function marketLines(a,tab){
+  const rowBy=new Map((a.rows||[]).map(r=>[r.k,r]));
+  const pinDirect=k=>{const r=rowBy.get(k);return r&&r.sh&&r.m>0?r.m:null};
+  const out=[];
+  if(tab==='corners'){
+    const sz=(a.clam&&a.clam.size)||F.CORNERS.size;
+    const md=a.clam?F.cornerDist(a.clam.home,a.clam.away,sz):null;
+    const share=a.clam?a.clam.home/(a.clam.home+a.clam.away):0.53;
+    const kd=a.cmean?F.cornerDist(a.cmean*share,a.cmean*(1-share),sz):null;
+    const ref=kd||md;if(!ref)return out;
+    let main=9.5,gap=9;
+    for(let L=4.5;L<=16.5;L++){const q=F.cornerProbs({scope:'total',side:'over',line:L},ref).p;if(Math.abs(q-0.5)<gap){gap=Math.abs(q-0.5);main=L}}
+    for(const L of [main-1,main,main+1])for(const side of ['over','under']){
+      const bet={type:'corners',scope:'total',side,line:L},k=betKey(bet),pd=pinDirect(k);
+      out.push({k,bet,l:F.betLabel(bet,a.hn,a.an),s:shortLabel(bet,a.hn,a.an),p:md?F.cornerProbs(bet,md).p:null,pm:pd!=null?pd:kd?F.cornerProbs(bet,kd).p:null});
+    }
+    return out;
+  }
+  const m=a.lam?F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho):null;
+  const pmx=a.plam?F.scoreMatrix(a.plam.lh,a.plam.la,-0.06):null;
+  const bets=tab==='goles'?[1.5,2.5,3.5].flatMap(L=>[{type:'total',side:'over',line:L},{type:'total',side:'under',line:L}])
+    :tab==='ambos'?[{type:'btts',pick:'yes'},{type:'btts',pick:'no'}]
+    :[['home',0.5],['home',1.5],['away',0.5],['away',1.5]].map(([team,line])=>({type:'tt',team,side:'over',line}));
+  for(const bet of bets){
+    const k=betKey(bet),pd=pinDirect(k);
+    out.push({k,bet,l:F.betLabel(bet,a.hn,a.an),s:shortLabel(bet,a.hn,a.an),p:m?F.betProbs(bet,m).p:null,pm:pd!=null?pd:pmx?F.betProbs(bet,pmx).p:null});
+  }
+  return out;
 }
-function view(r,src){
-  const e=effPrice(r);
-  if(!e)return {fair:r.m>0?1/r.m:r.f,ev:null,score:0,alt:null,pr:null,bk:null};
-  const mk=r.m>0?{fair:1/r.m,ev:r.m*e.pr-1}:null;
-  if(mk)mk.score=F.betScore(mk.ev,r.m);
-  const md=r.f>0?{fair:r.f,ev:e.pr/r.f-1}:{fair:null,ev:null,score:0};
-  if(r.f>0)md.score=F.betScore(md.ev,1/r.f);
-  const out=(()=>{
-  if(src==='model')return Object.assign({},md,{alt:mk});
-  if(src==='mkt')return mk?Object.assign({},mk,{alt:md}):{fair:null,ev:null,score:0,alt:md};
-  if(!mk)return {fair:null,ev:null,score:0,alt:md};
-  const ok=mk.ev>=evMin()&&md.ev>=evMin();
-  return {fair:mk.fair,ev:mk.ev,score:ok?Math.min(mk.score,md.score):0,alt:md,both:ok};
-  })();
-  return Object.assign(out,{pr:e.pr,bk:e.bk});
+// Cuota mínima que tiene que pagar tu casa: la más alta entre la justa del modelo y la de Pinnacle, + 2%.
+const minOdd=(p,pm)=>{const f=[p,pm].filter(x=>x>0).map(x=>1/x);return f.length?Math.max(...f)*1.02:null};
+const ptsTxt=d=>(d>0?'+':d<0?'−':'')+Math.abs(Math.round(d*100));
+function linesTable(a,lines,withAdd){
+  let h=`<div class="xs"><table class="mk"><thead><tr><th>Mercado</th><th>Modelo</th><th>Pinnacle</th><th>Dif. <button class="info" data-tip="dif">i</button></th><th>Mínima <button class="info" data-tip="minodd">i</button></th>${withAdd?'<th></th>':''}</tr></thead><tbody>`;
+  for(const x of lines){
+    const d=x.p>0&&x.pm>0?x.p-x.pm:null;
+    h+=`<tr><td>${esc(x.s||x.l)}</td><td class="num">${x.p>0?dec(1/x.p)+'<span class="bk">'+pct(x.p,0)+'</span>':'—'}</td><td class="num">${x.pm>0?dec(1/x.pm)+'<span class="bk">'+pct(x.pm,0)+'</span>':'—'}</td><td class="dp ${d>0.02?'c-g':d<-0.02?'c-b':'c-d'}">${d==null?'—':ptsTxt(d)}</td><td class="num"><b>${dec(minOdd(x.p,x.pm))}</b></td>${withAdd?`<td><button class="addb" data-add="${a.id}|${esc(x.k)}" title="Anotar apuesta">＋</button></td>`:''}</tr>`;
+  }
+  return h+'</tbody></table></div>';
 }
-// EV mínimo para considerar que una apuesta tiene valor (filtro «EV mínimo»; 2% por defecto).
-const evMin=()=>Math.max(0.005,Number(LS.get('tg:evMin',0.02))||0);
-const hasValue=(v,src)=>src==='both'?!!v.both:Number.isFinite(v.ev)&&v.ev>=evMin();
-function edgeOf(a,allowed,src){
-  if(!a.rows)return 0;
-  const best={};
-  for(const r of a.rows){if(allowed&&!allowed.has(r.g))continue;const v=view(r,src||srcNow());if(hasValue(v,src||srcNow())&&v.score>(best[r.g]||0))best[r.g]=v.score}
-  const top=Object.values(best).sort((x,y)=>y-x).slice(0,2);
-  return top.length?Math.round(100*(1-top.reduce((acc,s)=>acc*(1-s/100),1))):0;
+// Mayor diferencia modelo − Pinnacle del partido entre todas las pestañas (para la lista de Partidos).
+function bestDiff(a){
+  let best=null;
+  if(!a.lam&&!a.clam)return null;
+  for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(x.p>0&&x.pm>0&&(!best||x.p-x.pm>best.d))best={d:x.p-x.pm,l:x.l};
+  return best;
+}
+async function renderMk(){
+  const r=route();if(r.v!=='mk')return;
+  const tab=r.tab,T0=MK_TABS[tab],list=$('#mkList');
+  $('#mkTitle').textContent=T0.name;
+  const day=String(LS.get('tg:mkday','0'));
+  $$('#mkday [data-mkday]').forEach(b=>b.classList.toggle('on',b.dataset.mkday===day));
+  $('#mkGreen').checked=!!LS.get('tg:mkgreen',false);
+  $('#btnMkOdds').disabled=!!state.running;
+  if(!state.key){list.innerHTML='<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>.</div>';return}
+  const d=await getDay(dayStr(Number(day)));
+  $('#mkOddsWhen').textContent=d?'Cuotas de '+ago(d.oddsTs||d.ts):'';
+  if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para traer los partidos del día.</div>';return}
+  state.prec=state.prec||await DB.get('prec');
+  const q=$('#mkq').value.trim().toLowerCase(),green=$('#mkGreen').checked,now=Date.now(),cards=[];
+  for(const a of d.fx){
+    if(a.ts*1000<=now)continue;
+    if(q&&!(a.hn+' '+a.an+' '+a.ln+' '+a.lc).toLowerCase().includes(q))continue;
+    const st=leagueStatus(a.lid)[T0.st];if(green&&st!=='g')continue;
+    const lines=marketLines(a,tab).filter(x=>x.p>0||x.pm>0);if(!lines.length)continue;
+    const diffs=lines.filter(x=>x.p>0&&x.pm>0).map(x=>x.p-x.pm);
+    cards.push({a,lines,st,best:diffs.length?Math.max(...diffs):null});
+  }
+  cards.sort((x,y)=>(y.best!=null?y.best:-9)-(x.best!=null?x.best:-9)||x.a.ts-y.a.ts);
+  const pin=cards.filter(c=>c.best!=null).length;
+  if(!state.running)$('#mkStatus').textContent=cards.length?`${cards.length} partidos por jugar · ${pin} con precio de Pinnacle para comparar`:'';
+  if(!cards.length){list.innerHTML=`<div class="empty">No hay partidos por jugar con «${esc(T0.name)}»${green?' en ligas con ✓ (desmarcá «Solo ligas con ✓»)':''}.${tab==='corners'?' Los córners necesitan las estadísticas de la liga (se bajan solas con ↻ Actualizar todo) o la línea de córners de Pinnacle.':''}</div>`;return}
+  list.innerHTML=cards.slice(0,150).map(({a,lines,st})=>`<div class="mkc box"><div class="mkc-h"><span class="mono muted">${fmtTime(a.iso)}</span><a href="#/partido/${a.id}">${esc(a.hn)} vs ${esc(a.an)}</a>${statusChip(st,T0.chip)}</div><div class="small">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)}</div>${linesTable(a,lines,true)}</div>`).join('')+(cards.length>150?`<p class="small">Se muestran 150 de ${cards.length}. Usá el buscador.</p>`:'');
+}
+// ↻ Actualizar cuotas: solo las cuotas de hoy y mañana (sin historial ni modelo). Rehace la referencia de Pinnacle.
+async function refreshAllOdds(){
+  if(state.running)return;
+  const st=$('#mkStatus'),pg=$('#mkProg');
+  state.running=true;state.calls=0;$('#btnMkOdds').disabled=true;st.classList.remove('err');
+  try{
+    await loadBets();
+    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{};
+    let n=0;const days=[dayStr(0),dayStr(1)];
+    for(const [i,d] of days.entries()){
+      const day=await getDay(d);if(!day)continue;
+      st.textContent='Bajando cuotas del '+d.split('-').reverse().slice(0,2).join('/')+'…';pg.classList.remove('hidden');pg.querySelector('i').style.width=(i*50+10)+'%';
+      const items=await allPages('/odds',{date:d,timezone:TZ});
+      const m=new Map();for(const it of items){const id=String(it.fixture&&it.fixture.id||'');if(id)m.set(id,(m.get(id)||[]).concat([it]))}
+      for(const a of day.fx){
+        const its=m.get(String(a.id));if(!its||a.ts*1000<=Date.now())continue;
+        const o=F.parseOdds(its);if(!o.size)continue;
+        buildRows(a,o,first);recordEsp(a,esp);a.readAt=Date.now();n++;
+      }
+      day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
+    }
+    await DB.set('first',first);await DB.set('esp',esp);if(betsDirty)await saveBets();
+    st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`;
+  }catch(e){st.textContent=e.message;st.classList.add('err')}
+  pg.classList.add('hidden');state.running=false;$('#btnMkOdds').disabled=false;
+  const keep=st.textContent,err=st.classList.contains('err');await renderMk();st.textContent=keep;st.classList.toggle('err',err);
+}
+// Anotar una apuesta (botón ＋): la cuota y el monto los escribís vos, con los de tu casa.
+async function addBet(fid,k){
+  const a=await findFixture(fid);if(!a)return;
+  let x=null;
+  for(const t of Object.keys(MK_TABS)){x=marketLines(a,t).find(y=>y.k===k);if(x)break}
+  if(!x){const r=(a.rows||[]).find(y=>y.k===k);if(r)x={k,l:r.l,p:r.p,pm:r.sh&&r.m>0?r.m:null}}
+  if(!x)return;
+  const mo=minOdd(x.p,x.pm);
+  const priceTxt=prompt(`¿A qué cuota apostaste «${x.l}» (${a.hn} vs ${a.an})?${mo?' Mínima con valor: '+dec(mo):''}`,'');if(priceTxt==null||!priceTxt.trim())return;
+  const price=Number(String(priceTxt).replace(',','.'));if(!(price>1)){alert('Cuota inválida.');return}
+  const pRef=x.pm>0?x.pm:x.p,bank=bankroll(),sugg=bank&&pRef>0?Math.round(bank*F.kelly(pRef,price)):'';
+  const amtTxt=prompt(`¿Cuánto apostaste ($)?${sugg?' Sugerido (¼ de Kelly): $'+sugg.toLocaleString('es-AR'):''}`,String(sugg||''));if(amtTxt==null)return;
+  const amount=Math.max(0,Number(String(amtTxt).replace(',','.'))||0);
+  const bk=prompt('¿En qué casa? (opcional)',LS.get('tg:lastbk',''))||'';if(bk)LS.set('tg:lastbk',bk);
+  await loadBets();
+  BETS.push({id:a.id+':'+k+':'+Date.now(),fid:a.id,k,l:x.l,hn:a.hn,an:a.an,ln:a.ln,lc:a.lc,kick:a.ts,bk,pr:price,m:x.pm>0?x.pm:null,p:x.p>0?x.p:null,amount,at:Date.now()});
+  await saveBets();
+  if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{});
+  alert('Anotada en Mis apuestas.');
 }
 let showAllLeagues=false;
 async function getDay(d){if(!state.days[d])state.days[d]=await DB.get('day:'+d);return state.days[d]}
@@ -1241,16 +1272,11 @@ async function renderDash(){
     if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> para traer los partidos de todas las ligas.</div>';return}
     fx=d.fx;
   }
-  const q=$('#q').value.trim().toLowerCase(), minE=Number($('#minEdge').value), onlyGreen=$('#onlyGreen').checked, fv=favs();
-  const lgSel=$('#lg').value, slot=LS.get('tg:slot','all'), src=srcNow();
-  $$('#src [data-src]').forEach(b=>b.classList.toggle('on',b.dataset.src===src));
-  const em=Number(LS.get('tg:evMin',0.02));$$('#evmin [data-ev]').forEach(b=>b.classList.toggle('on',Math.abs(Number(b.dataset.ev)-em)<1e-9));
-  $('#greenWrap').style.opacity=src==='mkt'?.45:1;
-  $('#srcHint').textContent=src==='mkt'?'Precio justo de las casas (Pinnacle o la mediana, sin margen). No depende del modelo: sirve en todas las ligas.':src==='model'?'Precio justo de nuestro modelo. Confiá solo en las ligas en verde.':'Solo apuestas con valor contra las casas y también según el modelo. Menos apuestas, más sólidas.';
-  $('#minEdgeVal').textContent=minE+'+';
+  const q=$('#q').value.trim().toLowerCase(), fv=favs();
+  const lgSel=$('#lg').value, slot=LS.get('tg:slot','all');
   $$('#slot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===slot));
   // Lista de ligas del día para el filtro.
-  const lgs=new Map();for(const a of fx)if(a.rows)lgs.set(String(a.lid),a.lc+' · '+a.ln);
+  const lgs=new Map();for(const a of fx)lgs.set(String(a.lid),a.lc+' · '+a.ln);
   $('#lg').innerHTML='<option value="">Todas las ligas</option>'+[...lgs].sort((x,y)=>x[1].localeCompare(y[1])).map(([id,n])=>`<option value="${id}"${id===lgSel?' selected':''}>${esc(n)}</option>`).join('');
   const inSlot=a=>{if(slot==='all')return true;const h=Number(fmtTime(a.iso).slice(0,2));return slot==='m'?h<12:slot==='t'?h>=12&&h<19:h>=19};
   const groups=new Map();
@@ -1258,28 +1284,25 @@ async function renderDash(){
     if(q&&!(a.hn+' '+a.an+' '+a.ln+' '+a.lc).toLowerCase().includes(q))continue;
     if(lgSel&&String(a.lid)!==lgSel)continue;
     if(!inSlot(a))continue;
-    // Las ligas en verde solo importan cuando la cuota justa sale del modelo.
-    const allowed=onlyGreen&&src!=='mkt'?allowedGroups(a.lid):null;
-    if(allowed&&!allowed.size)continue;
-    const e=a.rows?edgeOf(a,allowed,src):0;
-    if(minE&&e<minE)continue;
-    if(!groups.has(a.lid))groups.set(a.lid,{best:0,list:[]});
-    const g=groups.get(a.lid);g.list.push({a,e});g.best=Math.max(g.best,e);
+    if(!groups.has(a.lid))groups.set(a.lid,{first:a.ts,list:[]});
+    const g=groups.get(a.lid);g.list.push({a});g.first=Math.min(g.first,a.ts);
   }
-  const ordered=[...groups.values()].sort((x,y)=>y.best-x.best);
+  // Por liga y horario: primero la liga que empieza antes.
+  const ordered=[...groups.values()].sort((x,y)=>x.first-y.first);
   const LIMIT=40;let html='',shown=0;
   for(const g of (showAllLeagues?ordered:ordered.slice(0,LIMIT))){
     const f0=g.list[0].a,s=leagueStatus(f0.lid);
     html+=`<div class="league"><span>${flag(f0.lc)}</span><span class="n">${esc(f0.lc)} · ${esc(f0.ln)}</span>${statusChip(s.goals,'Goles')}${statusChip(s.res,'1X2')}</div>`;
-    for(const {a,e} of g.list.sort((x,y)=>x.a.ts-y.a.ts)){
-      const right=a.rows?`<span class="na hide-s">${ago(a.readAt)}</span>${edgeHtml(e)}`:`<span class="na">Sin análisis disponible</span>`;
+    for(const {a} of g.list.sort((x,y)=>x.a.ts-y.a.ts)){
+      const bd=bestDiff(a);
+      const right=a.lam||a.clam?(bd&&bd.d>=0.03?`<span class="na"><b class="c-g mono">+${Math.round(bd.d*100)}</b> ${esc(bd.l)}</span>`:'<span class="na">Ver mercados</span>'):`<span class="na">Sin modelo</span>`;
       const live=a.st&&!['NS','TBD','PST'].includes(a.st);
       html+=`<div class="fxw"><a class="fx" href="#/partido/${a.id}"><span class="t">${live?'<span class="c-g">'+esc(a.st)+'</span>':fmtTime(a.iso)}</span><span class="teams"><div>${esc(a.hn)}</div><div class="vs">vs ${esc(a.an)}</div></span>${right}<span class="go">›</span></a><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" aria-label="Favorito">${fv[a.id]?'★':'☆'}</button></div>`;
       shown++;
     }
   }
   if(!showAllLeagues&&ordered.length>LIMIT)html+=`<button class="btn more-leagues" id="btnMoreLeagues">Mostrar las otras ${ordered.length-LIMIT} ligas</button>`;
-  list.innerHTML=html||'<div class="empty">Ningún partido con esos filtros.'+(onlyGreen?' Si todavía no hay ligas en verde, desmarcá «Solo ligas en verde».':'')+'</div>';
+  list.innerHTML=html||'<div class="empty">Ningún partido con esos filtros.</div>';
 }
 
 /* ---------------- render: partido ---------------- */
@@ -1295,7 +1318,7 @@ async function renderMatch(id){
   if(!a){body.innerHTML='<div class="empty" style="margin-top:16px">No encuentro este partido. Volvé a <a href="#/hoy">Partidos</a> y tocá Actualizar todo.</div>';return}
   state.prec=state.prec||await DB.get('prec');
   const s=leagueStatus(a.lid), fv=favs();
-  let h=`<div class="row" style="margin-top:10px"><span>${flag(a.lc)}</span><span class="small">${esc(a.lc)} · ${esc(a.ln)} · ${fmtTime(a.iso)}</span>${a.rows?edgeHtml(edgeOf(a,null,srcNow())):''}<button class="info" data-tip="edge">i</button><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" style="margin-left:auto">${fv[a.id]?'★':'☆'}</button></div>`;
+  let h=`<div class="row" style="margin-top:10px"><span>${flag(a.lc)}</span><span class="small">${esc(a.lc)} · ${esc(a.ln)} · ${fmtTime(a.iso)}</span><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" style="margin-left:auto">${fv[a.id]?'★':'☆'}</button></div>`;
   h+=`<div class="mh">${esc(a.hn)} <span>vs</span> ${esc(a.an)}</div><div class="small">Última lectura ${ago(a.readAt)}</div>`;
   const upcoming=a.ts*1000>Date.now();
   const refresh=upcoming&&state.key?`<button class="btn" id="btnOdds">↻ Cuotas de este partido</button>`:'';
@@ -1303,31 +1326,26 @@ async function renderMatch(id){
   if(a.lam){
     h+=`<div class="model">Modelo: Poisson${a.lam.rho?' + corrección Dixon-Coles':''}${a.xg?' + xG':''}${a.mkt?' + cuotas de Pinnacle':''}${a.clam?` · córners esperados ${dec(a.clam.home)} – ${dec(a.clam.away)}`:''}${a.cmean?` (Pinnacle: ${dec(a.cmean)} en total)`:''}</div>`;
     h+=`<div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">${open.has('study')?'Ocultar estudio':'Ver estudio del partido'}</button>${refresh}</div>`;
-  }else h+=`<div class="none" style="margin-top:10px;text-align:left">Sin modelo para este partido (${esc(a.noModel||a.reason||'')}). Se puede usar igual con <b>Cuota justa: De las casas</b>.</div><div class="row" style="margin-top:10px">${refresh}</div>`;
+  }else h+=`<div class="none" style="margin-top:10px;text-align:left">Sin modelo para este partido (${esc(a.noModel||a.reason||'')}). Solo se muestra el precio de Pinnacle donde lo hay.</div><div class="row" style="margin-top:10px">${refresh}</div>`;
   h+=`<div class="small" id="oddsMsg" style="margin-top:6px"></div>`;
   if(a.lam&&open.has('study'))h+=studyHtml(a);
-  if(!a.rows){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
-  const src=srcNow();
-  h+=`<div class="fl"><div class="fl-h"><b>Cuota justa</b> <button class="info" data-tip="src">i</button></div><div class="seg" id="msrc">${Object.entries(SRC_NAME).map(([k,n])=>`<button data-msrc="${k}" class="${k===src?'on':''}">${n}</button>`).join('')}</div></div>`;
-  h+=`<div class="small" style="margin-top:8px">Se muestran las apuestas con EV de ${Math.round(evMin()*100)}% o más (filtro «EV mínimo» en la lista). <b>Elegí una sola por partido: la de mayor Score.</b> <button class="info" data-tip="pick">i</button></div>`;
-  if(src!=='model'&&!a.rows.some(r=>r.m>0))h+=`<div class="none" style="margin-top:10px">Este análisis es anterior a la cuota justa de las casas. Tocá ↻ Actualizar todo para verla.</div>`;
+  if(!a.rows&&!a.lam){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
+  h+=`<p class="small" style="margin-top:14px">Cada mercado: <b>cuota justa del modelo</b> y de <b>Pinnacle</b> (sin margen), la diferencia y la <b>Mínima</b> que tiene que pagar tu casa para que haya valor. <button class="info" data-tip="mkdiff">i</button></p>`;
+  // Las líneas de las pestañas de mercado se agregan aunque ninguna casa las cotice.
+  const lines=(a.rows||[]).map(r=>({k:r.k,g:r.g,l:r.l,p:r.p,pm:r.sh&&r.m>0?r.m:null}));
+  const seen=new Set(lines.map(x=>x.k));
+  for(const t of Object.keys(MK_TABS))for(const x of marketLines(a,t))if(!seen.has(x.k)){seen.add(x.k);lines.push(Object.assign({g:F.groupOf(x.bet)},x,{s:null}))}
+  const order=k=>{const t=k.split(':'),n=Number(t[t.length-1]);return [t[0]+':'+(t[0]==='tt'||t[0]==='c'?t[1]:''),Number.isFinite(n)?n:0,k]};
   for(const g of F.GROUPS){
-    const rows=a.rows.filter(r=>r.g===g.id).map(r=>Object.assign({},r,{v:view(r,src)})).sort((x,y)=>y.v.score-x.v.score||(y.v.ev||-9)-(x.v.ev||-9));if(!rows.length)continue;
-    const st=g.kind==='goals'?s.goals:g.kind==='corners'?s.corners:s.res;
-    const val=rows.filter(r=>hasValue(r.v,src)),all=open.has(g.id),show=all?rows:val;
-    h+=`<div class="grp"><div class="grp-h"><span class="n">${esc(g.title.replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${rows.length})</span>${statusChip(st,g.kind==='goals'?'Goles en esta liga':g.kind==='corners'?'Córners en esta liga':'1X2 en esta liga')}</div>`;
-    if(show.length){
-      h+=`<table class="mk"><thead><tr><th>Mercado</th><th>Cuota</th><th>Justa <button class="info" data-tip="fair">i</button></th><th>EV <button class="info" data-tip="ev">i</button></th><th>Score <button class="info" data-tip="score">i</button></th></tr></thead><tbody>`;
-      for(const r of show){
-        const v=r.v,alt=v.alt&&Number.isFinite(v.alt.ev)?`<small>${src==='model'?'casas':'modelo'} ${spct(v.alt.ev)}</small>`:'';
-        h+=`<tr><td>${esc(r.l)}</td><td class="num">${v.pr?arrow(Object.assign({},r,{pr:v.pr}))+dec(v.pr):'—'}<span class="bk">${esc(v.bk||'no en tus casas')}</span></td><td class="num">${dec(v.fair)}</td><td class="ev ${hasValue(v,src)?'c-m':'c-d'}">${spct(v.ev)}${alt}</td><td>${scoreHtml(v.score)}</td></tr>`;
-      }
-      h+='</tbody></table>';
-    }else h+='<div class="none">No hay mercados con valor en este grupo</div>';
-    if(rows.length>val.length||all)h+=`<button class="more" data-more="${g.id}">${all?'Mostrar solo los que tienen valor':'Mostrar todos los mercados ('+rows.length+')'}</button>`;
+    const rows=lines.filter(x=>x.g===g.id&&(x.p>0||x.pm>0)).sort((x,y)=>{const ox=order(x.k),oy=order(y.k);return ox[0].localeCompare(oy[0])||ox[1]-oy[1]||ox[2].localeCompare(oy[2])});
+    if(!rows.length)continue;
+    const st=g.kind==='goals'?(g.id==='team'?s.team:s.goals):g.kind==='corners'?s.corners:s.res;
+    const all=open.has(g.id),show=all?rows:rows.slice(0,8);
+    h+=`<div class="grp"><div class="grp-h"><span class="n">${esc(g.title.replace('{home}',a.hn).replace('{away}',a.an))}</span><span class="k">(${rows.length})</span>${statusChip(st,g.kind==='goals'?(g.id==='team'?'Por equipo en esta liga':'Goles en esta liga'):g.kind==='corners'?'Córners en esta liga':'1X2 en esta liga')}</div>`;
+    h+=linesTable(a,show,upcoming);
+    if(rows.length>8)h+=`<button class="more" data-more="${g.id}">${all?'Mostrar menos':'Mostrar todos ('+rows.length+')'}</button>`;
     h+='</div>';
   }
-  h+=`<p class="small" style="margin-top:20px">Cuota = la mejor entre las casas que informa API-Football. ▲▼ = cómo se movió desde la primera lectura. Antes de apostar, fijate que tu casa pague igual o más.</p>`;
   body.innerHTML=h;
 }
 const ncTag=c=>c==='up'?' (ascendido)':c==='down'?' (descendido)':'';
@@ -1412,101 +1430,11 @@ async function refreshOdds(id){
   }catch(e){if(msg())msg().textContent=e.message}
 }
 
-/* ---------------- render: valor ---------------- */
-const vView=()=>LS.get('tg:vview','0');
-async function renderVal(){
-  const vv=vView(),list=$('#vList');
-  $$('#vday [data-vday]').forEach(b=>b.classList.toggle('on',b.dataset.vday===vv));
-  $('#vFilters').classList.toggle('hidden',vv==='bets');
-  if(vv==='bets'){await renderBets();return}
-  const d=await valueFilters('v',Number(vv));
-  if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para buscar valor.</div>';return}
-  await drawValue(list,$('#vStatus'),d,valueBets(d,()=>true),renderVal,false);
-}
-// Filtros compartidos por Valor (prefijo 'v') y Especiales ('e'): EV mínimo, cuota máxima, solo Pinnacle, mis casas.
-async function valueFilters(px,day){
-  const em=Number(LS.get('tg:evMin',0.02)),mx=Number(LS.get('tg:vmax',3)),sharpOnly=LS.get('tg:vsharp',true);
-  $$('#'+px+'evmin [data-ev]').forEach(b=>b.classList.toggle('on',Math.abs(Number(b.dataset.ev)-em)<1e-9));
-  $$('#'+px+'max [data-max]').forEach(b=>b.classList.toggle('on',Number(b.dataset.max)===mx));
-  $('#'+px+'Sharp').checked=!!sharpOnly;
-  const mb=myBooks();
-  $('#'+px+'Books').innerHTML=mb.size?`Mis casas: <b>${[...mb].map(esc).join(', ')}</b> · <a href="#/ajustes">cambiar</a>`:`Mostrando <b>todas las casas</b>. Marcá las tuyas en <a href="#/ajustes">⚙︎ → Mis casas</a>.`;
-  return getDay(dayStr(day));
-}
-// Apuestas que pagan más que el precio justo del mercado; keep(r) elige qué mercados entran.
-function valueBets(d,keep){
-  const em=Number(LS.get('tg:evMin',0.02)),mx=Number(LS.get('tg:vmax',3)),sharpOnly=LS.get('tg:vsharp',true);
-  const now=Date.now(),out=[];
-  for(const a of d.fx){
-    if(!a.rows||a.ts*1000<=now)continue;
-    for(const r of a.rows){
-      if(!keep(r)||!(r.m>0)||(sharpOnly&&!r.sh))continue;
-      const e=effPrice(r);if(!e)continue;
-      const ev=r.m*e.pr-1;if(ev<Math.max(0.005,em)||e.pr>mx)continue;
-      out.push({a,r,pr:e.pr,bk:e.bk,ev,fair:1/r.m,k:F.kelly(r.m,e.pr)});
-    }
-  }
-  return out.sort((x,y)=>y.ev-x.ev);
-}
-// Tarjetas de apuestas con «Anotar apuesta». withModel: muestra también el EV según el modelo.
-async function drawValue(list,status,d,out,rerender,withModel){
-  await loadBets();
-  const bank=bankroll();
-  status.textContent=out.length?`${out.length} apuestas con valor · cuotas leídas ${ago(d.ts)}. Verificá la cuota en tu casa antes de apostar.`:'';
-  if(!out.length){list.innerHTML='<div class="empty">No hay apuestas con esos filtros. Probá bajar el EV mínimo, subir la cuota máxima o actualizar las cuotas.</div>';return}
-  const done=new Set(BETS.filter(b=>!b.del).map(b=>b.fid+':'+b.k));
-  list.innerHTML=out.slice(0,200).map(({a,r,pr,bk,ev,fair,k},i)=>{
-    const amt=bank&&k>0?' · $'+Math.round(bank*k).toLocaleString('es-AR'):'';
-    const sus=ev>0.08?'<span class="chip w" title="Puede ser una cuota vieja">⚠︎ verificar</span>':'';
-    const mEv=withModel&&r.p>0?r.p*pr-1:null;
-    const model=withModel?`<div class="small" style="margin-top:6px">Modelo: ${r.p>0?`${pct(r.p)} → EV <b class="${mEv>0?'c-g':'c-b'}">${spct(mEv)}</b>`:'sin modelo para este partido'}${mEv>0?' <span class="chip g">✓ coinciden</span>':''}</div>`:'';
-    return `<div class="vb box"><div class="vb-h"><span class="mono muted">${fmtTime(a.iso)}</span> <a href="#/partido/${a.id}">${esc(a.hn)} vs ${esc(a.an)}</a></div>
-      <div class="small">${flag(a.lc)} ${esc(a.lc)} · ${esc(a.ln)}</div>
-      <div class="vb-m"><b>${esc(r.l)}</b> ${sus}</div>
-      <div class="vb-g"><div><span class="l">Casa</span><b>${esc(bk)}</b></div><div><span class="l">Cuota</span><b class="mono">${dec(pr)}</b></div><div><span class="l">Justa</span><b class="mono">${dec(fair)}</b></div><div><span class="l">EV</span><b class="mono c-m">${spct(ev)}</b></div><div><span class="l">Monto</span><b class="mono">${k>0?pct(k,1):'—'}</b><span class="l">${amt}</span></div></div>${model}
-      <div class="row" style="margin-top:8px"><button class="btn" data-anotar="${i}" ${done.has(a.id+':'+r.k)?'disabled':''}>${done.has(a.id+':'+r.k)?'✓ Anotada':'Anotar apuesta'}</button><span class="small">No apuestes por debajo de ${dec(fair*1.02)} (justa + 2%).</span></div></div>`;
-  }).join('');
-  list.onclick=async e=>{
-    const b=e.target.closest('[data-anotar]');if(!b)return;
-    const x=out[Number(b.dataset.anotar)];
-    const priceTxt=prompt(`¿A qué cuota apostaste «${x.r.l}» (${x.a.hn} vs ${x.a.an})?`,String(x.pr));if(priceTxt==null)return;
-    const price=Number(String(priceTxt).replace(',','.'));if(!(price>1)){alert('Cuota inválida.');return}
-    const sugg=bank&&x.k>0?Math.round(bank*F.kelly(x.r.m,price)):'';
-    const amtTxt=prompt('¿Cuánto apostaste ($)?',String(sugg));if(amtTxt==null)return;
-    const amount=Math.max(0,Number(String(amtTxt).replace(',','.'))||0);
-    BETS.push({id:x.a.id+':'+x.r.k+':'+Date.now(),fid:x.a.id,k:x.r.k,l:x.r.l,hn:x.a.hn,an:x.a.an,ln:x.a.ln,lc:x.a.lc,kick:x.a.ts,bk:x.bk,pr:price,m:x.r.m,amount,at:Date.now()});
-    await saveBets();rerender();
-    if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{});
-  };
-}
-// Especiales: mercados que las casas arman con fórmulas. Córners se suma cuando esté el modelo.
-const ESP_KIND={tt:k=>k.startsWith('tt:'),btts:k=>k.startsWith('btts:'),corners:k=>k.startsWith('c:')};
-const ESP_NAME={tt:'Goles por equipo',btts:'Ambos marcan',corners:'Córners'};
-async function renderEsp(){
-  const day=String(LS.get('tg:eday','0')),mk=ESP_KIND[LS.get('tg:emk','tt')]?LS.get('tg:emk','tt'):'tt',list=$('#eList');
-  $$('#eday [data-eday]').forEach(b=>b.classList.toggle('on',b.dataset.eday===day));
-  $$('#emk [data-emk]').forEach(b=>b.classList.toggle('on',b.dataset.emk===mk));
-  const d=await valueFilters('e',Number(day));
-  if(!d){list.innerHTML='<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para buscar valor.</div>';$('#eStatus').textContent='';return}
-  // Diagnóstico: cuántos partidos (por jugar) traen ese mercado, con precio de Pinnacle y con modelo.
-  const up=d.fx.filter(a=>a.ts*1000>Date.now()),withM=up.filter(a=>(a.rows||[]).some(r=>ESP_KIND[mk](r.k)));
-  const withSharp=withM.filter(a=>a.rows.some(r=>ESP_KIND[mk](r.k)&&r.sh)).length;
-  const withModel=withM.filter(a=>a.rows.some(r=>ESP_KIND[mk](r.k)&&r.p>0)).length;
-  const names=[...new Set(up.flatMap(a=>a.cnames||[]))];
-  let diag=`<div class="small box" style="margin:10px 0">«${ESP_NAME[mk]}»: <b>${withM.length}</b> de ${up.length} partidos por jugar traen cuotas · <b>${withSharp}</b> con precio de Pinnacle · <b>${withModel}</b> con modelo${mk==='corners'?' de córners':''}.`;
-  if(mk==='corners')diag+=names.length?`<br>Mercados de córners que trae tu API: ${names.slice(0,12).map(esc).join(' · ')}`:'<br>Tu API no trajo ningún mercado de córners en estos partidos (o el análisis es de antes de esta versión: tocá ↻ Actualizar todo).';
-  const sharpOnly=LS.get('tg:vsharp',true);
-  if(withM.length&&!withSharp&&sharpOnly)diag+=`<br><b>Pinnacle no cotiza este mercado en tu API</b>, y está marcado «Solo con precio de Pinnacle»: por eso no aparece nada. Desmarcalo para comparar contra la mediana de las casas (menos confiable) y mirá la línea «Modelo» de cada tarjeta.`;
-  diag+='</div>';
-  if(!withM.length){list.innerHTML=diag+`<div class="empty">API-Football no trajo cuotas de «${ESP_NAME[mk]}» para estos partidos. Probá con el otro día o actualizá más tarde.</div>`;$('#eStatus').textContent='';return}
-  await drawValue(list,$('#eStatus'),d,valueBets(d,r=>ESP_KIND[mk](r.k)),renderEsp,true);
-  list.insertAdjacentHTML('afterbegin',diag);
-}
 async function renderBets(){
   await loadBets();
-  const list=$('#vList'),bets=BETS.filter(b=>!b.del).sort((a,b)=>b.at-a.at);
-  $('#vStatus').textContent='';
-  if(!bets.length){list.innerHTML='<div class="empty">Todavía no anotaste apuestas. En Hoy o Mañana, tocá «Anotar apuesta» en las que hagas.</div>';return}
+  const list=$('#bList'),bets=BETS.filter(b=>!b.del).sort((a,b)=>b.at-a.at);
+  $('#bStatus').textContent='';
+  if(!bets.length){list.innerHTML='<div class="empty">Todavía no anotaste apuestas. En una pestaña de mercado o en la ficha de un partido, tocá <b>＋</b> en la que hagas.</div>';return}
   const st=bets.filter(b=>b.res),clv=bets.filter(b=>b.mClose>0);
   const staked=st.reduce((s,b)=>s+(b.amount||0),0),profit=st.reduce((s,b)=>s+(b.amount||0)*b.res.profit,0),units=st.reduce((s,b)=>s+b.res.profit,0);
   const avgClv=clv.length?clv.reduce((s,b)=>s+(b.pr*b.mClose-1),0)/clv.length:null,beat=clv.filter(b=>b.pr*b.mClose>1).length;
@@ -1518,22 +1446,12 @@ async function renderBets(){
   for(const b of bets){
     const c=b.mClose>0?b.pr*b.mClose-1:null;
     const res=!b.res?'<span class="muted">pendiente</span>':b.res.r>0?`<span class="c-g">${b.res.r<1?'½ ':''}ganada</span>`:b.res.r<0?`<span class="c-b">${b.res.r>-1?'½ ':''}perdida</span>`:'devuelta';
-    h+=`<tr><td>${esc(b.l)}<span class="cn">${esc(b.hn)} vs ${esc(b.an)} · ${esc(b.bk)}${b.amount?' · $'+Math.round(b.amount).toLocaleString('es-AR'):''} <button class="info" data-delbet="${esc(b.id)}" title="Borrar">×</button></span></td><td>${dec(b.pr)}</td><td class="${c>0?'c-g':c<0?'c-b':''}">${c==null?'—':spct(c)}${c!=null&&!b.closeFinal&&!b.res?'<span class="cn">provisorio</span>':''}</td><td>${res}${b.res?'<span class="cn">'+b.hg+'-'+b.ag+'</span>':''}</td></tr>`;
+    h+=`<tr><td>${esc(b.l)}<span class="cn">${esc(b.hn)} vs ${esc(b.an)}${b.bk?' · '+esc(b.bk):''}${b.amount?' · $'+Math.round(b.amount).toLocaleString('es-AR'):''} <button class="info" data-delbet="${esc(b.id)}" title="Borrar">×</button></span></td><td>${dec(b.pr)}</td><td class="${c>0?'c-g':c<0?'c-b':''}">${c==null?'—':spct(c)}${c!=null&&!b.closeFinal&&!b.res?'<span class="cn">provisorio</span>':''}</td><td>${res}${b.res?'<span class="cn">'+b.hg+'-'+b.ag+'</span>':''}</td></tr>`;
   }
   h+='</tbody></table><p class="small">El resultado y el CLV se completan con ↻ Actualizar todo.</p>';
   list.innerHTML=h;
   list.onclick=async e=>{const d=e.target.closest('[data-delbet]');if(!d)return;if(!confirm('¿Borrar esta apuesta del registro?'))return;const b=BETS.find(x=>x.id===d.dataset.delbet);if(b){b.del=1;b.closeAt=Date.now()}await saveBets();renderBets();if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{})};
 }
-$('#vday').addEventListener('click',e=>{const b=e.target.closest('[data-vday]');if(!b)return;LS.set('tg:vview',b.dataset.vday);renderVal()});
-$('#vevmin').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b)return;LS.set('tg:evMin',Number(b.dataset.ev));renderVal()});
-$('#vmax').addEventListener('click',e=>{const b=e.target.closest('[data-max]');if(!b)return;LS.set('tg:vmax',Number(b.dataset.max));renderVal()});
-$('#vSharp').addEventListener('change',e=>{LS.set('tg:vsharp',e.target.checked);renderVal()});
-$('#eday').addEventListener('click',e=>{const b=e.target.closest('[data-eday]');if(!b)return;LS.set('tg:eday',b.dataset.eday);renderEsp()});
-$('#emk').addEventListener('click',e=>{const b=e.target.closest('[data-emk]');if(!b||b.disabled)return;LS.set('tg:emk',b.dataset.emk);renderEsp()});
-$('#eevmin').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b)return;LS.set('tg:evMin',Number(b.dataset.ev));renderEsp()});
-$('#emax').addEventListener('click',e=>{const b=e.target.closest('[data-max]');if(!b)return;LS.set('tg:vmax',Number(b.dataset.max));renderEsp()});
-$('#eSharp').addEventListener('change',e=>{LS.set('tg:vsharp',e.target.checked);renderEsp()});
-
 /* ---------------- render: precisión ---------------- */
 function skillCell(sk,n){
   if(!Number.isFinite(n)||n===0)return '<td class="c-d">—</td>';
@@ -1560,7 +1478,7 @@ let precQ='',precSort='n';
 async function espHtml(){
   const esp=state.esp||(state.esp=(await DB.get('esp'))||{});
   const all=Object.values(esp),pend=all.filter(e=>e.y==null).length,S=espSummary(esp);
-  let h=`<h2>Especiales: modelo contra mercado <button class="info" data-tip="espReg">i</button></h2>`;
+  let h=`<h2>Registro: modelo contra Pinnacle <button class="info" data-tip="espReg">i</button></h2>`;
   if(!all.length)return h+`<div class="none">Todavía no hay nada guardado. Desde ahora, cada <b>↻ Actualizar todo</b> guarda la línea principal de cada mercado especial antes del partido y la liquida después.</div>`;
   const roi=x=>x[0]?`${spct(x[1]/x[0])} <span class="cn">${x[0]} apuestas</span>`:'—';
   h+=`<div class="xs"><table class="lg"><thead><tr><th>Mercado</th><th>Partidos</th><th>Modelo vs mercado</th><th>EV ≥ 2% según mercado</th><th>según modelo</th><th>los dos</th></tr></thead><tbody>`;
@@ -1605,7 +1523,7 @@ async function renderPrec(){
 async function renderCfg(){
   $('#key').value=state.key;$('#xgBudget').value=LS.get('tg:xgBudget',150);$('#bank').value=bankroll()||'';
   const mb=myBooks(),all=[...new Set([...BOOKS,...mb])].sort((a,b)=>a.localeCompare(b));
-  $('#booksList').innerHTML=all.length?all.map(b=>`<label><input type="checkbox" data-book="${esc(b)}" ${mb.has(b)?'checked':''}><span>${esc(b)}</span></label>`).join(''):'<div class="small" style="padding:10px">Tocá ↻ Actualizar todo una vez y aparecen las casas.</div>';
+  if($('#booksList'))$('#booksList').innerHTML=all.length?all.map(b=>`<label><input type="checkbox" data-book="${esc(b)}" ${mb.has(b)?'checked':''}><span>${esc(b)}</span></label>`).join(''):'<div class="small" style="padding:10px">Tocá ↻ Actualizar todo una vez y aparecen las casas.</div>';
   try{
     const keys=await DB.keys(),xg=await loadXg(),reg=state.reg||(await DB.get('reg'))||{};
     const nl=new Set(keys.filter(k=>String(k).startsWith('lg:')).map(k=>String(k).split(':')[1])).size;
@@ -1615,7 +1533,7 @@ async function renderCfg(){
   }catch(e){$('#dbInfo').textContent='No se pudo leer la base de datos del navegador: '+e.message}
 }
 $('#bank').addEventListener('change',e=>LS.set('tg:bank',Math.max(0,Number(e.target.value)||0)));
-$('#booksList').addEventListener('change',e=>{const cb=e.target.closest('[data-book]');if(!cb)return;const s=myBooks();cb.checked?s.add(cb.dataset.book):s.delete(cb.dataset.book);LS.set('tg:mybooks',[...s])});
+$('#booksList')&&$('#booksList').addEventListener('change',e=>{const cb=e.target.closest('[data-book]');if(!cb)return;const s=myBooks();cb.checked?s.add(cb.dataset.book):s.delete(cb.dataset.book);LS.set('tg:mybooks',[...s])});
 $('#xgBudget').addEventListener('change',e=>LS.set('tg:xgBudget',Math.max(0,Number(e.target.value)||0)));
 $('#btnKey').addEventListener('click',async()=>{
   state.key=$('#key').value.trim();LS.set('o05:key',state.key);
@@ -1646,9 +1564,12 @@ const TIPS={
   sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
   clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
+  mkdiff:['Modelo contra Pinnacle','Modelo: la cuota justa según nuestro modelo (y su probabilidad). Pinnacle: la cuota justa de la casa más precisa del mundo, sin su margen; si Pinnacle no cotiza esa línea, sale de su 1X2 y sus totales (o de su línea principal de córners). Las dos son el precio «sin ganancia para nadie»: si tu casa paga más, la apuesta tiene valor.'],
+  dif:['Diferencia','Puntos de probabilidad que el modelo ve de más (+) o de menos (−) contra Pinnacle. +5 = el modelo le da 5 puntos más (por ejemplo 60% contra 55%). Arriba de la lista van los partidos donde el modelo ve más que Pinnacle: ahí cree que el mercado se equivoca. Confiá más en las ligas con ✓.'],
+  minodd:['Cuota mínima','La cuota que tiene que pagar tu casa para que haya valor según el modelo y según Pinnacle: la más alta de las dos cuotas justas, más 2%. Si tu casa paga eso o más, apostá; si no, salteala.'],
   skillTeam:['Goles por equipo','Cuánto mejor acierta el modelo los goles de cada equipo (los mercados «Local/Visitante más de…») que decir siempre el promedio de la liga. Cada partido se predice solo con los anteriores.'],
   skillCorners:['Córners','Cuánto mejor acierta el modelo el total de córners de cada partido que decir siempre el promedio de la liga. Necesita las estadísticas de los partidos: se bajan junto con el xG en cada actualización.'],
-  espReg:['Registro de Especiales','Antes de cada partido la app guarda la línea principal de cada mercado especial: lo que decía el modelo, lo que decía Pinnacle (o el precio armado con sus mercados principales) y la mejor cuota. Después del partido lo liquida. «Modelo vs mercado» positivo = el modelo acertó mejor que Pinnacle. Las columnas de apuestas muestran qué habría pasado apostando en cada caso con EV de 2% o más.'],
+  espReg:['Registro: modelo contra Pinnacle','Antes de cada partido la app guarda la línea principal de goles por equipo, ambos marcan y córners: lo que decía el modelo, lo que decía Pinnacle (o el precio armado con sus mercados principales) y la mejor cuota. Después del partido lo liquida. «Modelo vs mercado» positivo = el modelo acertó mejor que Pinnacle. Las columnas de apuestas muestran qué habría pasado apostando en cada caso con EV de 2% o más.'],
   skillGoals:['Habilidad en goles','Cuánto mejor acierta el modelo la cantidad de goles de cada partido que decir siempre el promedio de la liga. Positivo = distingue partidos de muchos y pocos goles.'],
   ece:['Calibración (ECE)','Si el modelo dice 60%, ¿pasa el 60% de las veces? Es la diferencia promedio. Menos de 3% es bueno.'],
   table:['Cómo leer la tabla','Habilidad 1X2 = ganador, doble oportunidad y hándicap. Habilidad en goles = más/menos goles y ambos marcan. Verde = podés usar esos mercados en esa liga. Lecturas = partidos que respaldan el número de goles. «usa xG» = en esa liga el modelo acierta mejor mezclando xG.'],
@@ -1672,31 +1593,34 @@ function route(){
   if(h.startsWith('partido/'))return {v:'match',id:h.split('/')[1]};
   if(h==='precision')return {v:'prec'};
   if(h==='ajustes')return {v:'cfg'};
-  if(h==='valor')return {v:'val'};
-  if(h==='especiales')return {v:'esp'};
+  if(h.startsWith('m/')&&MK_TABS[h.slice(2)])return {v:'mk',tab:h.slice(2)};
+  if(h==='mercados'||h==='especiales')return {v:'mk',tab:MK_TABS[LS.get('tg:mktab','goles')]?LS.get('tg:mktab','goles'):'goles'};
+  if(h==='apuestas'||h==='valor')return {v:'bets'};
   return {v:'dash',view:h==='manana'?'1':h==='favoritos'?'fav':'0'};
 }
 function go(){
   const r=route();
   $$('main>section').forEach(s=>s.classList.add('hidden'));
-  $$('nav a').forEach(a=>a.classList.toggle('on',a.dataset.nav===(r.v==='match'?'dash':r.v)));
+  const key=r.v==='match'?'dash':r.v==='mk'?'mk:'+r.tab:r.v;
+  $$('nav a, #mkbar a').forEach(a=>a.classList.toggle('on',a.dataset.nav===key||(a.dataset.nav==='mk'&&r.v==='mk')));
+  $('#mkbar').classList.toggle('show',r.v==='mk');
   $('#tip').classList.add('hidden');
   if(r.v==='dash'){$('#v-dash').classList.remove('hidden');state.view=r.view;showAllLeagues=false;renderDash()}
   if(r.v==='match'){$('#v-match').classList.remove('hidden');$('#mBack').href=state.view==='1'?'#/manana':state.view==='fav'?'#/favoritos':'#/hoy';open.clear();renderMatch(r.id);window.scrollTo(0,0)}
   if(r.v==='prec'){$('#v-prec').classList.remove('hidden');renderPrec()}
-  if(r.v==='val'){$('#v-val').classList.remove('hidden');renderVal()}
-  if(r.v==='esp'){$('#v-esp').classList.remove('hidden');renderEsp()}
+  if(r.v==='mk'){$('#v-mk').classList.remove('hidden');LS.set('tg:mktab',r.tab);renderMk()}
+  if(r.v==='bets'){$('#v-bets').classList.remove('hidden');renderBets()}
   if(r.v==='cfg'){$('#v-cfg').classList.remove('hidden');renderCfg()}
 }
 window.addEventListener('hashchange',go);
 $$('.seg [data-day]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.dataset.day==='1'?'#/manana':b.dataset.day==='fav'?'#/favoritos':'#/hoy'}));
 $('#btnUpdate').addEventListener('click',updateAll);
-['q','minEdge','onlyGreen','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'||id==='minEdge'?'input':'change',()=>{showAllLeagues=false;if(id==='minEdge')LS.set('tg:minEdge',$('#minEdge').value);renderDash()}));
-$('#minEdge').value=LS.get('tg:minEdge','0');
-$('#onlyGreen').checked=!!LS.get('tg:green',false);
-$('#onlyGreen').addEventListener('change',()=>LS.set('tg:green',$('#onlyGreen').checked));
-$('#evmin').addEventListener('click',e=>{const b=e.target.closest('[data-ev]');if(!b)return;LS.set('tg:evMin',Number(b.dataset.ev));showAllLeagues=false;renderDash()});
-$('#src').addEventListener('click',e=>{const b=e.target.closest('[data-src]');if(!b)return;LS.set('tg:src',b.dataset.src);showAllLeagues=false;renderDash()});
+$('#btnMkOdds').addEventListener('click',refreshAllOdds);
+$('#mkday').addEventListener('click',e=>{const b=e.target.closest('[data-mkday]');if(!b)return;LS.set('tg:mkday',b.dataset.mkday);renderMk()});
+$('#mkq').addEventListener('input',()=>renderMk());
+$('#mkGreen').addEventListener('change',e=>{LS.set('tg:mkgreen',e.target.checked);renderMk()});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();const i=b.dataset.add.indexOf('|');addBet(b.dataset.add.slice(0,i),b.dataset.add.slice(i+1))});
+['q','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',()=>{showAllLeagues=false;renderDash()}));
 $('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
 $('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
 if(LS.get('tg:guide',true))$('#guide').open=true;
@@ -1707,7 +1631,6 @@ $('#mBody').addEventListener('click',e=>{
   const m=e.target.closest('[data-more]'),r=route();
   if(m){const g=m.dataset.more;open.has(g)?open.delete(g):open.add(g);renderMatch(r.id);return}
   if(e.target.closest('#btnOdds')){refreshOdds(r.id);return}
-  const ms=e.target.closest('[data-msrc]');if(ms){LS.set('tg:src',ms.dataset.msrc);renderMatch(r.id);return}
   if(e.target.closest('#btnStudy')){open.has('study')?open.delete('study'):open.add('study');renderMatch(r.id)}
 });
 if(!state.key&&!location.hash)location.hash='#/ajustes';
