@@ -734,6 +734,34 @@ function settleAlpha(areg,gameById){
   }
   const ids=Object.keys(areg);if(ids.length>20000)ids.sort((x,y)=>areg[x].ts-areg[y].ts).slice(0,ids.length-20000).forEach(k=>delete areg[k]);
 }
+// Lecturas de partidos ya terminados que el historial todavía no trae (se renueva cada ~20 h): el resultado y los
+// córners se piden directo a API-Football, de a 20 partidos por consulta (máximo 30 consultas por actualización).
+async function settleAlphaFetch(areg,status){
+  const now=Date.now(),pend=new Map();
+  for(const e of Object.values(areg)){
+    if(e.res||e.ts*1000>now-2.5*3600e3||e.ts*1000<now-10*864e5)continue;
+    if(!pend.has(e.fid))pend.set(e.fid,[]);pend.get(e.fid).push(e);
+  }
+  const ids=[...pend.keys()].slice(0,600);let n=0;
+  for(let i=0;i<ids.length;i+=20){
+    status&&status(`Liquidando lecturas selladas… ${Math.min(i+20,ids.length)} de ${ids.length} partidos`);
+    let j;try{j=await api('/fixtures',{ids:ids.slice(i,i+20).join('-'),timezone:TZ})}catch(err){if(err.fatal)throw err;continue}
+    for(const f of j.response||[]){
+      if(!DONE.includes(f.fixture.status.short))continue;
+      const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
+      const hg=Number.isInteger(ft.home)?ft.home:gl.home,ag=Number.isInteger(ft.away)?ft.away:gl.away;
+      if(!Number.isInteger(hg)||!Number.isInteger(ag))continue;
+      const st=F.readStats(f.statistics,f.teams.home.id,f.teams.away.id);
+      for(const e of pend.get(f.fixture.id)||pend.get(String(f.fixture.id))||[]){
+        const bet=parseKey(e.k);if(!bet)continue;
+        let x=hg,y=ag;
+        if(bet.type==='corners'){if(!st||!Number.isFinite(st.home.ck)||!Number.isFinite(st.away.ck))continue;x=st.home.ck;y=st.away.ck}
+        const r=F.settle(bet,x,y,e.pr);if(r){e.res={r:r.r,profit:r.profit,hg,ag};n++}
+      }
+    }
+  }
+  return n;
+}
 async function sealHtml(){
   const areg=state.areg||(state.areg=(await DB.get('areg'))||{});
   const all=Object.values(areg),done=all.filter(e=>e.res),pend=all.length-done.length;
@@ -979,7 +1007,9 @@ async function updateAll(){
     const ids=Object.keys(reg);if(ids.length>40000)ids.sort((a,b)=>reg[a].ts-reg[b].ts).slice(0,ids.length-40000).forEach(k=>delete reg[k]);
     await DB.set('reg',reg);
     settleEsp(esp,gameById);await DB.set('esp',esp);
-    settleAlpha(areg,gameById);await DB.set('areg',areg);
+    settleAlpha(areg,gameById);
+    try{const n=await settleAlphaFetch(areg,t=>say(t));if(n)say(`Lecturas selladas: ${n} liquidadas`)}catch(e){if(e.fatal)throw e;warn.push('Lecturas: '+e.message)}
+    await DB.set('areg',areg);
     prog(7,8);
     // 7) Precisión de todas las ligas con historial.
     await computePrecision(allLeagues,reg,t=>say(t));
