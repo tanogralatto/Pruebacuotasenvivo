@@ -946,7 +946,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <div id="alertAddWrap" class="hidden">
       <button id="alertAddToggle" type="button">＋ Agregar alerta</button>
       <div id="alertAddBox" class="alert-add hidden">
-        <p class="small" style="margin:0">Para sumar al historial una alerta que no salió (por ejemplo, durante un corte). El resultado se calcula solo con el marcador; la cuota es opcional y, sin cuota, la alerta cuenta en ganadas/perdidas pero no en el balance.</p>
+        <p class="small" style="margin:0">Para sumar al historial una alerta que no salió (por ejemplo, durante un corte). El resultado se calcula solo con el marcador. En +0,5 / +1,0 1T la app estima en qué minuto la cuota habría llegado a tu mínimo y lo compara con los goles: si el gol cayó antes, no se habría entrado y no se guarda; si entró, se cuenta con la cuota mínima (o la que escribas). En +2,5 y Ambos marcan la cuota es opcional.</p>
         <div class="row" style="align-items:flex-end">
           <div class="field" style="width:170px"><label for="alertAddDate">Fecha del partido</label><input id="alertAddDate" type="date"></div>
           <button id="alertAddSearch" type="button">Buscar partidos</button>
@@ -3027,6 +3027,58 @@ function settleManualAlert(market, row) {
   const result = market === 'over25' ? (ft.home + ft.away >= 3 ? 'won' : 'lost') : (ft.home > 0 && ft.away > 0 ? 'won' : 'lost');
   return { result_status: result, fulltime_score: ft.home + '-' + ft.away, halftime_score: isInt(ht.home) && isInt(ht.away) ? ht.home + '-' + ht.away : null };
 }
+// ¿Habría entrado la alerta? Estima minuto a minuto la cuota de +0,5 / +1,0 1T con el mismo modelo de En Vivo
+// (λ prepartido del partido, o uno típico si no se analizó) y la compara con el mínimo; los goles salen de API-Football.
+const BOOK_MARGIN = 0.05, TYPICAL_LAMBDA_1T = 1.2, DOUBT_MINUTES = 2;
+function goalMinutes1T(row) {
+  return (row?.events || [])
+    .filter(e => e && e.type === 'Goal' && e.detail !== 'Missed Penalty' && Number.isFinite(e.time?.elapsed) && e.time.elapsed <= 45)
+    .map(e => e.time.elapsed).sort((a, b) => a - b);
+}
+function estimateManualEntry(market, row, rules) {
+  const T = window.TanoPoissonModel;
+  if (!T || !T.liveRemainingLambda) return { ok: false, reason: 'No se cargó el modelo.' };
+  const fid = String(row.fixture.id), lamMap = lsRaw.get('o05:lam:v1', {}) || {};
+  const saved = lamMap[fid] && lamMap[fid].lam > 0 ? lamMap[fid].lam : null;
+  const lam = saved || TYPICAL_LAMBDA_1T;
+  const goals = goalMinutes1T(row), ht = row?.score?.halftime || {};
+  const htTotal = Number.isInteger(ht.home) && Number.isInteger(ht.away) ? ht.home + ht.away : null;
+  const goalsMismatch = htTotal !== null && goals.length !== htTotal;
+  const line = market === 'over10' ? 1 : 0.5, closeAt = market === 'over10' ? 2 : 1;
+  const minOdd = market === 'over10' ? rules.min10 : rules.min05;
+  const oddAt = (m, g) => {
+    const rem = T.liveRemainingLambda({ lambdaTotalHT: lam, minute: m, goalsNow: g });
+    const mk = rem.ok ? T.liveMarket({ lambdaRemaining: rem.lambdaRemaining, goalsNow: g, line }) : null;
+    return mk && mk.ok && mk.fairOdds ? mk.fairOdds / (1 + BOOK_MARGIN) : null;
+  };
+  let entry = null, reach = null;
+  for (let m = rules.start; m <= rules.end; m++) {
+    const g = goals.filter(x => x < m).length;
+    if (reach === null && (oddAt(m, 0) || 0) >= minOdd) reach = m; // minuto en que se llega al mínimo con 0-0
+    if (entry || g >= closeAt) continue; // el mercado ya se ganó antes de llegar a la cuota: no se entra
+    const o = oddAt(m, g);
+    if (o && o >= minOdd) entry = { minute: m, goalsBefore: g, odd: o };
+  }
+  const ref = entry ? entry.minute : reach;
+  const doubtful = goalsMismatch || (ref !== null && goals.some(x => Math.abs(x - ref) <= DOUBT_MINUTES));
+  return { ok: true, entry, reach, goals, lam, lamSource: saved ? 'del partido' : 'típico (el partido no se analizó en el Escáner)', minOdd, goalsMismatch, doubtful };
+}
+async function manualAlertRules(group) {
+  // Mínimos y ventana de minutos del grupo, igual que el monitor (con los mismos valores por defecto).
+  let raw = {};
+  try { const c = await getDoc(doc(db, 'tanoapp_telegram_config', 'global')); if (c.exists()) raw = c.data() || {}; } catch (e) {}
+  const num = (v, d) => { const x = Number(v); return Number.isFinite(x) && x > 1 ? x : d; };
+  const mins = (a, b, d1, d2) => { let x = parseInt(a, 10), y = parseInt(b, 10); x = x >= 1 && x <= 45 ? x : d1; y = y >= 1 && y <= 45 ? y : d2; return x <= y ? [x, y] : [d1, d2]; };
+  if (group === 'favorites') {
+    const [start, end] = mins(raw.minuteStart, raw.minuteEnd, 1, 45);
+    return { min05: num(raw.over05?.minOdds ?? raw.over05MinOdds, 1.5), min10: num(raw.over10?.minOdds ?? raw.over10MinOdds, 1.65), start, end };
+  }
+  const v05 = num(raw.vipOver05?.minOdds, 1.5), v10 = num(raw.vipOver10?.minOdds, 1.65);
+  const [vs, ve] = mins(raw.vipMinuteStart, raw.vipMinuteEnd, 1, 45);
+  const st = (raw.vipStrategies || {})[group] || {};
+  const [start, end] = mins(st.minuteStart ?? vs, st.minuteEnd ?? ve, vs, ve);
+  return { min05: num(st.over05?.minOdds, v05), min10: num(st.over10?.minOdds, v10), start, end };
+}
 function setupManualAlerts() {
   const wrap = q('#alertAddWrap'), box = q('#alertAddBox'), status = q('#alertAddStatus'), fxBox = q('#alertAddFx');
   if (!wrap || wrap.dataset.ready) { if (wrap) wrap.classList.remove('hidden'); return; }
@@ -3076,20 +3128,38 @@ function setupManualAlerts() {
       let row = chosen;
       try { const j = await api('/fixtures', { id: fid, timezone: TZ }); if (j.response && j.response[0]) row = j.response[0]; } catch (e) {}
       const res = settleManualAlert(market, row);
-      const profit = res && odd ? (res.result_status === 'won' ? odd - 1 : res.result_status === 'push' ? 0 : -1) : null;
+      const halfMarket = market === 'over05' || market === 'over10';
+      let est = null, useOdd = odd;
+      if (halfMarket) {
+        if (!res) { say('Todavía no terminó el primer tiempo: cargala después del descanso, así se puede ver si habría entrado.', true); return; }
+        const rules = await manualAlertRules(group);
+        est = estimateManualEntry(market, row, rules);
+        if (!est.ok) { say(est.reason, true); return; }
+        const gTxt = est.goals.length ? 'Goles 1T: ' + est.goals.map(x => x + "'").join(', ') : 'Sin goles en el 1T';
+        if (!est.entry) {
+          say('No habría entrado: la cuota llegaba a ' + est.minOdd.toFixed(2) + (est.reach ? ' cerca del ' + est.reach + "'" : '') + ' (estimado) y el gol cayó antes (' + gTxt + '). No se guarda.', true);
+          if (!est.doubtful || !confirm('Es dudosa: el gol cayó muy cerca del ' + (est.reach || '?') + "' (o los goles de API-Football no coinciden con el marcador). ¿Guardarla igual como si hubiera entrado?")) return;
+          est.entry = { minute: est.reach || rules.start, goalsBefore: 0, odd: est.minOdd };
+        } else if (est.doubtful && !confirm('Dudosa: la cuota habría llegado a ' + est.minOdd.toFixed(2) + ' cerca del ' + est.entry.minute + "' y hubo un gol muy cerca (" + gTxt + (est.goalsMismatch ? '; los goles de API-Football no coinciden con el marcador' : '') + '). ¿La guardo?')) { say('No se guardó.'); return; }
+        if (!useOdd) useOdd = est.minOdd; // opción A: se entra con el mínimo configurado
+      }
+      const profit = res && useOdd ? (res.result_status === 'won' ? useOdd - 1 : res.result_status === 'push' ? 0 : -1) : null;
       const kickoff = new Date(row.fixture.date);
       await setDoc(ref, {
         fixture_id: fid, favorite_group: vip ? 'vip' : 'common', vip_strategy: vip ? group : null,
-        market_type: market, odd: odd, bookmaker: null, market: ALERT_MARKETS[market], source: 'manual', manual: true,
+        market_type: market, odd: useOdd, odd_estimated: !!(est && !odd), bookmaker: null, market: ALERT_MARKETS[market], source: 'manual', manual: true,
         home: row.teams.home.name, away: row.teams.away.name, league: row.league.name,
-        score_at_alert: null, elapsed: null, status: row.fixture.status?.short || null,
+        score_at_alert: est ? (est.entry.goalsBefore ? est.entry.goalsBefore + ' gol antes' : '0-0') : null,
+        elapsed: est ? est.entry.minute : null, status: row.fixture.status?.short || null,
+        ...(est ? { entry_estimated: true, goal_minutes_1t: est.goals, lambda_1t: Math.round(est.lam * 1000) / 1000, lambda_source: est.lamSource, entry_doubtful: !!est.doubtful } : {}),
         created_at: Number.isFinite(kickoff.getTime()) ? kickoff : new Date(), created_by: auth.currentUser?.email || '',
         result_status: res ? res.result_status : 'pending', profit_units: profit,
         halftime_score: res?.halftime_score ?? null, halftime_goals: res?.halftime_goals ?? null, fulltime_score: res?.fulltime_score ?? null,
         ...(res ? { settled_at: serverTimestamp() } : {})
       });
       const txt = { won: 'GANADA', lost: 'PERDIDA', push: 'DEVUELTA' };
-      say('Alerta guardada' + (res ? ': ' + txt[res.result_status] + '.' : '. El partido todavía no terminó: queda pendiente y se liquida sola.'));
+      say('Alerta guardada' + (res ? ': ' + txt[res.result_status] + '.' : '. El partido todavía no terminó: queda pendiente y se liquida sola.')
+        + (est ? ' Habría entrado cerca del ' + est.entry.minute + "' con cuota " + useOdd.toFixed(2) + (odd ? '' : ' (el mínimo)') + '; goles 1T: ' + (est.goals.length ? est.goals.map(x => x + "'").join(', ') : 'ninguno') + '. λ ' + est.lamSource + '.' : ''));
       chosen = null; q('#alertAddOdd').value = ''; drawFx();
     } catch (e) {
       say('Firebase no dejó guardar la alerta: falta publicar las reglas nuevas de Firestore (' + (e?.code || e?.message || 'error') + ').', true);
@@ -3302,15 +3372,16 @@ function startAlertHistory(isOwner) {
       const nums = betNumbers(a);
       const balance = Number.isFinite(nums.profitUnits) ? ' · Balance: ' + (nums.profitUnits > 0 ? '+' : '') + nums.profitUnits.toFixed(2) + ' u. (' + ((nums.profitUnits * unitValue) > 0 ? '+' : '') + (nums.profitUnits * unitValue).toLocaleString('es-AR',{maximumFractionDigits:2}) + ' ARS)' : '';
       const originalOdd = Number(a.odd);
-      const originalOddLabel = Number.isFinite(originalOdd) ? originalOdd.toFixed(2) : '—';
-      const entryOddLabel = Number.isFinite(nums.odd) ? nums.odd.toFixed(2) : '';
+      const originalOddLabel = Number.isFinite(originalOdd) && originalOdd > 1 ? originalOdd.toFixed(2) : '—';
+      const entryOddLabel = nums.hasOdd ? nums.odd.toFixed(2) : '';
       return '<article class="alert-history-card" data-alert-id="' + esc(a.id) + '">'
-        + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong>' + (a.manual ? '<span class="alert-manual-badge">✍️ Manual</span>' : '') + '<div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
+        + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong>' + (a.manual ? '<span class="alert-manual-badge">✍️ Manual' + (a.odd_estimated ? ' · cuota estimada' : '') + '</span>' : '') + '<div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
         + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
         + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 VIP ' + ({ aeg: 'AEG', datagol: 'dataGol' }[String(a.vip_strategy || '').toLowerCase()] || 'anterior') + ' · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || (a.manual ? 'Cargada a mano' : 'Casa no informada')) + settle + balance + '</div>'
         + '<div class="alert-bet-edit"><label>Cuota real de entrada<input type="number" min="1.01" step="0.01" inputmode="decimal" data-entry-odd="' + esc(a.id) + '" value="' + esc(entryOddLabel) + '" placeholder="' + esc(originalOddLabel) + '"></label>'
         + '<label>Stake<input type="text" value="1 unidad (' + esc(unitValue.toLocaleString('es-AR')) + ' ARS)" readonly></label>'
         + '<button type="button" data-save-bet="' + esc(a.id) + '">Guardar cuota real</button></div>'
+        + (a.entry_estimated ? '<div class="small">Entrada estimada cerca del ' + esc(a.elapsed) + "' · goles 1T: " + esc((a.goal_minutes_1t || []).length ? a.goal_minutes_1t.map(x => x + "'").join(', ') : 'ninguno') + (a.entry_doubtful ? ' · ⚠️ dudosa' : '') + '</div>' : '')
         + (a.result_note ? '<div class="small">' + esc(a.result_note) + '</div>' : '')
         + (isOwner ? '<div class="alert-card-actions"><button type="button" data-hide-alert="' + esc(a.id) + '">🗑 Quitar</button></div>' : '')
         + (activeGroup === 'vip_legacy' ? '<div class="alert-move-one"><span class="small">Pasar esta alerta a:</span><button type="button" data-move-one="aeg" data-move-id="' + esc(a.id) + '">AEG</button><button type="button" data-move-one="datagol" data-move-id="' + esc(a.id) + '">dataGol</button></div>' : '')
