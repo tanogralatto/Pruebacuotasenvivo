@@ -1,4 +1,4 @@
-# Renueva data/fd-1x2.json (cuotas de cierre 1X2 de football-data.co.uk) para la pestaña Precisión de goles.html.
+# Renueva data/fd-1x2.json (cuotas de cierre 1X2 de football-data.co.uk) para alpha.html.
 # No usa ninguna clave. Corre los lunes y se puede lanzar a mano desde la pestaña Actions.
 name: Cuotas históricas (football-data)
 on:

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Baja de football-data.co.uk las cuotas de cierre 1X2 (Pinnacle o promedio de las casas) y los resultados
- * de las últimas dos temporadas (y los córners de las ligas principales), y arma data/fd-1x2.json para goles.html.
+ * de las últimas dos temporadas (y los córners de las ligas principales), y arma data/fd-1x2.json para alpha.html.
  * Uso: node scripts/football-data.js   (Node 18+; lo corre también la tarea semanal de GitHub)
  */
 'use strict';

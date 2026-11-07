@@ -469,7 +469,6 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <li><b>Guardá con la estrella ☆</b> los que te interesen, y seguilos en <b>En Vivo</b> durante el primer tiempo.</li>
   </ol>
   <p><b>EV:</b> el número más confiable es <b>«EV vs mercado (sin margen)»</b>. Si apostás, que sea poco.</p>
-  <p class="small">Goles del partido completo, 1X2 y hándicap asiático están en la app nueva: <a href="./goles.html">TanoApp Goles</a>.</p>
 </details>
 
 <div class="userbar">
@@ -1785,7 +1784,7 @@ function copyList(){
 
 /* ---- eventos ---- */
 $('#date').value=new Date().toLocaleDateString('en-CA',{timeZone:TZ});
-state.market='ht05'; // esta app es solo la estrategia +0,5 1T (goles y hándicap están en goles.html)
+state.market='ht05'; // esta app es solo la estrategia +0,5 1T
 function updateMarketUI(){
   document.querySelectorAll('.market-option').forEach(button=>{
     const active=button.dataset.market===state.market;
