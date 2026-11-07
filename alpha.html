@@ -200,6 +200,15 @@ table.mk td.dp{font-family:var(--mono);font-weight:700}
 .fxw{display:flex;align-items:center;gap:4px}
 .fxw .fx{flex:1;min-width:0}
 .model{font-size:12px;color:var(--muted);margin-top:4px}
+.vsm{margin-top:12px;padding:10px 12px}
+.vsm h3{margin:0 0 6px;font-size:14px}
+.vsm table{width:100%;border-collapse:collapse;font-size:13px}
+.vsm th,.vsm td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right}
+.vsm th:first-child,.vsm td:first-child{text-align:left}
+.vsm th{color:var(--muted);font-weight:600}
+.vsm .w1{color:var(--mid);font-weight:700}
+.vsm .w2{color:var(--bad);font-weight:700}
+.vsm .note{margin-top:6px}
 .more-leagues{display:block;width:100%;margin:14px 0}
 .filters{margin:10px 0}
 .fl{margin-top:12px}
@@ -1600,6 +1609,21 @@ async function findFixture(id){
 }
 function scoreHtml(s){const c=s>=65?'g':s>=35?'m':'d';return `<span class="sc"><span class="bar"><i class="bg-${c}" style="width:${Math.max(2,s)}%"></i></span><span class="mono">${s}</span></span>`}
 function arrow(r){if(!r.f0||Math.abs(r.pr-r.f0)<0.005)return '<span class="arr c-d">→</span>';return r.pr>r.f0?'<span class="arr c-g">▲</span>':'<span class="arr c-b">▼</span>'}
+// «Modelo vs mercado»: probabilidad del modelo al lado de la del mercado sin margen (Pinnacle si la cotiza; si no,
+// el promedio de las casas). Solo avisa: no cambia EV ni Score. ⚠ amarillo desde 8 puntos, rojo desde 15.
+const VSM_W1=0.08,VSM_W2=0.15;
+function vsMarketHtml(a){
+  const by=new Map((a.rows||[]).map(r=>[r.k,r]));
+  const L=[['1x2:home',a.hn],['1x2:draw','Empate'],['1x2:away',a.an],['total:over:2.5','Más de 2,5 goles']];
+  const rs=L.map(([k,n])=>{const r=by.get(k);return r&&r.p>0&&r.m>0?{n,p:r.p,m:r.m,d:(Math.round(r.p*100)-Math.round(r.m*100))/100,sh:!!r.sh,res:k.startsWith('1x2')}:null}).filter(Boolean);
+  if(!rs.length)return '';
+  const sharp=rs.every(r=>r.sh),pc=x=>Math.round(x*100)+'%';
+  let worst=null;
+  const tr=rs.map(r=>{const ad=Math.abs(r.d),c=ad>=VSM_W2?'w2':ad>=VSM_W1?'w1':'';if(c&&(!worst||ad>Math.abs(worst.d)))worst=r;
+    return `<tr><td>${esc(r.n)}</td><td class="mono">${pc(r.p)}</td><td class="mono">${pc(r.m)}</td><td class="mono ${c}">${r.d>0?'+':r.d<0?'−':''}${Math.abs(Math.round(r.d*100))}${c?' ⚠':''}</td></tr>`}).join('');
+  const note=worst?`<div class="small note ${Math.abs(worst.d)>=VSM_W2?'w2':'w1'}">⚠ El modelo se aleja ${Math.abs(worst.d)>=VSM_W2?'mucho':'bastante'} del mercado ${worst.res?'en el resultado (1X2)':'en los goles'}${Math.abs(worst.d)>=VSM_W2?': puede ser un error del modelo o de la cuota':''}. Revisá antes de apostar.</div>`:'';
+  return `<div class="box vsm"><h3>Modelo vs mercado <button class="info" data-tip="vsm">i</button></h3><table><thead><tr><th></th><th>Modelo</th><th>Mercado${sharp?' (Pinnacle)':''}</th><th>Diferencia</th></tr></thead><tbody>${tr}</tbody></table>${note}</div>`;
+}
 async function renderMatch(id){
   const a=await findFixture(id), body=$('#mBody');
   if(!a){body.innerHTML='<div class="empty" style="margin-top:16px">No encuentro este partido. Volvé a <a href="#/hoy">Partidos</a> y tocá Actualizar todo.</div>';return}
@@ -1619,6 +1643,7 @@ async function renderMatch(id){
   if(!a.rows&&!a.lam){body.innerHTML=h+`<div class="empty" style="margin-top:14px">${esc(a.reason||'Sin cuotas.')}</div>`;return}
   const rows=aRows(a);
   h+=`<div class="row" style="margin-top:10px"><span class="small">Match score</span>${edgeHtml(aEdge(rows))}</div>`;
+  h+=vsMarketHtml(a);
   const TITLES={high:'Muchos goles',low:'Pocos goles',home:'Resultado {home}',away:'Resultado {away}',other:'Otros mercados',team:'Goles por equipo',corners:'Córners'};
   for(const g of F.GROUPS){
     const gr=rows.filter(r=>r.g===g.id).sort((x,y)=>y.asc-x.asc||(y.aev!=null?y.aev:-9)-(x.aev!=null?x.aev:-9));
@@ -1919,6 +1944,7 @@ const TIPS={
   maxodds:['Cuota máxima','Oculta las apuestas con cuotas más altas. Las cuotas altas tienen más varianza (se pierden seguido) y su precio justo es menos preciso. Para empezar, 3,00.'],
   sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
   clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
+  vsm:['Modelo vs mercado','Probabilidad de nuestro modelo al lado de la del mercado sin el margen de la casa (Pinnacle cuando la cotiza; si no, el promedio de las casas). Diferencia en puntos: ⚠ amarillo desde 8 (se aleja bastante), ⚠ rojo desde 15 (muchas veces es un error del modelo o de la cuota). Solo avisa: no cambia EV ni Score.'],
   mktok:['Ligas con ✓ en','Muestra solo los partidos de ligas donde el modelo tiene ✓ (verde en Precisión) en ese mercado. Si marcás varios, alcanza con que tenga ✓ en alguno. «Todas» saca el filtro.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
   check:['Para revisar en tu casa','Líneas donde Bet365, 1xBet o Betano, según las cuotas que trae API-Football, pagan más que el precio justo de Pinnacle (sin margen) más 2%. API-Football trae la versión internacional de cada casa y se actualiza cada pocas horas: la cuota de tu casa puede ser otra. Usalo como pista: abrí tu casa y apostá solo si paga la Mínima (precio justo de Pinnacle + 2%) o más. Solo cuotas de 1,30 a 2,50, ordenadas para que arriba queden las de cuota baja con ventaja clara. Se descartan las diferencias de más de 15%, que casi siempre son cuotas viejas.'],
