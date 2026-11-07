@@ -305,7 +305,8 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
   <div class="status" id="uStatus"></div>
   <div class="filters box">
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
-    <label class="small row" style="gap:6px;margin:2px 0 8px"><input type="checkbox" id="aOk" style="accent-color:var(--acc)"> <b>Solo mercados con ✓</b>&nbsp;(probados en esa liga en Precisión)</label>
+    <label class="small row" style="gap:6px;margin:2px 0 4px"><input type="checkbox" id="aOk" style="accent-color:var(--acc)"> <b>Solo mercados con ✓</b>&nbsp;(probados en esa liga en Precisión)</label>
+    <label class="small row" style="gap:6px;margin:0 0 8px"><input type="checkbox" id="aUp" style="accent-color:var(--acc)"> <b>Solo partidos por jugar</b>&nbsp;(esconde los que ya empezaron o terminaron)</label>
     <div class="fl"><div class="fl-h"><b>Ligas con ✓ en</b> <button class="info" data-tip="mktok">i</button></div><div class="seg" id="mktOk"><button data-mkt="">Todas</button><button data-mkt="goals">Goles</button><button data-mkt="btts">Ambos marcan</button><button data-mkt="team">Goles por equipo</button><button data-mkt="corners">Córners</button><button data-mkt="res">1X2</button></div></div>
     <div class="fl" style="margin-top:4px"><div class="fl-h"><b>Ordenar</b></div><div class="seg" id="aSort"><button data-asort="league">Por liga y hora</button><button data-asort="score">Mayor score</button></div></div>
     <div class="fl"><div class="fl-h"><b>Match score mínimo</b> <span class="mono" id="aMinVal">0+</span></div><input type="range" id="aMin" min="0" max="95" step="5" value="0"></div>
@@ -1546,6 +1547,7 @@ async function renderDash(){
   }
   const q=$('#q').value.trim().toLowerCase(),fv=favs(),lgSel=$('#lg').value,slot=LS.get('tg:slot','all'),minE=Number(LS.get('tg:amin',0));
   $('#aOk').checked=onlyOk();
+  const upOnly=LS.get('tg:aup',true)!==false;$('#aUp').checked=upOnly;
   $('#aMin').value=String(minE);$('#aMinVal').textContent=minE+'+';
   $$('#slot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===slot));
   const mkSel=mktSel();
@@ -1561,6 +1563,7 @@ async function renderDash(){
     if(lgSel&&String(a.lid)!==lgSel)continue;
     if(!inSlot(a))continue;
     if(!mktOk(a))continue;
+    if(upOnly&&!(a.ts*1000>Date.now()))continue; // ya empezó (por la hora de inicio, no por el estado guardado)
     const e=a.lam||a.clam?aEdge(aRows(a)):0;
     if(minE&&e<minE)continue;
     if(!groups.has(a.lid))groups.set(a.lid,{first:a.ts,list:[]});
@@ -2024,6 +2027,7 @@ $('#mkList').addEventListener('click',e=>{if(e.target.closest('[data-add],a,butt
 $('#mkGreen').addEventListener('change',e=>{LS.set('tg:mkgreen',e.target.checked);renderMk()});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;e.preventDefault();const i=b.dataset.add.indexOf('|');addBet(b.dataset.add.slice(0,i),b.dataset.add.slice(i+1))});
 ['q','lg'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',()=>{showAllLeagues=false;renderDash()}));
+$('#aUp').addEventListener('change',e=>{LS.set('tg:aup',e.target.checked);showAllLeagues=false;renderDash()});
 $('#aOk').addEventListener('change',e=>{LS.set('tg:aok',e.target.checked);LS.set('tg:cfgts',Date.now());showAllLeagues=false;renderDash()});
 $('#aSort').addEventListener('click',e=>{const b=e.target.closest('[data-asort]');if(!b)return;LS.set('tg:asort',b.dataset.asort);showAllLeagues=false;renderDash()});
 $('#aMin').addEventListener('input',e=>{LS.set('tg:amin',Number(e.target.value));showAllLeagues=false;renderDash()});
