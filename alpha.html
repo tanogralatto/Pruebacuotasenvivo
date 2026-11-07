@@ -770,6 +770,12 @@ async function sealHtml(){
   const areg=state.areg||(state.areg=(await DB.get('areg'))||{});
   const all=Object.values(areg),done=all.filter(e=>e.res),pend=all.length-done.length;
   let h=`<h2>Lecturas selladas <button class="info" data-tip="seal">i</button></h2>`;
+  // Por qué hay pendientes: partidos por jugar (normal) o ya terminados esperando el resultado.
+  {
+    const now=Date.now(),waiting=all.filter(e=>!e.res&&e.ts*1000<=now-2.5*3600e3),future=all.filter(e=>!e.res&&e.ts*1000>now-2.5*3600e3);
+    const next=future.length?Math.min(...future.map(e=>e.ts)):null;
+    if(all.length)h+=`<div class="small" style="margin:-2px 0 8px">${future.length} de partidos por jugar o en juego${next?` (el próximo: ${new Date(next*1000).toLocaleString('es-AR',{weekday:'short',hour:'2-digit',minute:'2-digit'})})`:''} · ${waiting.length} de partidos ya terminados esperando resultado. ${waiting.length?`<button class="btn" id="btnSealNow" style="padding:4px 10px;font-size:13px">Liquidar ahora</button> <span id="sealMsg"></span>`:''}</div>`;
+  }
   if(!all.length)return h+`<div class="none">Todavía no hay lecturas. Desde ahora, cada <b>↻ Actualizar todo</b> guarda las apuestas que recomienda la app (Score ${SEAL_MIN}+ en mercados con ✓) y las liquida cuando terminan los partidos.</div>`;
   const sum=list=>{const n=list.length,u=list.reduce((t,e)=>t+e.res.profit,0),w=list.filter(e=>e.res.r>0).length;return {n,u,w,roi:n?u/n:null}};
   const T=sum(done);
@@ -1954,6 +1960,21 @@ if(LS.get('tg:guide',true))$('#guide').open=true;
 $('#dList').addEventListener('click',e=>{if(e.target.closest('#btnMoreLeagues')){showAllLeagues=true;renderDash()}});
 $('#pBody').addEventListener('input',e=>{if(e.target.id==='pq'){precQ=e.target.value;renderPrec().then(()=>{const i=$('#pq');i.focus();i.setSelectionRange(i.value.length,i.value.length)})}});
 $('#pBody').addEventListener('change',e=>{if(e.target.id==='psort'){precSort=e.target.value;renderPrec()}});
+// «Liquidar ahora»: pide los resultados de las lecturas de partidos ya terminados (hasta 30 consultas).
+$('#pBody').addEventListener('click',async e=>{
+  if(!e.target.closest('#btnSealNow'))return;
+  const msg=$('#sealMsg');if(state.running){msg.textContent='Hay una actualización en curso.';return}
+  if(!state.key){msg.textContent='Falta tu clave de API-Football.';return}
+  state.running=true;state.calls=0;msg.textContent='Pidiendo resultados…';
+  try{
+    const areg=state.areg||(state.areg=(await DB.get('areg'))||{});
+    const n=await settleAlphaFetch(areg,t=>{msg.textContent=t});
+    await DB.set('areg',areg);try{if(window.tgCloud&&window.tgCloud.user)await cloudPush()}catch(err){}
+    state.running=false;await renderPrec();
+    const m2=$('#sealMsg');if(m2)m2.textContent=`${n} liquidadas · ${state.calls} consultas.`;else say(`Lecturas selladas: ${n} liquidadas · ${state.calls} consultas.`);
+  }catch(err){msg.textContent='No se pudo: '+err.message}
+  state.running=false;scheduleQuota();
+});
 $('#mBody').addEventListener('click',e=>{
   const m=e.target.closest('[data-more]'),r=route();
   if(m){const g=m.dataset.more;open.has(g)?open.delete(g):open.add(g);renderMatch(r.id);return}
