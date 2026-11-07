@@ -341,8 +341,12 @@ details.guide th{color:var(--muted);font-weight:600}
   <p class="small">¿Buscás las pestañas de mercados y la comparación con Pinnacle? Están en la <a href="./goles.html">app completa</a> (usa los mismos datos).</p>
   <h2>Banca</h2>
   <div class="field"><label class="small" for="bank" style="align-self:center">Tu banca para apostar ($): con ella se calcula el monto sugerido</label><input id="bank" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000" style="max-width:160px"></div>
-  <h2>xG</h2>
-  <div class="field"><label class="small" for="xgBudget" style="align-self:center">Consultas para bajar xG en cada actualización (cada consulta trae 20 partidos)</label><input id="xgBudget" type="number" min="0" max="2000" step="10" style="max-width:120px"></div>
+  <h2>Estadísticas (xG y córners)</h2>
+  <p class="small">Bajalas cuando quieras, sin tocar Actualizar todo. Primero se completan las ligas que juegan hoy o mañana. Después se recalcula Precisión (sin gastar consultas).</p>
+  <div class="field"><label class="small" for="xgNow" style="align-self:center">Consultas a usar ahora (cada una trae 20 partidos)</label><input id="xgNow" type="number" min="1" max="3000" step="50" value="300" style="max-width:120px"><button class="btn pri" id="btnXg">⬇︎ Bajar estadísticas ahora</button></div>
+  <div class="prog hidden" id="xgProg"><i></i></div>
+  <div class="status" id="xgStatus"></div>
+  <div class="field"><label class="small" for="xgBudget" style="align-self:center">Además, consultas dentro de cada Actualizar todo (0 = no bajar estadísticas ahí)</label><input id="xgBudget" type="number" min="0" max="2000" step="10" style="max-width:120px"></div>
   <p class="small">Más consultas = el xG llega antes a todas las ligas. Con 150 por actualización, en pocos días están todas las ligas que se juegan.</p>
   <h2>Sincronización</h2>
   <div class="small" id="cloudInfo">Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.</div>
@@ -1762,6 +1766,33 @@ async function renderCfg(){
 $('#bank').addEventListener('change',e=>{LS.set('tg:bank',Math.max(0,Number(e.target.value)||0));LS.set('tg:cfgts',Date.now())});
 $('#booksList')&&$('#booksList').addEventListener('change',e=>{const cb=e.target.closest('[data-book]');if(!cb)return;const s=myBooks();cb.checked?s.add(cb.dataset.book):s.delete(cb.dataset.book);LS.set('tg:mybooks',[...s])});
 $('#xgBudget').addEventListener('change',e=>LS.set('tg:xgBudget',Math.max(0,Number(e.target.value)||0)));
+// Bajar estadísticas (xG y córners) a pedido: primero las ligas de hoy y mañana, después el resto.
+$('#btnXg').addEventListener('click',async()=>{
+  const st=$('#xgStatus'),btn=$('#btnXg'),pg=$('#xgProg');
+  if(state.running){st.textContent='Hay otra actualización en curso: esperá a que termine.';return}
+  if(!state.key){st.textContent='Primero cargá tu clave de API-Football.';return}
+  const n=Math.max(1,Math.min(3000,Number($('#xgNow').value)||0));
+  state.running=true;state.calls=0;btn.disabled=true;st.classList.remove('err');pg.classList.remove('hidden');
+  const say2=t=>{st.textContent=t};
+  try{
+    await loadXg();await loadFd();await loadNc();state.prec=state.prec||await DB.get('prec');
+    const all=await knownLeagues(new Map());
+    const up=new Set();for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)for(const f of x.fx)up.add(String(f.lid))}
+    const first=[...all.values()].filter(L=>up.has(String(L.lid))),rest=[...all.values()].filter(L=>!up.has(String(L.lid)));
+    pg.querySelector('i').style.width='10%';
+    let got=await fetchXg(first,n,say2);
+    const left=n-state.calls;
+    if(left>0&&rest.length)got+=await fetchXg(rest,left,say2);
+    pg.querySelector('i').style.width='70%';
+    say2('Recalculando Precisión con las estadísticas nuevas…');
+    await refitProxy([...all.values()]);
+    const reg=state.reg||(await DB.get('reg'))||{};
+    await computePrecision(all,reg,say2);
+    try{if(window.tgCloud&&window.tgCloud.user)await cloudPush()}catch(e){}
+    say2(`Listo: ${got} partidos con estadísticas nuevas · ${state.calls} consultas. Precisión recalculada.`);
+  }catch(e){st.textContent=e.message;st.classList.add('err')}
+  pg.classList.add('hidden');state.running=false;btn.disabled=false;scheduleQuota();
+});
 $('#btnKey').addEventListener('click',async()=>{
   state.key=$('#key').value.trim();LS.set('o05:key',state.key);
   const s=$('#kStatus');s.classList.remove('err');s.textContent='Probando…';
