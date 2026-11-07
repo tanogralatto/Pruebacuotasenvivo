@@ -257,7 +257,7 @@ details.guide th{color:var(--muted);font-weight:600}
     <p>Como Alpha: para cada partido, <b>nuestro modelo</b> calcula la probabilidad de cada mercado y su <b>cuota justa</b>. La compara con la <b>cuota de tus casas</b> (Bet365, 1xBet o Betano, según API-Football). Si la casa paga más que la cuota justa, hay valor (<b>EV</b> positivo).</p>
     <h3>Uso diario</h3>
     <ol>
-      <li>Una vez por día, tocá <b>↻ Actualizar todo</b>.</li>
+      <li>Una vez por día, a la mañana, tocá <b>↻ Actualizar todo</b>. Si querés cuotas frescas más tarde, usá <b>↻ Actualizar cuotas</b> (más barato) o, para un solo partido, <b>↻ Cuotas de este partido</b> en su ficha (1 consulta).</li>
       <li>Mirá la lista: el número de cada partido es el <b>Match score</b> (0-100). Verde = buenas oportunidades.</li>
       <li>Abrí un partido. En cada grupo, la primera fila es la de mayor <b>Score</b>. Elegí <b>una sola apuesta por partido</b>.</li>
       <li>Antes de apostar, tocá <b>↻ Cuotas de este partido</b> y fijate que tu casa pague la <b>Cuota</b> de la app o más. Anotala con <b>＋</b>.</li>
@@ -276,7 +276,7 @@ details.guide th{color:var(--muted);font-weight:600}
   <div class="row">
     <div class="seg"><button data-day="0">Hoy</button><button data-day="1">Mañana</button><button data-day="fav">★ Favoritos</button></div>
   </div>
-  <div class="upd"><span class="small" id="updWhen">Todavía no se actualizó.</span><button class="info" data-tip="update">i</button><button class="btn pri" id="btnUpdate">↻ Actualizar todo</button></div>
+  <div class="upd"><span class="small" id="updWhen">Todavía no se actualizó.</span><button class="info" data-tip="update">i</button><button class="btn pri" id="btnUpdate">↻ Actualizar todo</button><button class="btn" id="btnAOdds">↻ Actualizar cuotas</button></div>
   <div class="small" id="syncLine" style="margin:-4px 0 6px"></div>
   <div class="prog hidden" id="uProg"><i></i></div>
   <div class="status" id="uStatus"></div>
@@ -887,6 +887,16 @@ function buildRows(a,o,first){
 /* ---------------- ACTUALIZAR TODO (lo mismo que haría el robot) ---------------- */
 function prog(done,total){const p=$('#uProg');p.classList.toggle('hidden',!total||done>=total);p.querySelector('i').style.width=(total?done*100/total:0)+'%'}
 function say(t,err){const s=$('#uStatus');s.textContent=t;s.classList.toggle('err',!!err)}
+// Cuotas ya bajadas (partidos y cuotas leídas de cada día), para no volver a pedirlas si tienen menos de 1 hora:
+// API-Football las renueva cada pocas horas. Se guardan ya leídas (no la respuesta cruda, que pesa mucho).
+const ODDS_FRESH=3600e3;
+const serOdds=o=>({e:[...o.entries()],l:o.lambdas||null,c:o.cornerNames||[]});
+const deserOdds=x=>{const o=new Map(x?x.e:[]);if(x&&x.l)o.lambdas=x.l;if(x&&x.c&&x.c.length)o.cornerNames=x.c;return o};
+async function saveOddsCache(d,fx,m){
+  const po={};for(const [id,its] of m)po[id]=serOdds(F.parseOdds(its));
+  await DB.set('acache:'+d,{ts:Date.now(),fx,po});
+  return po;
+}
 async function updateAll(){
   if(state.running)return;
   state.running=true;state.calls=0;$('#btnUpdate').disabled=true;
@@ -900,15 +910,21 @@ async function updateAll(){
     reg=state.reg=await cloudMergeReg(reg);
     const dates=[dayStr(0),dayStr(1)];
     // 1) Partidos y cuotas de hoy y mañana (todas las ligas).
-    const fixtures={},odds={};
+    const fixtures={},odds={},po={};let reused=0;
     for(const d of dates){
+      const c=await DB.get('acache:'+d);
+      if(c&&Date.now()-c.ts<ODDS_FRESH&&c.fx&&c.po){
+        // Cuotas de hace menos de 1 hora: se reusan sin gastar consultas.
+        fixtures[d]=c.fx;po[d]=c.po;odds[d]=new Map(Object.keys(c.po).map(id=>[id,null]));reused++;continue;
+      }
       say('Buscando partidos y cuotas del '+d.split('-').reverse().slice(0,2).join('/')+'…');prog(dates.indexOf(d),8);
       const j=await api('/fixtures',{date:d,timezone:TZ});
       fixtures[d]=(j.response||[]).map(f=>({id:f.fixture.id,iso:f.fixture.date,ts:Math.floor(new Date(f.fixture.date).getTime()/1000),st:f.fixture.status.short,lid:f.league.id,season:f.league.season,ln:f.league.name,lc:f.league.country||'World',hid:f.teams.home.id,hn:f.teams.home.name,aid:f.teams.away.id,an:f.teams.away.name}));
       const items=await allPages('/odds',{date:d,timezone:TZ});
       const m=new Map();for(const it of items){const id=String(it.fixture&&it.fixture.id||'');if(id)m.set(id,(m.get(id)||[]).concat([it]))}
-      odds[d]=m;
+      odds[d]=m;po[d]=await saveOddsCache(d,fixtures[d],m);
     }
+    const getOdds=(d,id)=>deserOdds(po[d]&&po[d][String(id)]);
     // 2) Historial de cada liga que tiene cuotas.
     const need=new Map();
     for(const d of dates)for(const f of fixtures[d])if(odds[d].has(String(f.id)))need.set(f.lid,f.season);
@@ -916,7 +932,7 @@ async function updateAll(){
     const leagues=new Map();
     await pool([...need].map(([lid,season])=>async()=>{leagues.set(lid,await loadLeague(lid,season))}),(d,t)=>{say(`Historial de ligas: ${d} de ${t}`);prog(2+d/t*2,8)});
     // 3) xG (de la API o aproximado con los tiros).
-    const budget=Number(LS.get('tg:xgBudget',150));
+    const budget=reused===dates.length?0:Number(LS.get('tg:xgBudget',150));
     try{await fetchXg([...leagues.values()],budget,t=>{say(t);});await refitProxy([...leagues.values()])}catch(e){if(e.fatal)throw e;warn.push('xG: '+e.message)}
     // Recién llegados: una consulta por equipo nuevo, una sola vez (queda guardado).
     try{say('Revisando ascendidos y descendidos…');const n=await updateNewcomers([...leagues.values()],400);if(n)say(`Ascendidos y descendidos: ${n} equipos revisados`)}catch(e){if(e.fatal)throw e;warn.push('Ascendidos: '+e.message)}
@@ -946,7 +962,7 @@ async function updateAll(){
             const pr=predictFt(fit,f.hid,f.aid);
             if(!pr.ok)a.reason=/no tiene partidos previos/.test(pr.reason)?'Un equipo no tiene partidos previos en esta liga.':'Todavía hay pocos partidos de estos equipos.';
             else{
-              const o=F.parseOdds(odds[d].get(String(f.id)));
+              const o=getOdds(d,f.id);
               a.lam={home:pr.lambdaHome,away:pr.lambdaAway,rho:cfg.rho};a.xg=!!cfg.xg&&!fit.market;a.mkt=!!fit.market;
               a.n={home:pr.nHome,away:pr.nAway};a.ls=ls;
               const nc=NC&&NC[lid]&&String(NC[lid].season)===String(fxs[0].season)?NC[lid].cls:{};a.nc={home:nc[f.hid]||null,away:nc[f.aid]||null};
@@ -964,7 +980,7 @@ async function updateAll(){
             }
           }
           // Sin modelo, igual se muestran los mercados con el precio de las casas.
-          if(!a.lam){const o=F.parseOdds(odds[d].get(String(f.id)));if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg)}}
+          if(!a.lam){const o=getOdds(d,f.id);if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg)}}
           day.fx.push(a);
         }
         await sleep(0);
@@ -1766,6 +1782,37 @@ async function renderCfg(){
 $('#bank').addEventListener('change',e=>{LS.set('tg:bank',Math.max(0,Number(e.target.value)||0));LS.set('tg:cfgts',Date.now())});
 $('#booksList')&&$('#booksList').addEventListener('change',e=>{const cb=e.target.closest('[data-book]');if(!cb)return;const s=myBooks();cb.checked?s.add(cb.dataset.book):s.delete(cb.dataset.book);LS.set('tg:mybooks',[...s])});
 $('#xgBudget').addEventListener('change',e=>LS.set('tg:xgBudget',Math.max(0,Number(e.target.value)||0)));
+// ↻ Actualizar cuotas (Partidos): solo las cuotas de hoy y mañana; rehace los mercados de los partidos ya analizados.
+$('#btnAOdds').addEventListener('click',async()=>{
+  if(state.running)return;
+  if(!state.key){say('Primero cargá tu clave de API-Football.',true);return}
+  state.running=true;state.calls=0;$('#btnAOdds').disabled=true;$('#btnUpdate').disabled=true;
+  try{
+    await loadBets();state.prec=state.prec||await DB.get('prec');
+    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{},areg=state.areg=state.areg||(await DB.get('areg'))||{};
+    let n=0;
+    for(const [i,d] of [dayStr(0),dayStr(1)].entries()){
+      const day=await getDay(d);if(!day)continue;
+      say('Bajando cuotas del '+d.split('-').reverse().slice(0,2).join('/')+'…');prog(i,2);
+      const items=await allPages('/odds',{date:d,timezone:TZ});
+      const m=new Map();for(const it of items){const id=String(it.fixture&&it.fixture.id||'');if(id)m.set(id,(m.get(id)||[]).concat([it]))}
+      const c=await DB.get('acache:'+d);
+      const fxList=c&&c.fx||day.fx.map(a=>({id:a.id,iso:a.iso,ts:a.ts,st:a.st,lid:a.lid,season:a.season,ln:a.ln,lc:a.lc,hid:a.hid,hn:a.hn,aid:a.aid,an:a.an}));
+      const po=await saveOddsCache(d,fxList,m);
+      for(const a of day.fx){
+        if(a.ts*1000<=Date.now()||!po[String(a.id)])continue;
+        const o=deserOdds(po[String(a.id)]);if(!o.size)continue;
+        buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);a.readAt=Date.now();n++;
+      }
+      day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
+    }
+    await DB.set('first',first);await DB.set('esp',esp);await DB.set('areg',areg);if(betsDirty)await saveBets();
+    try{if(window.tgCloud&&window.tgCloud.user)await cloudPush()}catch(e){}
+    state.lastCalls=state.calls;
+    say(`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`);
+  }catch(e){say(e.message,true)}
+  prog(1,1);state.running=false;$('#btnAOdds').disabled=false;$('#btnUpdate').disabled=false;scheduleQuota();renderDash();
+});
 // Bajar estadísticas (xG y córners) a pedido: primero las ligas de hoy y mañana, después el resto.
 $('#btnXg').addEventListener('click',async()=>{
   const st=$('#xgStatus'),btn=$('#btnXg'),pg=$('#xgProg');
@@ -1875,7 +1922,14 @@ function go(){
 }
 window.addEventListener('hashchange',go);
 $$('.seg [data-day]').forEach(b=>b.addEventListener('click',()=>{location.hash=b.dataset.day==='1'?'#/manana':b.dataset.day==='fav'?'#/favoritos':'#/hoy'}));
-$('#btnUpdate').addEventListener('click',updateAll);
+$('#btnUpdate').addEventListener('click',async()=>{
+  const up=await getUpdated();
+  if(up&&Date.now()-up<ODDS_FRESH){
+    const min=Math.max(1,Math.round((Date.now()-up)/60000));
+    if(!confirm(`Actualizaste hace ${min} min. Las cuotas de esa vez se reusan, así que gasta muy poco (solo lo que falte, como resultados nuevos). Para cuotas frescas usá «↻ Actualizar cuotas». ¿Actualizar igual?`))return;
+  }
+  updateAll();
+});
 $('#btnMkOdds').addEventListener('click',refreshAllOdds);
 $('#mkday').addEventListener('click',e=>{const b=e.target.closest('[data-mkday]');if(!b)return;LS.set('tg:mkday',b.dataset.mkday);renderMk()});
 $('#mkq').addEventListener('input',()=>renderMk());
