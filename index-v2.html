@@ -2641,7 +2641,7 @@ document.getElementById('ghAnalyze').addEventListener('click',()=>{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, orderBy, limit, startAfter, startAt, getDocs }
+import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, where, orderBy, limit, startAfter, startAt, getDocs }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const OWNER_EMAIL = 'tanogralatto@gmail.com';
@@ -2795,7 +2795,21 @@ const SYNC_LOG = 'o05:plog:v1', SYNC_MODEL = 'o05:model:v1', SYNC_LAM = 'o05:lam
 // Ligas validadas de cada mercado → campo del documento en la nube.
 const SYNC_LV = { 'o05:leagueval:v1': 'leagueval', 'o05:leagueval:btts:v1': 'leagueval_btts', 'o05:leagueval:over25:v1': 'leagueval_over25', 'o05:leagueval:ah:v1': 'leagueval_ah' };
 let unsubSyncLog = null, unsubSyncMain = null, syncPushTimer = null, syncReady = false;
-const cloudLog = new Map(); // id -> JSON del registro tal como está en la nube
+// id -> resumen de cómo está cada predicción en la nube: [huella, liquidada, settledAt, loggedAt].
+// Se guarda en el aparato para no volver a leer todo el registro cada vez que se abre la app:
+// leerlo completo en cada apertura (miles de lecturas) agotaba la cuota diaria gratuita de Firebase
+// y dejaba sin alertas de Telegram al monitor, que usa la misma cuota.
+const cloudLog = new Map();
+let cloudSeen = 0, cloudMetaTimer = null, cloudMetaKey = '';
+const SYNC_MARGIN = 10 * 60 * 1000; // margen por relojes desfasados entre aparatos
+function stripSync(e) { if (!e || e._sync === undefined) return e; const { _sync, ...rest } = e; return rest; }
+function entryHash(e) { const t = JSON.stringify(stripSync(e)); let h = 5381; for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ':' + t.length; }
+function cloudMetaOf(e) { return [entryHash(e), settledOf(e), e.settledAt || 0, e.loggedAt || 0]; }
+function cloudAsEntry(m) { return m ? { y: m[1] ? 1 : null, settledAt: m[2], loggedAt: m[3] } : null; }
+function saveCloudMeta() {
+  clearTimeout(cloudMetaTimer);
+  cloudMetaTimer = setTimeout(() => { if (cloudMetaKey) lsRaw.set(cloudMetaKey, { seen: cloudSeen, m: Object.fromEntries(cloudLog) }); }, 1500);
+}
 const lsRaw = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
 function syncMsg(m, err) { const el = q('#syncStatus'); if (!el) return; el.textContent = m; el.classList.toggle('err', !!err); }
@@ -2812,15 +2826,20 @@ function refreshV2Views() {
 function pushLogChanges() {
   if (!syncReady || !inAppUid) return;
   const local = lsRaw.get(SYNC_LOG, {}) || {}, col = collection(db, 'tanoapp_v2_datos', inAppUid, 'registro');
-  const changed = Object.values(local).filter(e => e && e.id != null && JSON.stringify(e) !== cloudLog.get(String(e.id)) && betterEntry(cloudLog.has(String(e.id)) ? JSON.parse(cloudLog.get(String(e.id))) : null, e) === e);
+  const changed = Object.values(local).filter(e => {
+    if (!e || e.id == null) return false;
+    const m = cloudLog.get(String(e.id));
+    return (!m || m[0] !== entryHash(e)) && betterEntry(cloudAsEntry(m), e) === e;
+  });
   if (!changed.length) return;
   (async () => {
     try {
       for (let i = 0; i < changed.length; i += 400) {
         const batch = writeBatch(db);
-        changed.slice(i, i + 400).forEach(e => { const c = clean(e); batch.set(doc(col, String(e.id)), c); cloudLog.set(String(e.id), JSON.stringify(c)); });
+        changed.slice(i, i + 400).forEach(e => { const c = clean(stripSync(e)); batch.set(doc(col, String(e.id)), { ...c, _sync: Date.now() }); cloudLog.set(String(e.id), cloudMetaOf(c)); });
         await batch.commit();
       }
+      saveCloudMeta();
       syncMsg('☁️ Registro guardado en tu cuenta (' + cloudLog.size + ' predicciones). Lo ves igual en la Mac y en el iPhone.');
     } catch (e) { changed.forEach(x => cloudLog.delete(String(x.id))); syncMsg('☁️ No se pudo guardar en tu cuenta: ' + friendly(e), true); }
   })();
@@ -2833,12 +2852,17 @@ function pushMain(fields) {
 function stopV2Sync() {
   if (unsubSyncLog) { unsubSyncLog(); unsubSyncLog = null; }
   if (unsubSyncMain) { unsubSyncMain(); unsubSyncMain = null; }
-  window.tanoSyncHook = null; syncReady = false; cloudLog.clear();
+  window.tanoSyncHook = null; syncReady = false; cloudLog.clear(); cloudSeen = 0; cloudMetaKey = '';
 }
 function startV2Sync(user) {
   stopV2Sync();
   const uid = user.uid, mainRef = doc(db, 'tanoapp_v2_datos', uid), col = collection(db, 'tanoapp_v2_datos', uid, 'registro');
   let gotLog = false, gotMain = false, pendingMain = null;
+  // Lo que este aparato ya bajó de la nube: solo se piden las predicciones guardadas desde entonces.
+  cloudMetaKey = 'o05:cloudmeta:v1:' + uid;
+  const savedMeta = lsRaw.get(cloudMetaKey, null);
+  if (savedMeta && savedMeta.m && savedMeta.seen > 0) { for (const [k, v] of Object.entries(savedMeta.m)) cloudLog.set(k, v); cloudSeen = savedMeta.seen; }
+  const logQuery = cloudSeen > 0 ? query(col, where('_sync', '>', cloudSeen - SYNC_MARGIN)) : col;
   const maybeReady = () => {
     if (syncReady || !gotLog || !gotMain) return;
     syncReady = true;
@@ -2853,17 +2877,21 @@ function startV2Sync(user) {
     else if (k === SYNC_LAM) pushMain({ lam: JSON.stringify(v || {}) });
     else if (SYNC_LV[k]) pushMain({ [SYNC_LV[k]]: JSON.stringify(v || {}) });
   };
-  unsubSyncLog = onSnapshot(col, snap => {
+  unsubSyncLog = onSnapshot(logQuery, snap => {
     const local = lsRaw.get(SYNC_LOG, {}) || {};
     let changedLocal = false;
     snap.docChanges().forEach(ch => {
       if (ch.type === 'removed') return;
-      const e = ch.doc.data(), id = String(ch.doc.id);
-      cloudLog.set(id, JSON.stringify(e));
+      const raw = ch.doc.data(), id = String(ch.doc.id);
+      if (typeof raw._sync === 'number' && raw._sync > cloudSeen) cloudSeen = raw._sync;
+      const e = stripSync(raw);
+      cloudLog.set(id, cloudMetaOf(e));
       const best = betterEntry(local[id], e);
       if (best !== local[id]) { local[id] = best; changedLocal = true; }
     });
     if (changedLocal) { lsRaw.set(SYNC_LOG, window.TanoVal ? window.TanoVal.pruneLog(local) : local); refreshV2Views(); }
+    if (!cloudSeen) cloudSeen = Date.now(); // primera bajada completa: desde ahora, solo lo nuevo
+    saveCloudMeta();
     if (!gotLog) { gotLog = true; maybeReady(); }
     else if (syncReady) pushLogChanges();
   }, e => syncMsg('☁️ No se pudo leer tu registro en la nube: ' + friendly(e), true));
