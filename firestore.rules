@@ -74,6 +74,16 @@ service cloud.firestore {
       allow read, write: if tanoOwner();
     }
 
+    // Consultas a API-Football por cuenta y día ({día}_{uid}). Cada cuenta anota solo las suyas; el dueño ve todas.
+    match /tanoapp_api_uso/{docId} {
+      allow read: if tanoOwner()
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow create, update: if request.auth != null
+        && docId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_' + request.auth.uid + '$')
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'date', 'count', 'claves', 'apps', 'updated']);
+    }
+
     match /tanoapp_telegram_alerts/{alertId} {
       // Consultar el historial.
       allow read: if tanoOwner() || tanoAprobado();

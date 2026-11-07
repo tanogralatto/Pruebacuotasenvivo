@@ -974,6 +974,12 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
   <p class="small">Cuando alguien entra con Google por primera vez queda como pendiente hasta que vos lo apruebes. Podés bloquear o volver a aprobar a cualquiera cuando quieras. Este panel solo lo ves vos.</p>
   <div id="accessList" class="cards"><div class="empty">Todavía nadie pidió acceso.</div></div>
 </section>
+<section class="panel" aria-labelledby="t-apiuse">
+  <h2 id="t-apiuse">Consultas a API-Football por cuenta</h2>
+  <p class="small">Lo que gastó cada cuenta desde index-v2 y Alpha, en cualquier dispositivo. «Clave» son los últimos 4 caracteres de la clave usada: si dos cuentas muestran la misma, gastan del mismo cupo. Se actualiza cada 30 minutos o cuando la persona cierra o cambia de app, así que lo más reciente puede tardar en aparecer. No incluye el programa de alertas (Render), que gasta aparte unas 1.400–2.200 por día.</p>
+  <div class="row" style="align-items:flex-end"><div class="field" style="width:180px"><label for="apiUseDate">Día</label><input id="apiUseDate" type="date"></div></div>
+  <div id="apiUseList" class="cards"><div class="empty">Cargando…</div></div>
+</section>
 </div>
 
 </div>
@@ -1166,6 +1172,7 @@ async function api(path,params){
     try{ res=await fetch(url,{headers:{'x-apisports-key':state.key}}); }
     catch(e){ const er=new Error('No se pudo conectar con API-Football. Revisá la conexión o si un bloqueador está frenando el pedido.'); er.fatal=true; throw er; }
     state.calls++;
+    if(path!=='/status') try{ window.tanoCountApi&&window.tanoCountApi(state.key); }catch(e){}
     if(res.status===429){ await sleep(8000); continue; }
     let j;
     try{ j=await res.json(); }catch(e){ throw new Error('Respuesta inválida de la API (HTTP '+res.status+').'); }
@@ -2670,6 +2677,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, where, orderBy, limit, startAfter, startAt, getDocs, getDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { startApiUsage, usageDay } from "./uso-api.js";
 
 const OWNER_EMAIL = 'tanogralatto@gmail.com';
 const cfg = {
@@ -2683,6 +2691,7 @@ const cfg = {
 const fapp = initializeApp(cfg);
 const auth = getAuth(fapp);
 const db = getFirestore(fapp);
+startApiUsage(db, auth, 'v2');
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: 'select_account' });
 
@@ -2719,6 +2728,7 @@ function stopAll() {
   if (unsubOwn) { unsubOwn(); unsubOwn = null; }
   if (unsubFavs) { unsubFavs(); unsubFavs = null; }
   if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+  if (unsubApiUse) { unsubApiUse(); unsubApiUse = null; }
   if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
 }
 function leaveApp() {
@@ -3485,7 +3495,32 @@ function startAlertHistory(isOwner) {
   });
 }
 
+let unsubApiUse = null;
+function startApiUsePanel() {
+  const input = q('#apiUseDate'), box = q('#apiUseList');
+  if (!input || !box) return;
+  if (!input.value) input.value = usageDay();
+  const listen = () => {
+    if (unsubApiUse) { unsubApiUse(); unsubApiUse = null; }
+    box.innerHTML = '<div class="empty">Cargando…</div>';
+    unsubApiUse = onSnapshot(query(collection(db, 'tanoapp_api_uso'), where('date', '==', input.value)), snap => {
+      const rows = snap.docs.map(d => d.data()).sort((a, b) => (b.count || 0) - (a.count || 0));
+      if (!rows.length) { box.innerHTML = '<div class="empty">Sin consultas anotadas ese día.</div>'; return; }
+      const total = rows.reduce((t, r) => t + (r.count || 0), 0);
+      const appName = { v2: 'index-v2', alpha: 'Alpha' };
+      box.innerHTML = '<div class="alert-history-summary"><div class="alert-stat"><span>Total de las apps</span><strong>' + total.toLocaleString('es-AR') + '</strong></div></div>'
+        + rows.map(r => '<article class="access-card"><div class="access-top"><div><div class="access-name">' + esc(r.email || r.uid) + '</div>'
+          + '<div class="access-meta">' + Object.entries(r.apps || {}).map(([k, n]) => esc(appName[k] || k) + ': ' + Number(n).toLocaleString('es-AR')).join(' · ')
+          + ' · Clave: ' + Object.entries(r.claves || {}).map(([k, n]) => '…' + esc(k) + ' (' + Number(n).toLocaleString('es-AR') + ')').join(', ')
+          + (r.updated ? ' · Anotado: ' + esc(fmtTs(r.updated)) : '') + '</div></div>'
+          + '<span class="badge aprobado">' + Number(r.count || 0).toLocaleString('es-AR') + '</span></div></article>').join('');
+    }, e => { box.innerHTML = '<div class="empty">No se pudo leer: ' + esc(friendly(e)) + ' (¿publicaste las reglas nuevas de Firestore?)</div>'; });
+  };
+  input.onchange = listen;
+  listen();
+}
 function startOwnerPanel() {
+  startApiUsePanel();
   unsubUsers = onSnapshot(collection(db, 'acceso_tanoapp'), snap => {
     const rank = { pendiente: 0, aprobado: 1, bloqueado: 2 };
     const users = snap.docs.map(d => ({ uid: d.id, ...d.data() }))

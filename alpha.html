@@ -469,7 +469,7 @@ async function api(path,params){
       if(netFails<=4){say(`La API no respondió (${what}). Reintento en ${netFails*10} s…`);await sleep(netFails*10000);continue}
       const er=new Error('No se pudo conectar con API-Football ('+what+'). Revisá la conexión y volvé a tocar Actualizar todo: lo ya bajado queda guardado.');er.fatal=true;throw er;
     }
-    if(path!=='/status')state.calls++;
+    if(path!=='/status'){state.calls++;try{window.tanoCountApi&&window.tanoCountApi(state.key)}catch(e){}}
     if(res.status===429){say('La API pidió esperar un poco (límite por minuto)…');await sleep(15000);continue}
     if(res.status>=500){await sleep(5000);continue}
     let j;try{j=await res.json()}catch(e){throw new Error('Respuesta inválida de la API (HTTP '+res.status+').')}
@@ -2069,8 +2069,10 @@ checkQuota();
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { startApiUsage } from "./uso-api.js";
 const cfg={apiKey:"AIzaSyDL0LkEW3IAdBZcOARMjzAewgB_lh1edjI",authDomain:"appuestasclaude.firebaseapp.com",projectId:"appuestasclaude",storageBucket:"appuestasclaude.firebasestorage.app",messagingSenderId:"1020425173076",appId:"1:1020425173076:web:4ca5edab0f72c92a7ad5c1"};
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
+startApiUsage(db,auth,'alpha');
 provider.setCustomParameters({prompt:'select_account'});
 const $=s=>document.querySelector(s);
 // Invitado: lee la carpeta del dueño (C.dataUid); el dueño, la suya.
