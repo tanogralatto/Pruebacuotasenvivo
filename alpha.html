@@ -29,6 +29,7 @@ h2{font-size:15px;color:var(--muted);margin:22px 0 8px;font-weight:700}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .seg button{background:none;border:0;padding:8px 16px;color:var(--muted);font-weight:600}
 .seg button.on{background:var(--acc);color:#04211e}
+#mktOk{flex-wrap:wrap}
 .btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-weight:600}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:#04211e}
 .btn:disabled{opacity:.5;cursor:default}
@@ -296,6 +297,7 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
   <div class="filters box">
     <div class="tools" style="margin-top:0"><input type="search" id="q" placeholder="Buscar equipo"><select id="lg"><option value="">Todas las ligas</option></select></div>
     <label class="small row" style="gap:6px;margin:2px 0 8px"><input type="checkbox" id="aOk" style="accent-color:var(--acc)"> <b>Solo mercados con ✓</b>&nbsp;(probados en esa liga en Precisión)</label>
+    <div class="fl"><div class="fl-h"><b>Ligas con ✓ en</b> <button class="info" data-tip="mktok">i</button></div><div class="seg" id="mktOk"><button data-mkt="">Todas</button><button data-mkt="goals">Goles</button><button data-mkt="btts">Ambos marcan</button><button data-mkt="team">Goles por equipo</button><button data-mkt="corners">Córners</button><button data-mkt="res">1X2</button></div></div>
     <div class="fl" style="margin-top:4px"><div class="fl-h"><b>Ordenar</b></div><div class="seg" id="aSort"><button data-asort="league">Por liga y hora</button><button data-asort="score">Mayor score</button></div></div>
     <div class="fl"><div class="fl-h"><b>Match score mínimo</b> <span class="mono" id="aMinVal">0+</span></div><input type="range" id="aMin" min="0" max="95" step="5" value="0"></div>
     <div class="fl"><div class="fl-h"><b>Horario</b> <button class="info" data-tip="slot">i</button></div><div class="seg" id="slot"><button data-slot="all">Todo el día</button><button data-slot="m">Mañana</button><button data-slot="t">Tarde</button><button data-slot="n">Noche</button></div></div>
@@ -1478,6 +1480,8 @@ async function addBet(fid,k){
   alert('Anotada en Mis apuestas.');
 }
 let showAllLeagues=false;
+const MKT_KEYS=['goals','btts','team','corners','res'];
+const mktSel=()=>{const v=LS.get('tg:mktok',[]);return Array.isArray(v)?v.filter(k=>MKT_KEYS.includes(k)):[]};
 async function getDay(d){if(!state.days[d])state.days[d]=await DB.get('day:'+d);return state.days[d]}
 // Cuota de tus casas para una fila (Bet365, 1xBet, Betano…). Los análisis viejos no la guardan: se busca en las ofertas.
 const myRe=()=>new RegExp(LS.get('tg:checkbooks','bet365|1xbet|betano'),'i');
@@ -1535,6 +1539,10 @@ async function renderDash(){
   $('#aOk').checked=onlyOk();
   $('#aMin').value=String(minE);$('#aMinVal').textContent=minE+'+';
   $$('#slot [data-slot]').forEach(b=>b.classList.toggle('on',b.dataset.slot===slot));
+  const mkSel=mktSel();
+  $$('#mktOk [data-mkt]').forEach(b=>b.classList.toggle('on',b.dataset.mkt?mkSel.includes(b.dataset.mkt):!mkSel.length));
+  // Ligas con ✓ (como en Precisión) en ALGUNO de los mercados elegidos.
+  const mktOk=a=>{if(!mkSel.length)return true;const st=leagueStatus(a.lid);return mkSel.some(k=>st[k]==='g')};
   const lgs=new Map();for(const a of fx)lgs.set(String(a.lid),a.lc+' · '+a.ln);
   $('#lg').innerHTML='<option value="">Todas las ligas</option>'+[...lgs].sort((x,y)=>x[1].localeCompare(y[1])).map(([id,n])=>`<option value="${id}"${id===lgSel?' selected':''}>${esc(n)}</option>`).join('');
   const inSlot=a=>{if(slot==='all')return true;const h=Number(fmtTime(a.iso).slice(0,2));return slot==='m'?h<12:slot==='t'?h>=12&&h<19:h>=19};
@@ -1543,6 +1551,7 @@ async function renderDash(){
     if(q&&!(a.hn+' '+a.an+' '+a.ln+' '+a.lc).toLowerCase().includes(q))continue;
     if(lgSel&&String(a.lid)!==lgSel)continue;
     if(!inSlot(a))continue;
+    if(!mktOk(a))continue;
     const e=a.lam||a.clam?aEdge(aRows(a)):0;
     if(minE&&e<minE)continue;
     if(!groups.has(a.lid))groups.set(a.lid,{first:a.ts,list:[]});
@@ -1910,6 +1919,7 @@ const TIPS={
   maxodds:['Cuota máxima','Oculta las apuestas con cuotas más altas. Las cuotas altas tienen más varianza (se pierden seguido) y su precio justo es menos preciso. Para empezar, 3,00.'],
   sharp:['Solo con precio de Pinnacle','El precio justo sale de Pinnacle, la casa más afilada. Sin esto, cuando Pinnacle no tiene ese mercado, se usa la mediana de las otras casas, que es menos confiable.'],
   clv:['CLV (le ganás al cierre)','Compara tu cuota con el precio justo de Pinnacle justo antes del partido. Si apostás seguido a mejor cuota que el cierre, a la larga ganás; si no, a la larga perdés. Se nota en 50 a 100 apuestas, mucho antes que la ganancia. «Provisorio» = todavía no es la última lectura.'],
+  mktok:['Ligas con ✓ en','Muestra solo los partidos de ligas donde el modelo tiene ✓ (verde en Precisión) en ese mercado. Si marcás varios, alcanza con que tenga ✓ en alguno. «Todas» saca el filtro.'],
   slot:['Horario','Hora de Argentina. Mañana: hasta las 11:59. Tarde: de 12:00 a 18:59. Noche: desde las 19:00.'],
   check:['Para revisar en tu casa','Líneas donde Bet365, 1xBet o Betano, según las cuotas que trae API-Football, pagan más que el precio justo de Pinnacle (sin margen) más 2%. API-Football trae la versión internacional de cada casa y se actualiza cada pocas horas: la cuota de tu casa puede ser otra. Usalo como pista: abrí tu casa y apostá solo si paga la Mínima (precio justo de Pinnacle + 2%) o más. Solo cuotas de 1,30 a 2,50, ordenadas para que arriba queden las de cuota baja con ventaja clara. Se descartan las diferencias de más de 15%, que casi siempre son cuotas viejas.'],
   best:['Lo mejor del día','Las 10 líneas donde el modelo ve más probabilidad que Pinnacle, solo en ligas donde el modelo acierta en ese mercado (✓ en Precisión) y con diferencias de 2 a 10 puntos (más de 10 casi siempre es error del modelo). A la derecha: la diferencia y la cuota Mínima que tiene que pagar tu casa.'],
@@ -1991,6 +2001,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(
 $('#aOk').addEventListener('change',e=>{LS.set('tg:aok',e.target.checked);LS.set('tg:cfgts',Date.now());showAllLeagues=false;renderDash()});
 $('#aSort').addEventListener('click',e=>{const b=e.target.closest('[data-asort]');if(!b)return;LS.set('tg:asort',b.dataset.asort);showAllLeagues=false;renderDash()});
 $('#aMin').addEventListener('input',e=>{LS.set('tg:amin',Number(e.target.value));showAllLeagues=false;renderDash()});
+$('#mktOk').addEventListener('click',e=>{const b=e.target.closest('[data-mkt]');if(!b)return;const k=b.dataset.mkt;let s=mktSel();
+  s=!k?[]:s.includes(k)?s.filter(x=>x!==k):[...s,k];LS.set('tg:mktok',s);showAllLeagues=false;renderDash()});
 $('#slot').addEventListener('click',e=>{const b=e.target.closest('[data-slot]');if(!b)return;LS.set('tg:slot',b.dataset.slot);showAllLeagues=false;renderDash()});
 $('#guide').addEventListener('toggle',()=>LS.set('tg:guide',$('#guide').open));
 if(LS.get('tg:guide',true))$('#guide').open=true;
