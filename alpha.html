@@ -229,6 +229,12 @@ details.guide p,details.guide li{font-size:14px;color:#c7d0d9}
 details.guide table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
 details.guide th,details.guide td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
 details.guide th{color:var(--muted);font-weight:600}
+/* Modo invitado (app compartida, solo lectura) */
+body.guest [data-nav="bets"],body.guest #btnUpdate,body.guest #btnAOdds,body.guest #btnOdds,body.guest #btnSealNow,body.guest [data-add],body.guest #quotaBar,body.guest .owner-only{display:none!important}
+body.guest [data-star]{pointer-events:none}
+body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important}
+.guest-note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:6px 0;font-size:13px;color:var(--muted)}
+#shareMails{width:100%;min-height:110px;background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit;font-size:14px}
 </style>
 </head>
 <body>
@@ -256,7 +262,13 @@ details.guide th{color:var(--muted);font-weight:600}
     <h3>Qué hace</h3>
     <p>Como Alpha: para cada partido, <b>nuestro modelo</b> calcula la probabilidad de cada mercado y su <b>cuota justa</b>. La compara con la <b>cuota de tus casas</b> (Bet365, 1xBet o Betano, según API-Football). Si la casa paga más que la cuota justa, hay valor (<b>EV</b> positivo).</p>
     <h3>Uso diario</h3>
-    <ol>
+    <ol class="guest-only">
+      <li>Los datos se actualizan una vez por día (y a veces más). Arriba dice de cuándo son.</li>
+      <li>Mirá la lista: el número de cada partido es el <b>Match score</b> (0-100). Verde = buenas oportunidades.</li>
+      <li>Abrí un partido. En cada grupo, la primera fila es la de mayor <b>Score</b>. Elegí <b>una sola apuesta por partido</b>.</li>
+      <li>Antes de apostar, fijate que tu casa pague la <b>Cuota</b> de la app o más: las cuotas pueden haber cambiado desde la última actualización.</li>
+    </ol>
+    <ol class="owner-only">
       <li>Una vez por día, a la mañana, tocá <b>↻ Actualizar todo</b>. Si querés cuotas frescas más tarde, usá <b>↻ Actualizar cuotas</b> (más barato) o, para un solo partido, <b>↻ Cuotas de este partido</b> en su ficha (1 consulta).</li>
       <li>Mirá la lista: el número de cada partido es el <b>Match score</b> (0-100). Verde = buenas oportunidades.</li>
       <li>Abrí un partido. En cada grupo, la primera fila es la de mayor <b>Score</b>. Elegí <b>una sola apuesta por partido</b>.</li>
@@ -278,6 +290,7 @@ details.guide th{color:var(--muted);font-weight:600}
   </div>
   <div class="upd"><span class="small" id="updWhen">Todavía no se actualizó.</span><button class="info" data-tip="update">i</button><button class="btn pri" id="btnUpdate">↻ Actualizar todo</button><button class="btn" id="btnAOdds">↻ Actualizar cuotas</button></div>
   <div class="small" id="syncLine" style="margin:-4px 0 6px"></div>
+  <div class="guest-note guest-only">👀 Estás viendo la app compartida (solo lectura). Las cuotas son de la última actualización; pueden haber cambiado: confirmá siempre en tu casa antes de apostar.</div>
   <div class="prog hidden" id="uProg"><i></i></div>
   <div class="status" id="uStatus"></div>
   <div class="filters box">
@@ -335,9 +348,16 @@ details.guide th{color:var(--muted);font-weight:600}
 <!-- ============ AJUSTES ============ -->
 <section id="v-cfg" class="hidden">
   <h1>Ajustes</h1>
+  <div class="guest-only">
+    <p>Entraste como <b id="guestEmail"></b> a la app compartida, en modo <b>solo lectura</b>: ves los partidos, las fichas, Precisión y las lecturas selladas, pero no podés cambiar nada ni actualizar. Los filtros de la lista sí los podés usar: quedan solo en este dispositivo.</p>
+    <div class="row" style="margin-top:8px"><button class="btn" id="btnLogout2">Salir de la cuenta</button></div>
+  </div>
+  <div class="owner-only">
+  <p class="small" id="shareHint">¿Te compartieron la app? Tocá <b>☁︎ Entrar</b> arriba con tu cuenta de Google.</p>
   <h2>Clave de API-Football</h2>
   <div class="field"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu clave (x-apisports-key)"><button class="btn pri" id="btnKey">Guardar y probar</button></div>
   <div class="status" id="kStatus"></div>
+  <p class="small">¿Buscás las pestañas de mercados y la comparación con Pinnacle? Están en la <a href="./goles.html">app completa</a> (usa los mismos datos).</p>
   <h2>Banca</h2>
   <div class="field"><label class="small" for="bank" style="align-self:center">Tu banca para apostar ($): con ella se calcula el monto sugerido</label><input id="bank" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000" style="max-width:160px"></div>
   <h2>Estadísticas (xG y córners)</h2>
@@ -350,9 +370,16 @@ details.guide th{color:var(--muted);font-weight:600}
   <h2>Sincronización</h2>
   <div class="small" id="cloudInfo">Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.</div>
   <div class="row" style="margin-top:8px"><button class="btn" id="btnCloudPush">Subir ahora a mi cuenta</button><button class="btn" id="btnCloudPull">Bajar lo último de mi cuenta</button><button class="btn hidden" id="btnLogout">Salir de la cuenta</button></div>
+  <div class="share-only">
+    <h2>Compartir</h2>
+    <p class="small">Mails de Google (uno por renglón) que pueden ver tu app en <b>solo lectura</b>. Ven partidos, fichas, Precisión y lecturas selladas; <b>no</b> ven Mis apuestas, no pueden cambiar nada y no gastan tus consultas. Para sacar a alguien, borrá su mail y guardá.</p>
+    <textarea id="shareMails" spellcheck="false" autocapitalize="off" placeholder="amigo@gmail.com"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn pri" id="btnShareSave">Guardar lista</button><span class="small" id="shareMsg"></span></div>
+  </div>
   <h2>Datos guardados</h2>
   <div class="small" id="dbInfo">—</div>
   <div class="row" style="margin-top:8px"><button class="btn" id="btnWipe">Borrar todos los datos guardados</button></div>
+  </div>
 </section>
 
 </main>
@@ -1078,6 +1105,14 @@ function parseKey(k){
   return null;
 }
 const r3=x=>Number.isFinite(x)?Math.round(x*1000)/1000:null;
+// Invitado = entró un amigo de la lista de «Compartir»: ve los datos del dueño en solo lectura.
+const isGuest=()=>!!(window.tgCloud&&window.tgCloud.guest);
+window.tgSetGuest=(g,email)=>{
+  document.body.classList.toggle('guest',!!g);
+  const e=$('#guestEmail');if(e)e.textContent=email||'';
+  const r=route();
+  if(g&&(r.v==='bets'||r.v==='cfg'))location.hash='#/hoy';
+};
 // Cuota de tus casas de una línea, para subirla a la cuenta: la guardada o, si no hay, la que se encuentre entre
 // la mejor cuota y las ofertas. 0 = ninguna de tus casas la ofrece.
 function packMy(r){
@@ -1098,6 +1133,7 @@ function mergeReg(local,cloud){
 }
 async function cloudPush(){
   const C=window.tgCloud;
+  if(isGuest())return; // invitado: solo lectura, nunca sube nada
   if(!C||!C.user){syncLine('☁︎ No estás conectado: lo actualizado quedó solo en este dispositivo. Tocá ☁︎ Entrar arriba.',true);return}
   say('Guardando en tu cuenta…');
   const days={};for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)days[d]=packDay(x)}
@@ -1118,7 +1154,7 @@ async function cloudPull(force){
   if(got.prec){state.prec=got.prec;await DB.set('prec',got.prec)}
   if(got.fav)LS.set('tg:fav',got.fav);
   // Ajustes que cambian las recomendaciones: los del último dispositivo que subió.
-  if(got.cfg&&got.cfg.ts>Number(LS.get('tg:cfgts',0))){LS.set('tg:cfgts',got.cfg.ts);if(got.cfg.bank!=null)LS.set('tg:bank',got.cfg.bank);if(got.cfg.aok!=null)LS.set('tg:aok',got.cfg.aok);if(got.cfg.checkbooks)LS.set('tg:checkbooks',got.cfg.checkbooks)}
+  if(got.cfg&&got.cfg.ts>Number(LS.get('tg:cfgts',0))){LS.set('tg:cfgts',got.cfg.ts);if(got.cfg.bank!=null)LS.set('tg:bank',got.cfg.bank);if(got.cfg.aok!=null&&!isGuest())LS.set('tg:aok',got.cfg.aok);if(got.cfg.checkbooks)LS.set('tg:checkbooks',got.cfg.checkbooks)}
   // Lecturas selladas: se juntan (gana la que ya está liquidada).
   if(got.areg){const loc=state.areg||(await DB.get('areg'))||{};for(const [k,e] of Object.entries(got.areg))if(!loc[k]||(!loc[k].res&&e.res))loc[k]=e;state.areg=loc;await DB.set('areg',loc)}
   if(got.bf)LS.set('tg:bf',Object.assign({},LS.get('tg:bf',{}),got.bf));
@@ -1127,7 +1163,7 @@ async function cloudPull(force){
 }
 // Apuestas: se juntan las de la cuenta con las de este dispositivo (por id; gana la liquidada o la más nueva).
 async function cloudMergeBets(){
-  const C=window.tgCloud;if(!C||!C.user)return;
+  const C=window.tgCloud;if(!C||!C.user||isGuest())return;
   try{
     const cloud=await C.pullBets();if(!Array.isArray(cloud))return;
     const by=new Map(BETS.map(b=>[b.id,b]));
@@ -1160,7 +1196,9 @@ window.tgOnLogin=async()=>{
     const C=window.tgCloud,meta=C&&C.user?await C.peek():null;
     const changed=await cloudPull();
     if(changed)rerender();
-    if(!meta)syncLine('☁︎ Tu cuenta todavía no tiene datos guardados. Actualizá en algún dispositivo con ☁︎ conectado, o usá ⚙︎ → «Subir ahora a mi cuenta».',true);
+    if(!meta&&isGuest())syncLine('👀 Todavía no hay datos compartidos.',true);
+    else if(!meta)syncLine('☁︎ Tu cuenta todavía no tiene datos guardados. Actualizá en algún dispositivo con ☁︎ conectado, o usá ⚙︎ → «Subir ahora a mi cuenta».',true);
+    else if(isGuest())syncLine('👀 App compartida · datos actualizados '+ago(meta.updated||meta.ts||0)+(changed?' (bajados recién)':''));
     else syncLine('☁︎ Al día con tu cuenta · última actualización guardada '+ago(meta.updated||meta.ts||0)+(changed?' (bajada recién)':''));
   }catch(e){syncLine('☁︎ No se pudo leer tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
 };
@@ -1895,7 +1933,7 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('#tip'))tip.classList.add('hidden');
 },true);
 document.addEventListener('click',e=>{
-  const s=e.target.closest('[data-star]');if(!s)return;
+  const s=e.target.closest('[data-star]');if(!s||isGuest())return;
   e.preventDefault();const id=s.dataset.star,f=favs();
   if(f[id])delete f[id];else f[id]=1;
   LS.set('tg:fav',f);if(window.tgCloud&&window.tgCloud.user)window.tgCloud.pushFav(f).catch(()=>{});const r=route();if(r.v==='match')renderMatch(r.id);else renderDash();
@@ -1913,6 +1951,7 @@ function route(){
 }
 function go(){
   const r=route();
+  if(isGuest()&&r.v==='bets'){location.hash='#/hoy';return}
   $$('main>section').forEach(s=>s.classList.add('hidden'));
   const key=r.v==='match'?'dash':r.v==='mk'?'mk:'+r.tab:r.v;
   $$('nav a, #mkbar a').forEach(a=>a.classList.toggle('on',a.dataset.nav===key||(a.dataset.nav==='mk'&&r.v==='mk')));
@@ -1993,7 +2032,19 @@ const cfg={apiKey:"AIzaSyDL0LkEW3IAdBZcOARMjzAewgB_lh1edjI",authDomain:"appuesta
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:'select_account'});
 const $=s=>document.querySelector(s);
-const ref=id=>doc(db,'tanoapp_v2_datos',auth.currentUser.uid,'goles',id);
+// Invitado: lee la carpeta del dueño (C.dataUid); el dueño, la suya.
+const ref=id=>doc(db,'tanoapp_v2_datos',C.dataUid||auth.currentUser.uid,'goles',id);
+const OWNER_EMAIL='tanogralatto@gmail.com';
+const SHARE=doc(db,'tanoapp_alpha_compartir','lista');
+const cleanMails=t=>[...new Set(String(t||'').toLowerCase().split(/[\s,;]+/).map(x=>x.trim()).filter(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)&&x!==OWNER_EMAIL))];
+// ¿Este usuario está en la lista de «Compartir»? Si no está, Firebase no deja leer la lista (y sigue como siempre).
+async function shareInfo(u){
+  const em=(u.email||'').toLowerCase();
+  if(!em||em===OWNER_EMAIL)return null;
+  try{const d=await getDoc(SHARE);if(!d.exists())return null;const x=d.data();
+    if(x.owner&&x.owner!==u.uid&&Array.isArray(x.mails)&&x.mails.includes(em))return x.owner}catch(e){}
+  return null;
+}
 const MAXC=700000; // cada documento guarda texto; se parte en pedazos para no pasar el límite de Firestore
 function friendly(e){
   const c=(e&&e.code)||'';
@@ -2029,8 +2080,9 @@ async function dropText(id,info){
   if(!info||typeof info!=='object')return;
   for(let k=0;k<info.n;k+=10){const b=writeBatch(db);for(let j=k;j<Math.min(info.n,k+10);j++)b.delete(ref(partKey(id,info,j)));await b.commit()}
 }
-const C=window.tgCloud={user:null,
+const C=window.tgCloud={user:null,guest:false,dataUid:null,
   async pushAll({bets,xg,days,prec,reg,fav,updated,bf,areg,cfg}){
+    if(C.guest)return;
     const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
     const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
     for(const [d,x] of Object.entries(days))meta.days[d]=await putText('day_'+d,x);
@@ -2076,6 +2128,7 @@ const C=window.tgCloud={user:null,
   },
   async peek(){const m=await getDoc(ref('meta'));return m.exists()?JSON.parse(m.data().v):null},
   async pullBets(){
+    if(C.guest)return null;
     const m=await getDoc(ref('meta'));if(!m.exists())return null;
     const meta=JSON.parse(m.data().v);return meta.bets?await getText('bets',meta.bets):null;
   },
@@ -2092,16 +2145,24 @@ const C=window.tgCloud={user:null,
     for(const [mo,n] of Object.entries(meta.regMonths||{})){const x=await getText('reg_'+mo,n);if(x)Object.assign(out,x)}
     return out;
   },
-  async pushFav(fav){await setDoc(ref('fav'),{v:JSON.stringify(fav||{}),ts:Date.now()})}
+  async pushFav(fav){if(C.guest)return;await setDoc(ref('fav'),{v:JSON.stringify(fav||{}),ts:Date.now()})}
 };
 function status(msg){
   const u=auth.currentUser,b=$('#cloudBtn'),i=$('#cloudInfo');
-  b.textContent=u?'☁︎ '+(u.email||'').split('@')[0]:'☁︎ Entrar';
+  b.textContent=u?(C.guest?'👀 ':'☁︎ ')+(u.email||'').split('@')[0]:'☁︎ Entrar';
+  const sh=$('#shareHint');if(sh)sh.classList.toggle('hidden',!!u);
   $('#btnLogout').classList.toggle('hidden',!u);
+  if(i&&C.guest)return;
   if(i)i.textContent=msg||(u?'Sincronizado con '+u.email+'. Lo que actualices en un dispositivo aparece en los demás.':'Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.');
 }
 onAuthStateChanged(auth,async u=>{
-  C.user=u||null;status();
+  C.user=u||null;C.guest=false;C.dataUid=u?u.uid:null;
+  if(u){const owner=await shareInfo(u);if(owner){C.guest=true;C.dataUid=owner}}
+  const isOwner=!!(u&&(u.email||'').toLowerCase()===OWNER_EMAIL&&u.emailVerified);
+  document.body.classList.toggle('owner',isOwner);
+  window.tgSetGuest&&window.tgSetGuest(C.guest,u&&u.email);
+  if(isOwner)loadShare();
+  status();
   if(u&&window.tgOnLogin){try{await window.tgOnLogin()}catch(e){status(friendly(e))}}
 });
 getRedirectResult(auth).catch(e=>status(friendly(e)));
@@ -2116,6 +2177,22 @@ $('#cloudBtn').addEventListener('click',async()=>{
   }
 });
 $('#btnLogout').addEventListener('click',()=>signOut(auth));
+$('#btnLogout2').addEventListener('click',()=>signOut(auth));
+// «Compartir» (solo el dueño): guarda la lista de mails que pueden ver la app en solo lectura.
+async function loadShare(){
+  const m=$('#shareMsg');
+  try{const d=await getDoc(SHARE);$('#shareMails').value=d.exists()?(d.data().mails||[]).join('\n'):'';m.textContent=''}
+  catch(e){m.textContent='No se pudo leer la lista: '+friendly(e)}
+}
+$('#btnShareSave').addEventListener('click',async()=>{
+  const m=$('#shareMsg'),u=auth.currentUser;
+  if(!u||(u.email||'').toLowerCase()!==OWNER_EMAIL){m.textContent='Solo el dueño puede cambiar la lista.';return}
+  const mails=cleanMails($('#shareMails').value);
+  m.textContent='Guardando…';
+  try{await setDoc(SHARE,{owner:u.uid,mails,ts:Date.now()});$('#shareMails').value=mails.join('\n');
+    m.textContent=mails.length?`Listo: ${mails.length} ${mails.length===1?'persona puede':'personas pueden'} ver tu app.`:'Listo: no la compartís con nadie.'}
+  catch(e){m.textContent='No se pudo guardar: '+friendly(e)+(/permission/i.test((e&&e.message)||'')?' (¿pegaste las reglas nuevas en Firebase?)':'')}
+});
 </script>
 </body>
 </html>

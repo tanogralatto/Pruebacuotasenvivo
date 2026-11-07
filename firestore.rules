@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Alpha compartida: amigos de la lista leen los datos del dueño (solo lectura, sin "Mis apuestas").
+    function alphaLista() {
+      return get(/databases/$(database)/documents/tanoapp_alpha_compartir/lista).data;
+    }
+    function alphaInvitado(uid) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/tanoapp_alpha_compartir/lista)
+        && alphaLista().owner == uid
+        && request.auth.token.email.lower() in alphaLista().mails;
+    }
+
+    match /tanoapp_v2_datos/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      match /registro/{id} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+      match /goles/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+        // Invitados: solo leer, y nunca los documentos de las apuestas (bets~… / bets@…).
+        allow read: if alphaInvitado(uid) && !doc.matches('bets([@~].*)?');
+      }
+    }
+    function tanoOwner() {
+      return request.auth != null
+        && request.auth.token.email == 'tanogralatto@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    // Lista de mails con permiso de ver Alpha. La edita solo el dueño desde ⚙︎ → Compartir.
+    match /tanoapp_alpha_compartir/lista {
+      allow read: if tanoOwner()
+        || (request.auth != null
+            && request.auth.token.email_verified == true
+            && request.auth.token.email.lower() in resource.data.mails);
+      allow write: if tanoOwner()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.mails is list
+        && request.resource.data.mails.size() <= 50;
+    }
+
+    function tanoAprobado() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/acceso_tanoapp/$(request.auth.uid))
+        && get(/databases/$(database)/documents/acceso_tanoapp/$(request.auth.uid)).data.estado == 'aprobado';
+    }
+
+    match /acceso_tanoapp/{uid} {
+      allow read: if tanoOwner()
+        || (request.auth != null && request.auth.uid == uid);
+
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.email == request.auth.token.email;
+
+      allow update: if tanoOwner()
+        || (request.auth != null
+            && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['ultimoIngreso', 'nombre']));
+
+      allow delete: if tanoOwner();
+    }
+
+    match /tanoapp_favoritos/{favId} {
+      allow read, write: if tanoOwner() || tanoAprobado();
+    }
+
+    match /tanoapp_telegram_config/global {
+      allow read, write: if tanoOwner();
+    }
+
+    match /tanoapp_telegram_alerts/{alertId} {
+      // Consultar el historial.
+      allow read: if tanoOwner() || tanoAprobado();
+
+      // Permitir actualizar exclusivamente los datos de la apuesta.
+      allow update: if (tanoOwner() || tanoAprobado())
+        && request.resource.data.diff(resource.data)
+             .affectedKeys()
+             .hasOnly([
+               'entry_odd',
+               'stake_units',
+               'stake_unit_value_ars',
+               'bet_model_version'
+             ])
+        && request.resource.data.entry_odd is number
+        && request.resource.data.entry_odd > 1
+        && request.resource.data.stake_units == 1
+        && request.resource.data.stake_unit_value_ars is number
+        && request.resource.data.stake_unit_value_ars > 0
+        && request.resource.data.bet_model_version == 2;
+
+      // Reasignar alertas VIP a una estrategia (AEG o dataGol). Solo el dueño.
+      allow update: if tanoOwner()
+        && resource.data.favorite_group == 'vip'
+        && request.resource.data.diff(resource.data)
+             .affectedKeys()
+             .hasOnly(['vip_strategy', 'vip_strategy_reassigned_at'])
+        && request.resource.data.vip_strategy in ['aeg', 'datagol']
+        && request.resource.data.vip_strategy_reassigned_at == request.time;
+    }
+
+  }
+}
