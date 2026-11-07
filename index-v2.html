@@ -519,6 +519,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <label for="market">Mercado</label>
       <div class="market-switch" role="group" aria-label="Elegir mercado">
         <button type="button" class="market-option" data-market="ht05" aria-pressed="true"><span class="market-main">+0,5 1T</span><span class="market-help">Gol antes del descanso</span></button>
+        <button type="button" class="market-option" data-market="over25" aria-pressed="false"><span class="market-main">+2,5 goles</span><span class="market-help">En el partido</span></button>
       </div>
     </div>
     <div class="field" style="width:180px">
@@ -718,6 +719,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <summary>Todos los días, paso a paso</summary>
       <p><b>1. Buscá los partidos de hoy</b> en el <b>Escáner</b>:</p>
       <ol>
+        <li>En <b>2. Partidos y ligas</b>, elegí el mercado: <b>+0,5 1T</b> (al menos un gol antes del descanso) o <b>+2,5 goles</b> (3 goles o más en el partido).</li>
         <li>Elegí la fecha y tocá <b>«Buscar partidos»</b>.</li>
         <li>Marcá las ligas que te interesan («Todas» y «Ninguna» marcan o desmarcan de una vez).</li>
         <li>Tocá <b>«Analizar»</b>.</li>
@@ -1784,7 +1786,9 @@ function copyList(){
 
 /* ---- eventos ---- */
 $('#date').value=new Date().toLocaleDateString('en-CA',{timeZone:TZ});
-state.market='ht05'; // esta app es solo la estrategia +0,5 1T
+// Mercados de esta app: +0,5 1T y +2,5 goles del partido completo.
+state.market=LS.get('o05:market','ht05');
+if(state.market!=='ht05'&&state.market!=='over25') state.market='ht05';
 function updateMarketUI(){
   document.querySelectorAll('.market-option').forEach(button=>{
     const active=button.dataset.market===state.market;
