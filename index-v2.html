@@ -704,78 +704,31 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
 </div>
 <div id="helpView" class="app-view hidden" role="tabpanel" aria-labelledby="tabHelp">
   <section class="panel help" aria-labelledby="helpTitle">
-    <h2 id="helpTitle">Cómo usar TANOapp</h2>
-    <p class="small">Tocá cada parte para abrirla o cerrarla.</p>
+    <h2 id="helpTitle">💡 Cómo ahorrar consultas de API-Football</h2>
+    <p>Tenemos <b>7.500 consultas por día entre todos</b>, y el programa de alertas ya usa unas 1.500–2.000. Si se terminan, la app deja de traer datos y también pueden dejar de salir las alertas hasta el día siguiente.</p>
 
     <details class="routine" open>
-      <summary>¿Qué hace la app?</summary>
-      <p>Te ayuda a encontrar partidos donde una cuota <b>paga más de lo que debería</b>. Para cada partido calcula la probabilidad de que pase algo (por ejemplo, que haya gol en el primer tiempo) y la compara con lo que pagan las casas de apuestas.</p>
-      <p>No adivina resultados: busca apuestas que, repetidas muchas veces, dejen ganancia. Un partido suelto se puede perder aunque la apuesta haya sido buena.</p>
-    </details>
-
-    <details class="routine">
-      <summary>La primera vez (se hace una sola vez)</summary>
+      <summary>📊 En el Escáner</summary>
       <ol>
-        <li><b>Entrá con tu cuenta de Google.</b> Si aparece «Acceso pendiente», esperá a que el dueño te apruebe: la app se abre sola. Abrí el link desde <b>Safari o Chrome</b>, no desde WhatsApp ni Instagram (ahí el login de Google no funciona).</li>
-        <li><b>Cargá tu clave de API-Football.</b> En el <b>Escáner</b>, sección <b>1. Conexión</b>: pegá tu clave y tocá <b>«Guardar y probar»</b>. La app saca de ahí los partidos y las cuotas.</li>
-        <li><b>Cargá tu banca.</b> En el <b>Escáner</b>, sección <b>1. Conexión</b>, escribí en «Tu banca para apostar ($)» cuánta plata tenés para apostar. Con eso la app te dice cuánto apostar en cada partido.</li>
+        <li><b>Marcá solo las ligas que te interesan.</b> Cada partido analizado cuesta unas 3 consultas, más unas 3–10 por liga. Analizar 100 partidos son ~400 consultas; analizar 20 son ~80.</li>
+        <li><b>No marques «Todas».</b> Es lo que más gasta.</li>
+        <li><b>Repetir el análisis en el mismo teléfono sale casi gratis</b> por 12 horas, porque guarda lo que ya bajó. En otro teléfono o en otro navegador lo baja todo de nuevo: usá siempre el mismo.</li>
+        <li><b>Analizá una vez por día</b>, cuando ya sepas qué ligas querés mirar, en vez de probar muchas combinaciones distintas.</li>
+        <li><b>«Buscar partidos»</b> gasta 1 consulta. No hace falta tocarlo seguido: con una vez por día alcanza.</li>
       </ol>
     </details>
 
-    <details class="routine">
-      <summary>Todos los días, paso a paso</summary>
-      <p><b>1. Buscá los partidos de hoy</b> en el <b>Escáner</b>:</p>
-      <ol>
-        <li>En <b>2. Partidos y ligas</b>, elegí el mercado: <b>+0,5 1T</b> (al menos un gol antes del descanso) o <b>+2,5 goles</b> (3 goles o más en el partido).</li>
-        <li>Elegí la fecha y tocá <b>«Buscar partidos»</b>.</li>
-        <li>Marcá las ligas que te interesan («Todas» y «Ninguna» marcan o desmarcan de una vez).</li>
-        <li>Tocá <b>«Analizar»</b>.</li>
-      </ol>
-      <p><b>2. Leé cada partido</b> en <b>4. Resultados</b> (la parte siguiente explica cómo).</p>
-      <p><b>3. Opcional:</b> tocá la <b>estrella ☆</b> para guardarlo en <b>Favoritos</b><span class="vip-only"> o <b>Favoritos VIP</b> (estos últimos son los de las alertas de Telegram)</span>.</p>
+    <details class="routine" open>
+      <summary>⚽ En Vivo</summary>
+      <ul>
+        <li><b>«Actualizar partidos de 1T»</b> gasta 1 consulta.</li>
+        <li>Cada <b>«consultar cuotas»</b> gasta 1 por partido. Tocalo solo cuando lo vayas a usar.</li>
+      </ul>
     </details>
 
-    <details class="routine">
-      <summary>Cómo leer la tarjeta de un partido</summary>
-      <p><b>Los 7 recuadros de arriba</b> muestran en qué porcentaje de partidos recientes pasó lo que buscás: últimos del local, del visitante y enfrentamientos entre ellos (H2H). Verde = alto, rojo = bajo. Son contexto.</p>
-      <p><b>El recuadro «Modelo propio»</b> es el cálculo de la app. Empezá por la <b>frase de color de arriba</b>:</p>
-      <ul>
-        <li>🟢 <b>«Mirar con atención»</b>: la cuota paga más de lo justo. Es candidato.</li>
-        <li>🟡 <b>«Sin ventaja clara»</b>: paga casi lo justo. No vale la pena.</li>
-        <li>🔴 <b>«No se ve ventaja»</b>: paga menos de lo justo. No apostar.</li>
-      </ul>
-      <p><b>Los números para decidir:</b></p>
-      <ul>
-        <li><b>«EV vs mercado (sin margen)»</b>: <b>el más confiable</b>. Verde = la cuota paga más que el precio justo según las propias casas.</li>
-        <li><b>«Stake sugerido (Kelly)»</b>: cuánto apostar, en % de tu banca y en pesos. Si dice <b>«No apostar»</b>, hacele caso.</li>
-        <li><b>«EV estimado»</b>: sale solo del cálculo de la app. Si dice «provisorio» (liga no aprobada), no te fíes de ese número solo.</li>
-      </ul>
-      <p class="help-rule"><b>Regla simple:</b> apostá solo si la frase de arriba está en <b>verde</b> y el stake <b>no</b> dice «No apostar». Antes de apostar, fijate que la cuota de tu casa siga igual.</p>
-    </details>
-
-    <details class="routine">
-      <summary>Durante los partidos: pestaña En Vivo</summary>
-      <p>Muestra tus partidos de Favoritos<span class="vip-only"> y Favoritos VIP</span> <b>mientras se juega el primer tiempo</b>. Tocá <b>«Actualizar partidos de 1T»</b> para ver el minuto, el marcador y las cuotas en vivo. La app calcula la probabilidad de gol en lo que queda del primer tiempo.</p>
-    </details>
-
-    <details class="routine">
-      <summary>Cuánto apostar: el stake sugerido (Kelly)</summary>
-      <p>Kelly es una fórmula que dice <b>qué parte de tu banca apostar según cuánta ventaja hay</b>: mucha ventaja, más plata; poca, menos; ninguna, nada.</p>
-      <p>Como la probabilidad es una estimación, la app usa Kelly con frenos:</p>
-      <ul>
-        <li>Usa <b>solo las chances de las casas</b> (el cálculo propio no está validado) y apuesta <b>⅛</b>. Si no hay precio de las casas, dice «No apostar».</li>
-        <li><b>Nunca más del 3%</b> de la banca en un partido.</li>
-      </ul>
-      <p>Para verlo en pesos, cargá tu banca en el Escáner, sección 1 («Tu banca para apostar»). Se guarda solo en ese dispositivo: en la compu y en el teléfono se carga por separado.</p>
-    </details>
-
-    <details class="routine">
-      <summary>Consejos</summary>
-      <ul>
-        <li>Nunca apuestes más de lo que dice el stake sugerido.</li>
-        <li>Las rachas malas son normales, incluso con un buen sistema. No subas el stake para recuperar.</li>
-        <li>Si tenés dudas con un partido, mejor no apostar.</li>
-      </ul>
+    <details class="routine" open>
+      <summary>✅ En resumen</summary>
+      <p class="help-rule"><b>Pocas ligas, una vez por día, siempre desde el mismo dispositivo.</b></p>
     </details>
   </section>
 </div>
@@ -2447,7 +2400,7 @@ if(state.key) checkStatus();
 
 // Navegación principal: Escáner, En Vivo y (solo dueño) Accesos.
 (function(){
-  const tabs={scanner:['tabScanner','scannerView','Escáner','Buscá partidos, elegí la fecha y las ligas, y analizá los resultados. Guardá los que te interesen con la estrella; aparecerán en Favoritos.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],favorites:['tabFavorites','favoritesView','Favoritos','Partidos guardados desde el Escáner. '+(document.documentElement.classList.contains('demo-mode')?'Desde aquí podés quitarlos.':'Desde aquí podés enviarlos a Favoritos VIP o quitarlos.')],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos destinados a las alertas VIP de Telegram.'],help:['tabHelp','helpView','Instrucciones','Cómo usar la app, paso a paso.'],validation:['tabValidation','validationView','Validación','Validá el modelo por liga, liquidá el registro y mirá si el modelo le gana a las casas.'],strategy:['tabStrategy','ghStrategyView','Estrategia AEG','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram VIP','Configuración del monitor de alertas Telegram VIP.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
+  const tabs={scanner:['tabScanner','scannerView','Escáner','Buscá partidos, elegí la fecha y las ligas, y analizá los resultados. Guardá los que te interesen con la estrella; aparecerán en Favoritos.'],live:['tabLive','liveView','En Vivo','Seguimiento en vivo de tus favoritos y cuotas de los mercados habilitados.'],favorites:['tabFavorites','favoritesView','Favoritos','Partidos guardados desde el Escáner. '+(document.documentElement.classList.contains('demo-mode')?'Desde aquí podés quitarlos.':'Desde aquí podés enviarlos a Favoritos VIP o quitarlos.')],vip:['tabVipFavorites','vipFavoritesView','Favoritos VIP','Partidos destinados a las alertas VIP de Telegram.'],help:['tabHelp','helpView','Instrucciones','Consejos para ahorrar consultas de API-Football.'],validation:['tabValidation','validationView','Validación','Validá el modelo por liga, liquidá el registro y mirá si el modelo le gana a las casas.'],strategy:['tabStrategy','ghStrategyView','Estrategia AEG','Configurá los criterios de la estrategia en forma independiente. Modo prueba, sin alertas.'],telegram:['tabTelegram','telegramView','Configuración Telegram VIP','Configuración del monitor de alertas Telegram VIP.'],access:['tabAccess','accessView','Accesos','Administrá quién puede usar TANOapp.'],alertHistory:['tabAlertHistory','alertHistoryView','Historial Telegram','Resultados de las últimas alertas enviadas.']};
   function showTab(which){
     if(document.documentElement.classList.contains('demo-mode')&&(which==='vip'||which==='telegram'||which==='alertHistory'))which='scanner';
     for(const [k,[tabId,viewId,title,subtitle]] of Object.entries(tabs)){

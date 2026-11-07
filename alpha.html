@@ -371,6 +371,18 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
   <div class="status" id="kStatus"></div>
   <h2>Banca</h2>
   <div class="field"><label class="small" for="bank" style="align-self:center">Tu banca para apostar ($): con ella se calcula el monto sugerido</label><input id="bank" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ej: 100000" style="max-width:160px"></div>
+  <div class="share-only">
+    <h2>💡 Cómo ahorrar consultas de API-Football</h2>
+    <p class="small">Solo lo ves vos. Hay 7.500 consultas por día entre todo (apps y programa de alertas, si usan la misma clave).</p>
+    <ol class="small">
+      <li><b>Poné 0</b> en «consultas dentro de cada Actualizar todo» (acá abajo). Ahorra hasta <b>150 por cada Actualizar</b>. El xG bajalo solo cuando quieras con «Bajar estadísticas ahora», con un número chico (50–100).</li>
+      <li><b>«Actualizar todo» una vez por día</b>, idealmente a la mañana. El primero del día gasta ~400–800; los siguientes, ~250–450 cada uno si pasó más de 1 hora.</li>
+      <li><b>Repetirlo dentro de la misma hora es casi gratis</b>: reusa las cuotas.</li>
+      <li><b>Actualizá siempre desde el mismo dispositivo.</b> En uno nuevo puede gastar más de 1.500 la primera vez. En el otro, entrá con tu cuenta (☁︎): se sincroniza sin gastar consultas.</li>
+      <li><b>«↻ Cuotas de este partido»</b> gasta 1 por toque: usalo antes de apostar, no para mirar.</li>
+    </ol>
+    <p class="small"><b>En resumen:</b> una vez por día, siempre desde el mismo dispositivo, y el xG con el botón manual.</p>
+  </div>
   <h2>Estadísticas (xG y córners)</h2>
   <p class="small">Bajalas cuando quieras, sin tocar Actualizar todo. Primero se completan las ligas que juegan hoy o mañana. Después se recalcula Precisión (sin gastar consultas).</p>
   <div class="field"><label class="small" for="xgNow" style="align-self:center">Consultas a usar ahora (cada una trae 20 partidos)</label><input id="xgNow" type="number" min="1" max="3000" step="50" value="300" style="max-width:120px"><button class="btn pri" id="btnXg">⬇︎ Bajar estadísticas ahora</button></div>
