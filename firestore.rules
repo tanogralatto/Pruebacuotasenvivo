@@ -103,6 +103,22 @@ service cloud.firestore {
              .hasOnly(['vip_strategy', 'vip_strategy_reassigned_at'])
         && request.resource.data.vip_strategy in ['aeg', 'datagol']
         && request.resource.data.vip_strategy_reassigned_at == request.time;
+
+      // Quitar / restaurar alertas del historial (papelera). No se borran: el monitor las usa para no repetir. Solo el dueño.
+      allow update: if tanoOwner()
+        && request.resource.data.diff(resource.data)
+             .affectedKeys()
+             .hasOnly(['hidden', 'hidden_at'])
+        && request.resource.data.hidden is bool
+        && request.resource.data.hidden_at == request.time;
+
+      // Agregar alertas a mano (marcadas como manuales). Solo el dueño, y nunca pisar una existente.
+      allow create: if tanoOwner()
+        && request.resource.data.manual == true
+        && request.resource.data.source == 'manual'
+        && request.resource.data.fixture_id is int
+        && request.resource.data.market_type in ['over05', 'over10', 'over25', 'btts']
+        && request.resource.data.favorite_group in ['common', 'vip'];
     }
 
   }

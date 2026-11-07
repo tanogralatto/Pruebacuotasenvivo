@@ -280,6 +280,13 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .alert-result.lost{background:var(--c1);color:#fff}
 .alert-result.push{background:var(--c2);color:#fff}
 .alert-result.unavailable{color:var(--muted)}
+.alert-manual-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);font-size:12px;color:var(--muted)}
+.alert-card-actions{display:flex;justify-content:flex-end}
+.alert-add{margin:12px 0;padding:12px 14px;border:1px dashed var(--line);border-radius:10px;display:flex;flex-direction:column;gap:10px}
+.alert-add-fx{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow:auto}
+.alert-add-fx button{text-align:left;justify-content:flex-start;font-weight:400}
+.alert-add-fx button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.alert-trash{margin-top:14px}
 /* Contador de consultas API-Football */
 .quota-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:14px}
 .quota-bar .qdot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex:none}
@@ -936,7 +943,27 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     </div>
     <div id="alertHistorySummary" class="alert-history-summary"></div>
     <div id="alertResetBar" class="alert-move-bar hidden"></div>
+    <div id="alertAddWrap" class="hidden">
+      <button id="alertAddToggle" type="button">＋ Agregar alerta</button>
+      <div id="alertAddBox" class="alert-add hidden">
+        <p class="small" style="margin:0">Para sumar al historial una alerta que no salió (por ejemplo, durante un corte). El resultado se calcula solo con el marcador; la cuota es opcional y, sin cuota, la alerta cuenta en ganadas/perdidas pero no en el balance.</p>
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="width:170px"><label for="alertAddDate">Fecha del partido</label><input id="alertAddDate" type="date"></div>
+          <button id="alertAddSearch" type="button">Buscar partidos</button>
+        </div>
+        <div class="field"><label for="alertAddFilter">Equipo o liga</label><input id="alertAddFilter" type="search" placeholder="Ej: Barcelona" autocomplete="off"></div>
+        <div id="alertAddFx" class="alert-add-fx"><div class="small">Elegí la fecha y tocá «Buscar partidos».</div></div>
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="width:200px"><label for="alertAddMarket">Mercado</label><select id="alertAddMarket"><option value="over05">+0,5 goles 1T</option><option value="over10">+1,0 goles 1T</option><option value="over25">+2,5 goles (partido)</option><option value="btts">Ambos marcan (partido)</option></select></div>
+          <div class="field" style="width:190px"><label for="alertAddGroup">Grupo</label><select id="alertAddGroup"><option value="favorites">⭐ Favoritos</option><option value="aeg">💎 VIP AEG</option><option value="datagol">💎 VIP dataGol</option></select></div>
+          <div class="field" style="width:150px"><label for="alertAddOdd">Cuota (opcional)</label><input id="alertAddOdd" type="number" min="1.01" step="0.01" inputmode="decimal" placeholder="Sin cuota"></div>
+          <button id="alertAddSave" type="button" class="primary">Guardar alerta</button>
+        </div>
+        <div id="alertAddStatus" class="small" aria-live="polite"></div>
+      </div>
+    </div>
     <div id="alertHistoryList" class="cards"><div class="empty">Cargando historial…</div></div>
+    <details id="alertTrash" class="alert-trash hidden"><summary>🗑 Quitadas (<span id="alertTrashCount">0</span>)</summary><p class="small">No cuentan en el resumen ni en la lista. Se pueden restaurar.</p><div id="alertTrashList" class="cards"></div></details>
     <div style="display:flex;justify-content:center;margin-top:14px"><button id="loadOlderAlerts" type="button">Cargar anteriores</button></div>
   </section>
 </div>
@@ -2641,7 +2668,7 @@ document.getElementById('ghAnalyze').addEventListener('click',()=>{
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, where, orderBy, limit, startAfter, startAt, getDocs }
+import { getFirestore, doc, collection, setDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, writeBatch, query, where, orderBy, limit, startAfter, startAt, getDocs, getDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const OWNER_EMAIL = 'tanogralatto@gmail.com';
@@ -2983,6 +3010,93 @@ function fmtTs(ts) {
 }
 
 let unsubResets = null;
+const ALERT_MARKETS = { over05: 'Más de 0,5 goles · 1T', over10: 'Más de 1,0 goles · 1T', over25: 'Más de 2,5 goles · partido', btts: 'Ambos marcan · partido' };
+// Resultado de una alerta con el partido de API-Football (mismas reglas que el monitor de Telegram).
+function settleManualAlert(market, row) {
+  const st = String(row?.fixture?.status?.short || '').toUpperCase();
+  const final = ['FT', 'AET', 'PEN'].includes(st), pastHT = final || ['HT', '2H', 'ET', 'BT', 'P'].includes(st);
+  const sc = row?.score || {}, ht = sc.halftime || {}, ft = sc.fulltime || {};
+  const isInt = v => Number.isInteger(v);
+  if (market === 'over05' || market === 'over10') {
+    if (!pastHT || !isInt(ht.home) || !isInt(ht.away)) return null;
+    const g = ht.home + ht.away;
+    const result = market === 'over05' ? (g >= 1 ? 'won' : 'lost') : (g >= 2 ? 'won' : g === 1 ? 'push' : 'lost');
+    return { result_status: result, halftime_score: ht.home + '-' + ht.away, halftime_goals: g, fulltime_score: final && isInt(ft.home) && isInt(ft.away) ? ft.home + '-' + ft.away : null };
+  }
+  if (!final || !isInt(ft.home) || !isInt(ft.away)) return null;
+  const result = market === 'over25' ? (ft.home + ft.away >= 3 ? 'won' : 'lost') : (ft.home > 0 && ft.away > 0 ? 'won' : 'lost');
+  return { result_status: result, fulltime_score: ft.home + '-' + ft.away, halftime_score: isInt(ht.home) && isInt(ht.away) ? ht.home + '-' + ht.away : null };
+}
+function setupManualAlerts() {
+  const wrap = q('#alertAddWrap'), box = q('#alertAddBox'), status = q('#alertAddStatus'), fxBox = q('#alertAddFx');
+  if (!wrap || wrap.dataset.ready) { if (wrap) wrap.classList.remove('hidden'); return; }
+  wrap.dataset.ready = '1';
+  wrap.classList.remove('hidden');
+  const dateInput = q('#alertAddDate');
+  dateInput.value = new Date().toLocaleDateString('en-CA', { timeZone: TZ });
+  let rows = [], chosen = null;
+  const say = (m, err) => { status.textContent = m; status.style.color = err ? 'var(--c1)' : ''; };
+  q('#alertAddToggle').onclick = () => box.classList.toggle('hidden');
+  const drawFx = () => {
+    const term = q('#alertAddFilter').value.trim().toLocaleLowerCase('es');
+    const list = rows.filter(r => !term || [r.teams?.home?.name, r.teams?.away?.name, r.league?.name, r.league?.country].join(' ').toLocaleLowerCase('es').includes(term));
+    fxBox.innerHTML = list.slice(0, 60).map(r => {
+      const id = String(r.fixture.id), st = r.fixture.status?.short || '', g = r.goals || {};
+      const score = Number.isInteger(g.home) && Number.isInteger(g.away) ? ' ' + g.home + '-' + g.away + ' ' : ' vs ';
+      return '<button type="button" data-pick-fx="' + esc(id) + '" aria-pressed="' + (chosen && String(chosen.fixture.id) === id ? 'true' : 'false') + '">' + esc(fmtTime(r.fixture.date)) + ' · ' + esc(r.teams.home.name) + esc(score) + esc(r.teams.away.name) + ' <span class="small">· ' + esc(r.league.country + ' · ' + r.league.name) + ' · ' + esc(st) + '</span></button>';
+    }).join('') || '<div class="small">' + (rows.length ? 'Ningún partido coincide.' : 'Elegí la fecha y tocá «Buscar partidos».') + '</div>';
+    if (list.length > 60) fxBox.insertAdjacentHTML('beforeend', '<div class="small">Hay ' + list.length + ' partidos: escribí un equipo o liga para achicar la lista.</div>');
+    fxBox.querySelectorAll('[data-pick-fx]').forEach(b => { b.onclick = () => { chosen = rows.find(r => String(r.fixture.id) === b.dataset.pickFx) || null; drawFx(); say(chosen ? 'Elegido: ' + chosen.teams.home.name + ' vs ' + chosen.teams.away.name + '.' : ''); }; });
+  };
+  q('#alertAddFilter').oninput = drawFx;
+  q('#alertAddSearch').onclick = async () => {
+    if (typeof state === 'undefined' || !state.key) { say('Primero cargá tu clave de API-Football en el Escáner (sección 1).', true); return; }
+    say('Buscando partidos…'); chosen = null;
+    try {
+      const j = await api('/fixtures', { date: dateInput.value, timezone: TZ });
+      rows = (j.response || []).filter(r => r?.fixture?.id).sort((a, b) => String(a.fixture.date).localeCompare(String(b.fixture.date)));
+      say(rows.length + ' partidos el ' + dateInput.value + '. Buscá el equipo y tocá el partido.');
+      drawFx();
+    } catch (e) { say('No se pudieron traer los partidos: ' + e.message, true); }
+  };
+  q('#alertAddSave').onclick = async () => {
+    if (!chosen) { say('Elegí un partido de la lista.', true); return; }
+    const market = q('#alertAddMarket').value, group = q('#alertAddGroup').value;
+    const oddRaw = String(q('#alertAddOdd').value || '').replace(',', '.').trim(), odd = oddRaw ? Number(oddRaw) : null;
+    if (oddRaw && !(Number.isFinite(odd) && odd > 1)) { say('La cuota tiene que ser mayor que 1,00 (o dejala vacía).', true); return; }
+    const vip = group !== 'favorites', fid = Number(chosen.fixture.id);
+    // Mismo nombre que usa el monitor: así nunca hay dos alertas del mismo partido, mercado y grupo.
+    const id = fid + '_' + market + (market === 'over05' || market === 'over10' ? '_HT' : '_FT') + (vip ? '_VIP' : '');
+    const btn = q('#alertAddSave'); btn.disabled = true;
+    try {
+      const ref = doc(db, 'tanoapp_telegram_alerts', id);
+      const prev = await getDoc(ref);
+      if (prev.exists()) { const p = prev.data(); say('Ya existe esa alerta en el historial' + (p.hidden ? ' (está en «Quitadas»: restaurala desde ahí).' : '.') , true); return; }
+      // Resultado actualizado del partido (1 consulta); si todavía no terminó, queda pendiente y la liquida el monitor.
+      let row = chosen;
+      try { const j = await api('/fixtures', { id: fid, timezone: TZ }); if (j.response && j.response[0]) row = j.response[0]; } catch (e) {}
+      const res = settleManualAlert(market, row);
+      const profit = res && odd ? (res.result_status === 'won' ? odd - 1 : res.result_status === 'push' ? 0 : -1) : null;
+      const kickoff = new Date(row.fixture.date);
+      await setDoc(ref, {
+        fixture_id: fid, favorite_group: vip ? 'vip' : 'common', vip_strategy: vip ? group : null,
+        market_type: market, odd: odd, bookmaker: null, market: ALERT_MARKETS[market], source: 'manual', manual: true,
+        home: row.teams.home.name, away: row.teams.away.name, league: row.league.name,
+        score_at_alert: null, elapsed: null, status: row.fixture.status?.short || null,
+        created_at: Number.isFinite(kickoff.getTime()) ? kickoff : new Date(), created_by: auth.currentUser?.email || '',
+        result_status: res ? res.result_status : 'pending', profit_units: profit,
+        halftime_score: res?.halftime_score ?? null, halftime_goals: res?.halftime_goals ?? null, fulltime_score: res?.fulltime_score ?? null,
+        ...(res ? { settled_at: serverTimestamp() } : {})
+      });
+      const txt = { won: 'GANADA', lost: 'PERDIDA', push: 'DEVUELTA' };
+      say('Alerta guardada' + (res ? ': ' + txt[res.result_status] + '.' : '. El partido todavía no terminó: queda pendiente y se liquida sola.'));
+      chosen = null; q('#alertAddOdd').value = ''; drawFx();
+    } catch (e) {
+      say('Firebase no dejó guardar la alerta: falta publicar las reglas nuevas de Firestore (' + (e?.code || e?.message || 'error') + ').', true);
+      console.error('No se pudo guardar la alerta manual', e);
+    } finally { btn.disabled = false; }
+  };
+}
 function startAlertHistory(isOwner) {
   if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
   if (unsubResets) { unsubResets(); unsubResets = null; }
@@ -3078,23 +3192,51 @@ function startAlertHistory(isOwner) {
     if (result === 'won' && Number.isFinite(odd) && odd > 1) profitUnits = (odd - 1) * stakeUnits;
     else if (result === 'lost') profitUnits = -stakeUnits;
     else if (result === 'push') profitUnits = 0;
-    return { odd, stakeUnits, result, profitUnits };
+    const hasOdd = Number.isFinite(odd) && odd > 1;
+    if (!hasOdd) profitUnits = null; // sin cuota: cuenta en ganadas/perdidas, no en el balance
+    return { odd, stakeUnits, result, profitUnits, hasOdd };
   }
 
   // Cuota promedio con la que la app mandó las alertas de cada mercado (la cuota original de la alerta).
   function avgOddStats(alerts) {
-    return [['over05', 'Cuota media +0,5 1T'], ['over10', 'Cuota media +1,0 1T']].map(([type, label]) => {
+    const markets = [['over05', 'Cuota media +0,5 1T'], ['over10', 'Cuota media +1,0 1T'], ['over25', 'Cuota media +2,5'], ['btts', 'Cuota media Ambos marcan']]
+      .filter(([type], i) => i < 2 || alerts.some(a => a.market_type === type));
+    return markets.map(([type, label]) => {
       const odds = alerts.filter(a => a.market_type === type).map(a => Number(a.odd)).filter(o => Number.isFinite(o) && o > 1);
       return [label, odds.length ? (odds.reduce((t, o) => t + o, 0) / odds.length).toFixed(2) + ' (' + odds.length + ')' : '—'];
     });
   }
 
+  async function setHidden(id, hidden, button) {
+    if (button) button.disabled = true;
+    try {
+      await updateDoc(doc(db, 'tanoapp_telegram_alerts', id), { hidden, hidden_at: serverTimestamp() });
+      unitStatus.textContent = hidden ? 'Alerta quitada del historial.' : 'Alerta restaurada.';
+    } catch (e) {
+      alert('Firebase no dejó ' + (hidden ? 'quitar' : 'restaurar') + ' la alerta: falta publicar las reglas nuevas de Firestore (' + (e?.code || e?.message || 'error') + ').');
+      console.error('No se pudo cambiar hidden', e);
+      if (button) button.disabled = false;
+    }
+  }
+  function renderTrash(hiddenAlerts) {
+    const box = q('#alertTrash');
+    if (!box) return;
+    box.classList.toggle('hidden', !isOwner || !hiddenAlerts.length);
+    q('#alertTrashCount').textContent = String(hiddenAlerts.length);
+    q('#alertTrashList').innerHTML = hiddenAlerts.map(a => '<article class="alert-history-card"><div class="alert-history-head"><div><strong>' + esc((a.home || 'Local') + ' vs ' + (a.away || 'Visitante')) + '</strong>' + (a.manual ? '<span class="alert-manual-badge">✍️ Manual</span>' : '') + '<div class="small">' + esc(ALERT_MARKETS[a.market_type] || a.market_type || '') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div><button type="button" data-restore-alert="' + esc(a.id) + '">Restaurar</button></div></article>').join('');
+    q('#alertTrashList').querySelectorAll('[data-restore-alert]').forEach(b => { b.onclick = () => setHidden(b.dataset.restoreAlert, false, b); });
+  }
+  if (isOwner) setupManualAlerts();
+
   function renderHistory() {
     const allDocs = [...latestDocs, ...olderPages.flat()];
     const seen = new Set();
-    const alerts = allDocs
+    const everyAlert = allDocs
       .filter(d => { if (seen.has(d.id)) return false; seen.add(d.id); return true; })
       .map(d => ({ id: d.id, ...d.data() }));
+    // Las quitadas no se borran (el monitor las usa para no repetir alertas): van a la papelera.
+    const alerts = everyAlert.filter(a => !a.hidden);
+    renderTrash(everyAlert.filter(a => a.hidden));
     // VIP se divide por estrategia; las alertas VIP de antes de la división quedan en «VIP anteriores».
     const stratOf = a => a.favorite_group !== 'vip' ? 'favorites' : (['aeg', 'datagol'].includes(String(a.vip_strategy || '').toLowerCase()) ? String(a.vip_strategy).toLowerCase() : 'vip_legacy');
     const legacyTab = document.querySelector('[data-history-group="vip_legacy"]');
@@ -3117,7 +3259,8 @@ function startAlertHistory(isOwner) {
       return sum + (Number.isFinite(n) ? n : 0);
     }, 0);
     const stakeCount = settled.filter(a => ['won','lost','push'].includes(a.result_status)).length;
-    const stakedUnits = settled.filter(a => ['won','lost'].includes(a.result_status)).length;
+    const stakedUnits = settled.filter(a => ['won','lost'].includes(a.result_status) && betNumbers(a).hasOdd).length;
+    const noOdd = settled.filter(a => ['won','lost'].includes(a.result_status) && !betNumbers(a).hasOdd).length;
     const roi = stakedUnits ? balanceUnits / stakedUnits * 100 : 0;
     const balanceArs = balanceUnits * unitValue;
     summary.innerHTML = [
@@ -3130,6 +3273,7 @@ function startAlertHistory(isOwner) {
       ['Balance estimado ARS', (balanceArs > 0 ? '+' : '') + balanceArs.toLocaleString('es-AR',{maximumFractionDigits:2})],
       ['ROI', (stakedUnits ? (roi > 0 ? '+' : '') + roi.toFixed(1) + '%' : '—')],
       ['Acierto', (counts.won + counts.lost) ? (counts.won/(counts.won+counts.lost)*100).toFixed(1)+'%' : '—'],
+      ...(noOdd ? [['Sin cuota (no entran en balance)', noOdd]] : []),
       ...avgOddStats(monthAlerts)
     ].map(([label, value]) => '<div class="alert-stat"><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>').join('');
 
@@ -3151,22 +3295,24 @@ function startAlertHistory(isOwner) {
       : '';
     list.innerHTML = moveBar + monthAlerts.map(a => {
       const status = outcome[a.result_status] || (!a.result_status ? ['Pendiente', 'pending'] : ['Sin resultado', 'unavailable']);
-      const marketLabel = a.market_type === 'over05' ? 'Más de 0,5 goles · 1T' : a.market_type === 'over10' ? 'Más de 1,0 goles · 1T' : (a.market || a.market_type || 'Mercado');
-      const match = (a.home || 'Local') + ' ' + (a.score_at_alert || '—') + ' ' + (a.away || 'Visitante');
-      const settle = a.halftime_score ? ' · Descanso: ' + a.halftime_score : '';
+      const marketLabel = ALERT_MARKETS[a.market_type] || a.market || a.market_type || 'Mercado';
+      const match = (a.home || 'Local') + ' ' + (a.score_at_alert || (a.manual ? 'vs' : '—')) + ' ' + (a.away || 'Visitante');
+      const ftMarket = a.market_type === 'over25' || a.market_type === 'btts';
+      const settle = ftMarket ? (a.fulltime_score ? ' · Final: ' + a.fulltime_score : '') : (a.halftime_score ? ' · Descanso: ' + a.halftime_score : '');
       const nums = betNumbers(a);
       const balance = Number.isFinite(nums.profitUnits) ? ' · Balance: ' + (nums.profitUnits > 0 ? '+' : '') + nums.profitUnits.toFixed(2) + ' u. (' + ((nums.profitUnits * unitValue) > 0 ? '+' : '') + (nums.profitUnits * unitValue).toLocaleString('es-AR',{maximumFractionDigits:2}) + ' ARS)' : '';
       const originalOdd = Number(a.odd);
       const originalOddLabel = Number.isFinite(originalOdd) ? originalOdd.toFixed(2) : '—';
       const entryOddLabel = Number.isFinite(nums.odd) ? nums.odd.toFixed(2) : '';
       return '<article class="alert-history-card" data-alert-id="' + esc(a.id) + '">'
-        + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong><div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
+        + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong>' + (a.manual ? '<span class="alert-manual-badge">✍️ Manual</span>' : '') + '<div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
         + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
-        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 VIP ' + ({ aeg: 'AEG', datagol: 'dataGol' }[String(a.vip_strategy || '').toLowerCase()] || 'anterior') + ' · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || 'Casa no informada') + settle + balance + '</div>'
+        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 VIP ' + ({ aeg: 'AEG', datagol: 'dataGol' }[String(a.vip_strategy || '').toLowerCase()] || 'anterior') + ' · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || (a.manual ? 'Cargada a mano' : 'Casa no informada')) + settle + balance + '</div>'
         + '<div class="alert-bet-edit"><label>Cuota real de entrada<input type="number" min="1.01" step="0.01" inputmode="decimal" data-entry-odd="' + esc(a.id) + '" value="' + esc(entryOddLabel) + '" placeholder="' + esc(originalOddLabel) + '"></label>'
         + '<label>Stake<input type="text" value="1 unidad (' + esc(unitValue.toLocaleString('es-AR')) + ' ARS)" readonly></label>'
         + '<button type="button" data-save-bet="' + esc(a.id) + '">Guardar cuota real</button></div>'
         + (a.result_note ? '<div class="small">' + esc(a.result_note) + '</div>' : '')
+        + (isOwner ? '<div class="alert-card-actions"><button type="button" data-hide-alert="' + esc(a.id) + '">🗑 Quitar</button></div>' : '')
         + (activeGroup === 'vip_legacy' ? '<div class="alert-move-one"><span class="small">Pasar esta alerta a:</span><button type="button" data-move-one="aeg" data-move-id="' + esc(a.id) + '">AEG</button><button type="button" data-move-one="datagol" data-move-id="' + esc(a.id) + '">dataGol</button></div>' : '')
         + '</article>';
     }).join('');
@@ -3211,6 +3357,9 @@ function startAlertHistory(isOwner) {
         buttons.forEach(b => { b.disabled = false; });
       }
     };
+    list.querySelectorAll('[data-hide-alert]').forEach(button => {
+      button.onclick = () => { if (confirm('¿Quitar esta alerta del historial? Deja de contar en el resumen. Podés restaurarla desde «Quitadas».')) setHidden(button.dataset.hideAlert, true, button); };
+    });
     list.querySelectorAll('[data-move-all]').forEach(button => {
       button.onclick = () => moveAlerts(monthAlerts.map(a => a.id), button.dataset.moveAll, [...list.querySelectorAll('[data-move-all]')]);
     });
