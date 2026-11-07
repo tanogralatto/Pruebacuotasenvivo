@@ -867,9 +867,15 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
   <section id="telegramSettings" class="panel" style="margin-top:16px;border:1px solid var(--line)" aria-labelledby="telegramSettingsTitle">
     <h3 id="telegramSettingsTitle">Configuración de alertas Telegram</h3>
     <p class="small">Solo visible para el dueño. Los cambios se aplican al monitor del servidor.</p>
+    <p class="small" style="margin-bottom:0"><strong>Generales</strong> · afectan a todas las alertas (Favoritos y VIP).</p>
     <div class="row">
       <label class="check"><input id="tgLiveSearch" type="checkbox" checked><span>Buscar partidos en vivo continuamente</span></label>
       <label class="check"><input id="tgEnabled" type="checkbox" checked><span>Activar Telegram</span></label>
+    </div>
+    <div class="panel tg-strategy">
+    <p style="margin:0"><strong>⭐ Favoritos</strong></p>
+    <p class="small">Estos ajustes solo afectan las alertas de Favoritos normales. No cambian las de VIP AEG ni VIP dataGol.</p>
+    <div class="row">
       <label class="check"><input id="tgOver05" type="checkbox" checked><span>Over 0,5 1T</span></label>
       <div class="field" style="width:150px"><label for="tgMin05">Cuota mínima O0,5</label><input id="tgMin05" type="number" min="1.01" step="0.01" value="1.50"></div>
     </div>
@@ -878,6 +884,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <div class="field" style="width:150px"><label for="tgMin10">Cuota mínima O1,0</label><input id="tgMin10" type="number" min="1.01" step="0.01" value="1.65"></div>
       <div class="field" style="width:140px"><label for="tgMinuteStart">Desde minuto</label><input id="tgMinuteStart" type="number" min="1" max="45" step="1" value="1"></div>
       <div class="field" style="width:140px"><label for="tgMinuteEnd">Hasta minuto</label><input id="tgMinuteEnd" type="number" min="1" max="45" step="1" value="45"></div>
+    </div>
     </div>
     <details class="panel tg-strategy" data-tg-strategy="aeg">
       <summary><strong>💎 Favoritos VIP · AEG</strong></summary>
