@@ -378,6 +378,10 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 .favorite-dialog form{display:flex;flex-direction:column;gap:12px}
 .favorite-dialog h2,.favorite-dialog p{margin:0}
 .favorite-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.team-matches{display:flex;flex-direction:column;gap:4px;max-height:260px;overflow:auto;margin-top:6px}
+.team-matches button{text-align:left;justify-content:flex-start;font-weight:400}
+.team-matches button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.team-picked{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px}
 .favorite-dest-list{display:flex;flex-direction:column;gap:10px;margin:6px 0 12px}
 .favorite-dest-list .check span{text-transform:none;letter-spacing:0;font-size:15px}
 .favorite-dialog-actions .vip-choice{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -545,6 +549,11 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <button id="btnNone" type="button">Ninguna</button>
   </div>
   <div id="leagues" class="leagues hidden" role="group" aria-label="Ligas del día"></div>
+  <div id="teamTools" class="hidden">
+    <div class="field" style="max-width:420px"><label for="teamSearch">O buscá por equipo (analiza solo esos partidos)</label><input id="teamSearch" type="search" placeholder="Ej: Barcelona" autocomplete="off"></div>
+    <div id="teamMatches" class="team-matches"></div>
+    <div id="teamPicked" class="team-picked hidden"></div>
+  </div>
   <div class="row">
     <button id="btnRun" class="primary" type="button" disabled>Analizar</button>
     <button id="btnCancel" type="button" class="hidden">Cancelar</button>
@@ -692,6 +701,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <h2 id="favoritesTitle">★ Favoritos <span id="favoriteCount" class="small">· 0</span></h2>
     <p class="small">Partidos guardados desde el Escáner. Desde aquí podés <span class="vip-only">enviarlos a Favoritos VIP o </span>quitarlos.</p>
     <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSort">Ordenar por</label><select id="favoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
+    <div class="field" style="max-width:360px;margin-bottom:12px"><label for="favoriteSearch">Buscar equipo o liga</label><input id="favoriteSearch" type="search" placeholder="Ej: Barcelona" autocomplete="off"></div>
     <div id="favorites" class="cards"><div class="empty">Todavía no guardaste partidos favoritos.</div></div>
   </section>
 </div>
@@ -701,6 +711,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <h2 id="vipFavoritesTitle">★ Favoritos VIP <span id="vipFavoriteCount" class="small">· 0</span></h2>
     <p class="small">Partidos destinados a las alertas VIP de Telegram, separados por estrategia (AEG y dataGol). Cada estrategia usa su propia configuración y tiene su propio historial. Podés cambiarlos de estrategia, devolverlos a Favoritos o quitarlos.</p>
     <div class="field" style="max-width:360px;margin-bottom:12px"><label for="vipFavoriteSort">Ordenar por</label><select id="vipFavoriteSort"><option value="date">Fecha del encuentro</option><option value="high">Porcentaje: mayor a menor</option><option value="low">Porcentaje: menor a mayor</option></select></div>
+    <div class="field" style="max-width:360px;margin-bottom:12px"><label for="vipFavoriteSearch">Buscar equipo o liga</label><input id="vipFavoriteSearch" type="search" placeholder="Ej: Barcelona" autocomplete="off"></div>
     <div id="vipFavorites" class="cards"><div class="empty">Todavía no agregaste partidos VIP. Guardá uno desde el Escáner y elegí Favoritos VIP.</div></div>
   </section>
 </div>
@@ -1353,14 +1364,33 @@ function renderLeagues(){
   box.innerHTML=list.map(l=>`<label class="lg"><input type="checkbox" data-id="${l.id}" ${state.selected.has(l.id)?'checked':''}><span class="t"><span class="c">${esc(l.c)} · </span>${esc(l.n)}</span><span class="n">${l.count}</span></label>`).join('')||'<div class="small" style="padding:8px">Ninguna liga coincide.</div>';
   box.classList.toggle('hidden',state.fixtures.length===0);
   $('#leagueTools').classList.toggle('hidden',state.fixtures.length===0);
+  renderTeamSearch();
   updateRunBtn();
 }
-function selectedFixtures(){return visibleFixtures().filter(f=>state.selected.has(f.lid))}
+// Si se eligieron partidos con el buscador por equipo, se analizan solo esos; si no, los de las ligas marcadas.
+const pickedFixtures=new Set();
+function selectedFixtures(){
+  if(pickedFixtures.size)return visibleFixtures().filter(f=>pickedFixtures.has(String(f.id)));
+  return visibleFixtures().filter(f=>state.selected.has(f.lid));
+}
+function renderTeamSearch(){
+  const tools=$('#teamTools');if(!tools)return;
+  tools.classList.toggle('hidden',state.fixtures.length===0);
+  const term=$('#teamSearch').value.trim().toLocaleLowerCase('es');
+  const norm=t=>String(t||'').toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const nterm=norm(term);
+  const list=nterm.length>=2?visibleFixtures().filter(f=>norm(f.hn+' '+f.an).includes(nterm)).sort((a,b)=>a.iso.localeCompare(b.iso)):[];
+  $('#teamMatches').innerHTML=nterm.length<2?'':(list.slice(0,40).map(f=>'<button type="button" data-pick-fixture="'+esc(f.id)+'" aria-pressed="'+pickedFixtures.has(String(f.id))+'">'+(pickedFixtures.has(String(f.id))?'✓ ':'＋ ')+esc(fmtTime(f.iso))+' · '+esc(f.hn)+' vs '+esc(f.an)+' <span class="small">· '+esc(f.lc+' · '+f.ln)+'</span></button>').join('')||'<div class="small">Ningún partido de ese equipo en la lista del día.</div>');
+  const picked=state.fixtures.filter(f=>pickedFixtures.has(String(f.id)));
+  const box=$('#teamPicked');
+  box.classList.toggle('hidden',!picked.length);
+  box.innerHTML=picked.length?'<span class="small"><b>Elegidos ('+picked.length+'):</b> '+picked.map(f=>esc(f.hn)+' vs '+esc(f.an)).join(' · ')+'. Se analizan solo estos (las ligas marcadas no cuentan).</span><button type="button" id="teamClear">Limpiar</button>':'';
+}
 function updateRunBtn(){
   const n=selectedFixtures().length;
   const b=$('#btnRun');
   b.disabled=state.running||n===0;
-  b.textContent=n?`Analizar ${n} partido${n===1?'':'s'}`:'Analizar';
+  b.textContent=n?`Analizar ${n} partido${n===1?'':'s'}${pickedFixtures.size?' elegido'+(n===1?'':'s'):''}`:'Analizar';
   const tot=visibleFixtures().length;
   if(state.fixtures.length) setStatus($('#fxMsg'),`${tot} partidos en ${new Set(visibleFixtures().map(f=>f.lid)).size} ligas. Marcá las que querés analizar.`);
 }
@@ -1374,6 +1404,7 @@ async function buscar(){
   try{
     const j=await api('/fixtures',{date:$('#date').value,timezone:TZ});
     const now=Date.now();
+    pickedFixtures.clear();
     state.fixtures=(j.response||[]).map(f=>({id:f.fixture.id,iso:f.fixture.date,st:f.fixture.status.short,lid:f.league.id,season:f.league.season,ln:f.league.name,lc:f.league.country||'Mundo',hid:f.teams.home.id,hn:f.teams.home.name,aid:f.teams.away.id,an:f.teams.away.name}));
     if(!state.fixtures.length) setStatus($('#fxMsg'),'No hay partidos para esa fecha. Desactivá «Solo partidos sin empezar» para ver partidos iniciados si están disponibles en la API.');
     renderLeagues();
@@ -1870,6 +1901,14 @@ $('#evMinEdge').addEventListener('input',()=>{
 (function(){const d=$('#routineBox');if(!d)return;if(LS.get('o05:routine',true)===false)d.open=false;d.addEventListener('toggle',()=>LS.set('o05:routine',d.open));})();
 (function(){const c=$('#showHints');if(!c)return;const on=LS.get('o05:hints',true)!==false;c.checked=on;document.body.classList.toggle('no-hints',!on);c.addEventListener('change',()=>{document.body.classList.toggle('no-hints',!c.checked);LS.set('o05:hints',c.checked);});})();
 $('#lfilter').addEventListener('input',renderLeagues);
+$('#teamSearch').addEventListener('input',renderTeamSearch);
+$('#teamTools').addEventListener('click',e=>{
+  if(e.target.closest('#teamClear')){pickedFixtures.clear();renderTeamSearch();updateRunBtn();return}
+  const b=e.target.closest('[data-pick-fixture]');if(!b)return;
+  const id=String(b.dataset.pickFixture);
+  if(pickedFixtures.has(id))pickedFixtures.delete(id);else pickedFixtures.add(id);
+  renderTeamSearch();updateRunBtn();
+});
 $('#leagues').addEventListener('change',e=>{
   const id=parseInt(e.target.dataset.id,10);
   if(e.target.checked) state.selected.add(id); else state.selected.delete(id);
@@ -1994,10 +2033,17 @@ function renderSavedFavoriteCard(f,group){
   }
   return `<article class="card result-card fav-legacy" data-fav-detail="${esc(f.id)}"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">${typeof a?.avg==='number'?Math.round(a.avg)+'%':'—'}</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">${a&&Array.isArray(a.tr)?'Promedio descriptivo · '+a.n+' de 7 indicadores':'Análisis histórico no guardado'}</span>${actions}</div>${origin}<p class="league">${esc(fx.lc||'')} · ${esc(fx.ln||f.league||'')} · ${esc(f.market||'')}</p>${a&&Array.isArray(a.tr)?'<div class="cells">'+a.tr.map(cellHtml).join('')+'</div>':'<p class="small">Este partido se guardó sin los indicadores históricos. Si vuelve a aparecer en el Escáner, guardalo de nuevo para conservar el análisis.</p>'}</div></details></article>`;
 }
+function favoriteMatches(f,inputId){
+  const el=$(inputId);const raw=el?el.value.trim():'';if(!raw)return true;
+  const norm=t=>String(t||'').toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const fx=f.fixture||{};
+  return norm([f.home,f.away,f.league,fx.hn,fx.an,fx.ln,fx.lc].join(' ')).includes(norm(raw));
+}
 function renderFavorites(){
   const box=$('#favorites');
   const mode=$('#favoriteSort')?.value||'date';
-  const items=[...favoriteState.items.values()].filter(f=>favDests(f).includes('common'));
+  const all=[...favoriteState.items.values()].filter(f=>favDests(f).includes('common'));
+  const items=all.filter(f=>favoriteMatches(f,'#favoriteSearch'));
   const pct=f=>f.analysis&&typeof f.analysis.avg==='number'?f.analysis.avg:null;
   items.sort((a,b)=>{
     if(mode==='high'||mode==='low'){
@@ -2007,14 +2053,15 @@ function renderFavorites(){
     }
     return (a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||'');
   });
-  $('#favoriteCount').textContent='· '+items.length;
-  if(!items.length){box.innerHTML='<div class="empty">Todavía no guardaste partidos en Favoritos.</div>';return;}
+  $('#favoriteCount').textContent='· '+(items.length===all.length?all.length:items.length+' de '+all.length);
+  if(!items.length){box.innerHTML='<div class="empty">'+(all.length?'Ningún favorito coincide con la búsqueda.':'Todavía no guardaste partidos en Favoritos.')+'</div>';return;}
   box.innerHTML=items.map(f=>renderSavedFavoriteCard(f,'common')).join('');
 }
 function renderVipFavorites(){
   const box=$('#vipFavorites');if(!box)return;
   const mode=$('#vipFavoriteSort')?.value||'date';
-  const items=[...favoriteState.items.values()].filter(f=>favDests(f).some(k=>k!=='common'));
+  const all=[...favoriteState.items.values()].filter(f=>favDests(f).some(k=>k!=='common'));
+  const items=all.filter(f=>favoriteMatches(f,'#vipFavoriteSearch'));
   const pct=f=>f.analysis&&typeof f.analysis.avg==='number'?f.analysis.avg:null;
   items.sort((a,b)=>{
     if(mode==='high'||mode==='low'){
@@ -2024,8 +2071,8 @@ function renderVipFavorites(){
     }
     return (a.fixture?.iso||a.kickoff||'').localeCompare(b.fixture?.iso||b.kickoff||'');
   });
-  $('#vipFavoriteCount').textContent='· '+items.length;
-  if(!items.length){box.innerHTML='<div class="empty">Todavía no agregaste partidos VIP. Enviá uno desde Favoritos.</div>';return;}
+  $('#vipFavoriteCount').textContent='· '+(items.length===all.length?all.length:items.length+' de '+all.length);
+  if(!items.length){box.innerHTML='<div class="empty">'+(all.length?'Ningún favorito VIP coincide con la búsqueda.':'Todavía no agregaste partidos VIP. Enviá uno desde Favoritos.')+'</div>';return;}
   const sections=[...Object.keys(VIP_STRATEGIES).map(k=>[k,'💎 '+VIP_STRATEGIES[k]]),['vip','Sin estrategia (elegí AEG o dataGol; mientras tanto el bot usa la configuración VIP anterior)']];
   box.innerHTML=sections.map(([k,title])=>{
     const list=items.filter(f=>favDests(f).includes(k));
@@ -2171,6 +2218,8 @@ function loadSavedFavoriteDetails(e){
 $('#favorites').addEventListener('toggle',loadSavedFavoriteDetails,true);
 $('#vipFavorites').addEventListener('toggle',loadSavedFavoriteDetails,true);
 $('#favoriteSort')?.addEventListener('change',renderFavorites);
+$('#favoriteSearch')?.addEventListener('input',renderFavorites);
+$('#vipFavoriteSearch')?.addEventListener('input',renderVipFavorites);
 $('#vipFavoriteSort')?.addEventListener('change',renderVipFavorites);
 const originalCardHtml=cardHtml;
 cardHtml=function(r,i){
