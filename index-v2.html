@@ -3417,7 +3417,7 @@ function startAlertHistory(isOwner) {
       .filter(([type], i) => i < 2 || alerts.some(a => a.market_type === type));
     return markets.map(([type, label]) => {
       const odds = alerts.filter(a => a.market_type === type).map(a => Number(a.odd)).filter(o => Number.isFinite(o) && o > 1);
-      return [label, odds.length ? (odds.reduce((t, o) => t + o, 0) / odds.length).toFixed(2) + ' (' + odds.length + ')' : '—'];
+      return [label, odds.length ? (odds.reduce((t, o) => t + o, 0) / odds.length).toFixed(2) : '—'];
     });
   }
 
