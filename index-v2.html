@@ -934,7 +934,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
         <div id="alertAddStatus" class="small" aria-live="polite"></div>
       </div>
       <details class="alert-add" style="margin-top:10px"><summary>🔎 Auditoría del corte (07/11–08/11)</summary>
-        <p class="small">Los favoritos de esos días, según los registros del programa de alertas, y si tuvieron alerta. En los que no tienen, elegí mercado y grupo y tocá «＋ Agregar»: usa la misma regla (si el gol cayó antes de llegar a la cuota mínima, no se guarda). Gasta unas 2 consultas al cargar; agregar no gasta más.</p>
+        <p class="small">Los favoritos de esos días, según los registros del programa de alertas, y si tuvieron alerta. En los que no tienen, elegí el grupo y tocá «＋ Agregar» (solo +0,5 1T, el mercado de esos días): usa la misma regla (si el gol cayó antes de llegar a la cuota mínima, no se guarda). Gasta unas 2 consultas al cargar; agregar no gasta más.</p>
         <button id="auditLoad" type="button">Cargar partidos del corte</button>
         <div id="auditStatus" class="small" aria-live="polite"></div>
         <div id="auditList" class="cards"></div>
@@ -3259,7 +3259,7 @@ function setupOutageAudit() {
       const chips = al.length ? al.map(a => '<span class="alert-manual-badge">' + esc(groupTxt(a) + ' · ' + (a.market_type === 'over05' ? '+0,5' : a.market_type === 'over10' ? '+1,0' : a.market_type === 'over25' ? '+2,5' : 'Ambos') + ' · ' + (outcomeTxt[a.result_status] || a.result_status || 'Pendiente') + (a.manual ? ' · manual' : '') + (a.hidden ? ' · quitada' : '')) + '</span>').join(' ') : '<span class="small" style="color:var(--c1)">Sin alertas</span>';
       return '<article class="alert-history-card"><div><strong>' + esc(r.teams.home.name + ' ' + score + ' ' + r.teams.away.name) + '</strong><div class="small">' + esc(fmtTs({ toDate: () => new Date(r.fixture.date) }) + ' · ' + r.league.country + ' · ' + r.league.name + htTxt + ' · ' + (r.fixture.status?.short || '')) + '</div></div>'
         + '<div>' + chips + '</div>'
-        + '<div class="row" style="align-items:flex-end;gap:8px"><select data-audit-market="' + fid + '"><option value="over05">+0,5 1T</option><option value="over10">+1,0 1T</option><option value="over25">+2,5</option><option value="btts">Ambos marcan</option></select>'
+        + '<div class="row" style="align-items:flex-end;gap:8px"><select data-audit-market="' + fid + '"><option value="over05">+0,5 1T</option></select>'
         + '<select data-audit-group="' + fid + '"><option value="favorites">⭐ Favoritos</option><option value="aeg">💎 VIP AEG</option><option value="datagol">💎 VIP dataGol</option></select>'
         + '<button type="button" data-audit-add="' + fid + '">＋ Agregar</button></div></article>';
     }).join('');
