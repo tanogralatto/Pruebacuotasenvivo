@@ -934,7 +934,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
         <div id="alertAddStatus" class="small" aria-live="polite"></div>
       </div>
       <details class="alert-add" style="margin-top:10px"><summary>🔎 Auditoría del corte (07/11–08/11)</summary>
-        <p class="small">Los favoritos de esos días, según los registros del programa de alertas, y si tuvieron alerta. En los que no tienen, elegí el grupo y tocá «＋ Agregar» (solo +0,5 1T, el mercado de esos días): usa la misma regla (si el gol cayó antes de llegar a la cuota mínima, no se guarda). Gasta unas 2 consultas al cargar; agregar no gasta más.</p>
+        <p class="small">Los favoritos de esos días, según los registros del programa de alertas, y si tuvieron alerta. En los que no tienen, elegí el grupo y tocá «＋ Agregar» (solo +0,5 1T, el mercado de esos días): usa la misma regla (si el gol cayó antes de llegar a la cuota mínima, no se guarda). Gasta unas 2 consultas al cargar; agregar no gasta más (salvo 1 si hay que pedir aparte los minutos de los goles).</p>
         <button id="auditLoad" type="button">Cargar partidos del corte</button>
         <div id="auditStatus" class="small" aria-live="polite"></div>
         <div id="auditList" class="cards"></div>
@@ -3194,14 +3194,28 @@ async function saveManualAlert(chosen, market, group, odd, say) {
       if (halfMarket) {
         if (!res) { say('Todavía no terminó el primer tiempo: cargala después del descanso, así se puede ver si habría entrado.', true); return false; }
         const rules = await manualAlertRules(group);
+        // Si el marcador del descanso tiene goles pero no vinieron sus minutos, se piden aparte (1 consulta).
+        const htNow = row?.score?.halftime || {}, htGoals = (htNow.home || 0) + (htNow.away || 0);
+        if (htGoals > goalMinutes1T(row).length) {
+          try { const j = await api('/fixtures/events', { fixture: fid }); if (Array.isArray(j.response) && j.response.length) row = { ...row, events: j.response }; } catch (e) {}
+        }
         est = estimateManualEntry(market, row, rules);
         if (!est.ok) { say(est.reason, true); return false; }
-        const gTxt = est.goals.length ? 'Goles 1T: ' + est.goals.map(x => x + "'").join(', ') : 'Sin goles en el 1T';
-        if (!est.entry) {
-          say('No habría entrado: la cuota llegaba a ' + est.minOdd.toFixed(2) + (est.reach ? ' cerca del ' + est.reach + "'" : '') + ' (estimado) y el gol cayó antes (' + gTxt + '). No se guarda.', true);
-          if (!est.doubtful || !confirm('Es dudosa: el gol cayó muy cerca del ' + (est.reach || '?') + "' (o los goles de API-Football no coinciden con el marcador). ¿Guardarla igual como si hubiera entrado?")) return false;
+        if (est.goalsMismatch) {
+          // Sin los minutos de los goles no se puede saber si se habría entrado antes del gol.
+          say('API-Football no informa en qué minuto fueron los goles de este partido (descanso ' + htNow.home + '-' + htNow.away + '), así que no se puede saber si habría entrado. No se guardó.', true);
+          if (!confirm('API-Football no informa en qué minuto fueron los goles de este partido, así que no se puede saber si la cuota llegó a ' + est.minOdd.toFixed(2) + ' antes del gol.\n\nRecomendado: Cancelar (no guardarla).\n¿Guardarla igual, suponiendo que entró?')) return false;
           est.entry = { minute: est.reach || rules.start, goalsBefore: 0, odd: est.minOdd };
-        } else if (est.doubtful && !confirm('Dudosa: la cuota habría llegado a ' + est.minOdd.toFixed(2) + ' cerca del ' + est.entry.minute + "' y hubo un gol muy cerca (" + gTxt + (est.goalsMismatch ? '; los goles de API-Football no coinciden con el marcador' : '') + '). ¿La guardo?')) { say('No se guardó.'); return false; }
+          est.doubtful = true;
+        }
+        const gTxt = est.goals.length ? 'Goles 1T: ' + est.goals.map(x => x + "'").join(', ') : 'Sin goles en el 1T';
+        if (est.goalsMismatch) {
+          // ya se preguntó arriba
+        } else if (!est.entry) {
+          say('No habría entrado: la cuota llegaba a ' + est.minOdd.toFixed(2) + (est.reach ? ' cerca del ' + est.reach + "'" : '') + ' (estimado) y el gol cayó antes (' + gTxt + '). No se guarda.', true);
+          if (!est.doubtful || !confirm('Es dudosa: el gol cayó muy cerca del ' + (est.reach || '?') + "'. ¿Guardarla igual como si hubiera entrado?")) return false;
+          est.entry = { minute: est.reach || rules.start, goalsBefore: 0, odd: est.minOdd };
+        } else if (est.doubtful && !confirm('Dudosa: la cuota habría llegado a ' + est.minOdd.toFixed(2) + ' cerca del ' + est.entry.minute + "' y hubo un gol muy cerca (" + gTxt + '). ¿La guardo?')) { say('No se guardó.'); return false; }
         if (!useOdd) useOdd = est.minOdd; // opción A: se entra con el mínimo configurado
       }
       const profit = res && useOdd ? (res.result_status === 'won' ? useOdd - 1 : res.result_status === 'push' ? 0 : -1) : null;
