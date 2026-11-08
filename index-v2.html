@@ -933,6 +933,12 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
         </div>
         <div id="alertAddStatus" class="small" aria-live="polite"></div>
       </div>
+      <details class="alert-add" style="margin-top:10px"><summary>🔎 Auditoría del corte (07/11–08/11)</summary>
+        <p class="small">Los favoritos de esos días, según los registros del programa de alertas, y si tuvieron alerta. En los que no tienen, elegí mercado y grupo y tocá «＋ Agregar»: usa la misma regla (si el gol cayó antes de llegar a la cuota mínima, no se guarda). Gasta unas 2 consultas al cargar; agregar no gasta más.</p>
+        <button id="auditLoad" type="button">Cargar partidos del corte</button>
+        <div id="auditStatus" class="small" aria-live="polite"></div>
+        <div id="auditList" class="cards"></div>
+      </details>
     </div>
     <div id="alertHistoryList" class="cards"><div class="empty">Cargando historial…</div></div>
     <details id="alertTrash" class="alert-trash hidden"><summary>🗑 Quitadas (<span id="alertTrashCount">0</span>)</summary><p class="small">No cuentan en el resumen ni en la lista. Se pueden restaurar.</p><div id="alertTrashList" class="cards"></div></details>
@@ -3162,33 +3168,40 @@ function setupManualAlerts() {
     const market = q('#alertAddMarket').value, group = q('#alertAddGroup').value;
     const oddRaw = String(q('#alertAddOdd').value || '').replace(',', '.').trim(), odd = oddRaw ? Number(oddRaw) : null;
     if (oddRaw && !(Number.isFinite(odd) && odd > 1)) { say('La cuota tiene que ser mayor que 1,00 (o dejala vacía).', true); return; }
-    const vip = group !== 'favorites', fid = Number(chosen.fixture.id);
+    const btn = q('#alertAddSave'); btn.disabled = true;
+    try { if (await saveManualAlert(chosen, market, group, odd, say)) { chosen = null; q('#alertAddOdd').value = ''; drawFx(); } }
+    finally { btn.disabled = false; }
+  };
+  setupOutageAudit();
+}
+// Guarda una alerta manual (la usan «＋ Agregar alerta» y la auditoría del corte). Devuelve true si la guardó.
+async function saveManualAlert(chosen, market, group, odd, say) {
+  const vip = group !== 'favorites', fid = Number(chosen.fixture.id);
     // Mismo nombre que usa el monitor: así nunca hay dos alertas del mismo partido, mercado y grupo.
     const base = fid + '_' + market + (market === 'over05' || market === 'over10' ? '_HT' : '_FT');
     const id = base + (vip ? '_VIP_' + group : '');
-    const btn = q('#alertAddSave'); btn.disabled = true;
-    try {
+  try {
       const ref = doc(db, 'tanoapp_telegram_alerts', id);
       let prev = await getDoc(ref);
       if (!prev.exists() && vip) { const old = await getDoc(doc(db, 'tanoapp_telegram_alerts', base + '_VIP')); if (old.exists() && String(old.data().vip_strategy || '') === group) prev = old; }
-      if (prev.exists()) { const p = prev.data(); say('Ya existe esa alerta en el historial' + (p.hidden ? ' (está en «Quitadas»: restaurala desde ahí).' : '.') , true); return; }
+      if (prev.exists()) { const p = prev.data(); say('Ya existe esa alerta en el historial' + (p.hidden ? ' (está en «Quitadas»: restaurala desde ahí).' : '.') , true); return false; }
       // Resultado actualizado del partido (1 consulta); si todavía no terminó, queda pendiente y la liquida el monitor.
       let row = chosen;
-      try { const j = await api('/fixtures', { id: fid, timezone: TZ }); if (j.response && j.response[0]) row = j.response[0]; } catch (e) {}
+      if (!Array.isArray(row.events)) { try { const j = await api('/fixtures', { id: fid, timezone: TZ }); if (j.response && j.response[0]) row = j.response[0]; } catch (e) {} }
       const res = settleManualAlert(market, row);
       const halfMarket = market === 'over05' || market === 'over10';
       let est = null, useOdd = odd;
       if (halfMarket) {
-        if (!res) { say('Todavía no terminó el primer tiempo: cargala después del descanso, así se puede ver si habría entrado.', true); return; }
+        if (!res) { say('Todavía no terminó el primer tiempo: cargala después del descanso, así se puede ver si habría entrado.', true); return false; }
         const rules = await manualAlertRules(group);
         est = estimateManualEntry(market, row, rules);
-        if (!est.ok) { say(est.reason, true); return; }
+        if (!est.ok) { say(est.reason, true); return false; }
         const gTxt = est.goals.length ? 'Goles 1T: ' + est.goals.map(x => x + "'").join(', ') : 'Sin goles en el 1T';
         if (!est.entry) {
           say('No habría entrado: la cuota llegaba a ' + est.minOdd.toFixed(2) + (est.reach ? ' cerca del ' + est.reach + "'" : '') + ' (estimado) y el gol cayó antes (' + gTxt + '). No se guarda.', true);
-          if (!est.doubtful || !confirm('Es dudosa: el gol cayó muy cerca del ' + (est.reach || '?') + "' (o los goles de API-Football no coinciden con el marcador). ¿Guardarla igual como si hubiera entrado?")) return;
+          if (!est.doubtful || !confirm('Es dudosa: el gol cayó muy cerca del ' + (est.reach || '?') + "' (o los goles de API-Football no coinciden con el marcador). ¿Guardarla igual como si hubiera entrado?")) return false;
           est.entry = { minute: est.reach || rules.start, goalsBefore: 0, odd: est.minOdd };
-        } else if (est.doubtful && !confirm('Dudosa: la cuota habría llegado a ' + est.minOdd.toFixed(2) + ' cerca del ' + est.entry.minute + "' y hubo un gol muy cerca (" + gTxt + (est.goalsMismatch ? '; los goles de API-Football no coinciden con el marcador' : '') + '). ¿La guardo?')) { say('No se guardó.'); return; }
+        } else if (est.doubtful && !confirm('Dudosa: la cuota habría llegado a ' + est.minOdd.toFixed(2) + ' cerca del ' + est.entry.minute + "' y hubo un gol muy cerca (" + gTxt + (est.goalsMismatch ? '; los goles de API-Football no coinciden con el marcador' : '') + '). ¿La guardo?')) { say('No se guardó.'); return false; }
         if (!useOdd) useOdd = est.minOdd; // opción A: se entra con el mínimo configurado
       }
       const profit = res && useOdd ? (res.result_status === 'won' ? useOdd - 1 : res.result_status === 'push' ? 0 : -1) : null;
@@ -3208,11 +3221,71 @@ function setupManualAlerts() {
       const txt = { won: 'GANADA', lost: 'PERDIDA', push: 'DEVUELTA' };
       say('Alerta guardada' + (res ? ': ' + txt[res.result_status] + '.' : '. El partido todavía no terminó: queda pendiente y se liquida sola.')
         + (est ? ' Habría entrado cerca del ' + est.entry.minute + "' con cuota " + useOdd.toFixed(2) + (odd ? '' : ' (el mínimo)') + '; goles 1T: ' + (est.goals.length ? est.goals.map(x => x + "'").join(', ') : 'ninguno') + '. λ ' + est.lamSource + '.' : ''));
-      chosen = null; q('#alertAddOdd').value = ''; drawFx();
+      return true;
     } catch (e) {
       say('Firebase no dejó guardar la alerta: falta publicar las reglas nuevas de Firestore (' + (e?.code || e?.message || 'error') + ').', true);
       console.error('No se pudo guardar la alerta manual', e);
-    } finally { btn.disabled = false; }
+      return false;
+    }
+}
+// Auditoría del corte del 07/11–08/11 (cuota de Firebase agotada): favoritos de esos días sacados de los
+// registros del monitor (solo el número de partido) más los favoritos actuales de esa ventana. Para cada uno
+// muestra el resultado y qué alertas ya tiene, y deja agregar las que faltan con la misma regla de «＋ Agregar alerta».
+const OUTAGE_FIXTURES = [1513673,1495600,1501520,1551372,1582155,1582156,1637459,1647334,1563257,1569430,1573903,1584069,1595287,1595289,1595292,1623648,1552220,1557075,1558039,1558679,1563251,1563252,1567952,1523298,1521727,1521728,1623519];
+const OUTAGE_FROM = Date.parse('2026-11-07T00:19:00Z'), OUTAGE_TO = Date.parse('2026-11-08T08:00:00Z');
+function setupOutageAudit() {
+  const box = q('#auditList'), btn = q('#auditLoad'), status = q('#auditStatus');
+  if (!box || !btn || btn.dataset.ready) return;
+  btn.dataset.ready = '1';
+  let rows = [], alertsBy = new Map();
+  const say = (m, err) => { status.textContent = m; status.style.color = err ? 'var(--c1)' : ''; };
+  const outcomeTxt = { won: 'Ganada', lost: 'Perdida', push: 'Devuelta', pending: 'Pendiente' };
+  const groupTxt = a => a.favorite_group === 'vip' ? '💎 ' + ({ aeg: 'AEG', datagol: 'dataGol' }[String(a.vip_strategy || '').toLowerCase()] || 'VIP') : '⭐ Fav';
+  async function loadAlerts(ids) {
+    for (let i = 0; i < ids.length; i += 30) {
+      const snap = await getDocs(query(collection(db, 'tanoapp_telegram_alerts'), where('fixture_id', 'in', ids.slice(i, i + 30))));
+      for (const d of snap.docs) { const a = d.data(); const k = Number(a.fixture_id); if (!alertsBy.has(k)) alertsBy.set(k, new Map()); alertsBy.get(k).set(d.id, a); }
+    }
+  }
+  function draw() {
+    if (!rows.length) { box.innerHTML = ''; return; }
+    const sorted = rows.slice().sort((a, b) => String(a.fixture.date).localeCompare(String(b.fixture.date)));
+    const without = sorted.filter(r => !(alertsBy.get(Number(r.fixture.id))?.size)).length;
+    box.innerHTML = '<p class="small"><b>' + sorted.length + ' partidos</b> · ' + (sorted.length - without) + ' con alerta · <b>' + without + ' sin ninguna alerta</b>.</p>' + sorted.map(r => {
+      const fid = Number(r.fixture.id), g = r.goals || {}, ht = r.score?.halftime || {};
+      const score = Number.isInteger(g.home) && Number.isInteger(g.away) ? g.home + '-' + g.away : 'vs';
+      const htTxt = Number.isInteger(ht.home) && Number.isInteger(ht.away) ? ' · descanso ' + ht.home + '-' + ht.away : '';
+      const al = [...(alertsBy.get(fid)?.values() || [])];
+      const chips = al.length ? al.map(a => '<span class="alert-manual-badge">' + esc(groupTxt(a) + ' · ' + (a.market_type === 'over05' ? '+0,5' : a.market_type === 'over10' ? '+1,0' : a.market_type === 'over25' ? '+2,5' : 'Ambos') + ' · ' + (outcomeTxt[a.result_status] || a.result_status || 'Pendiente') + (a.manual ? ' · manual' : '') + (a.hidden ? ' · quitada' : '')) + '</span>').join(' ') : '<span class="small" style="color:var(--c1)">Sin alertas</span>';
+      return '<article class="alert-history-card"><div><strong>' + esc(r.teams.home.name + ' ' + score + ' ' + r.teams.away.name) + '</strong><div class="small">' + esc(fmtTs({ toDate: () => new Date(r.fixture.date) }) + ' · ' + r.league.country + ' · ' + r.league.name + htTxt + ' · ' + (r.fixture.status?.short || '')) + '</div></div>'
+        + '<div>' + chips + '</div>'
+        + '<div class="row" style="align-items:flex-end;gap:8px"><select data-audit-market="' + fid + '"><option value="over05">+0,5 1T</option><option value="over10">+1,0 1T</option><option value="over25">+2,5</option><option value="btts">Ambos marcan</option></select>'
+        + '<select data-audit-group="' + fid + '"><option value="favorites">⭐ Favoritos</option><option value="aeg">💎 VIP AEG</option><option value="datagol">💎 VIP dataGol</option></select>'
+        + '<button type="button" data-audit-add="' + fid + '">＋ Agregar</button></div></article>';
+    }).join('');
+  }
+  btn.onclick = async () => {
+    if (typeof state === 'undefined' || !state.key) { say('Primero cargá tu clave de API-Football en el Escáner (sección 1).', true); return; }
+    btn.disabled = true; say('Buscando los partidos…');
+    try {
+      const extra = [...favoriteState.items.values()].filter(f => { const t = Date.parse(f.kickoff || f.fixture?.iso || ''); return t >= OUTAGE_FROM && t <= OUTAGE_TO; }).map(f => Number(f.id)).filter(Number.isFinite);
+      const ids = [...new Set([...OUTAGE_FIXTURES, ...extra])];
+      rows = [];
+      for (let i = 0; i < ids.length; i += 20) { const j = await api('/fixtures', { ids: ids.slice(i, i + 20).join('-'), timezone: TZ }); rows.push(...(j.response || []).filter(r => r?.fixture?.id)); }
+      alertsBy = new Map(); await loadAlerts(ids);
+      say(rows.length + ' partidos cargados. Elegí mercado y grupo y tocá «＋ Agregar» en los que faltan.');
+      draw();
+    } catch (e) { say('No se pudo cargar: ' + (e?.message || e), true); }
+    finally { btn.disabled = false; }
+  };
+  box.onclick = async e => {
+    const b = e.target.closest('[data-audit-add]'); if (!b) return;
+    const fid = Number(b.dataset.auditAdd), row = rows.find(r => Number(r.fixture.id) === fid); if (!row) return;
+    const market = box.querySelector('[data-audit-market="' + fid + '"]').value, group = box.querySelector('[data-audit-group="' + fid + '"]').value;
+    b.disabled = true;
+    try {
+      if (await saveManualAlert(row, market, group, null, say)) { alertsBy.delete(fid); await loadAlerts([fid]); draw(); }
+    } finally { b.disabled = false; }
   };
 }
 function startAlertHistory(isOwner) {
