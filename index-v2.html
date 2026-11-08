@@ -918,7 +918,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <div id="alertAddWrap" class="hidden">
       <button id="alertAddToggle" type="button">＋ Agregar alerta</button>
       <div id="alertAddBox" class="alert-add hidden">
-        <p class="small" style="margin:0">Para sumar al historial una alerta que no salió (por ejemplo, durante un corte). El resultado se calcula solo con el marcador. En +0,5 / +1,0 1T la app estima en qué minuto la cuota habría llegado a tu mínimo y lo compara con los goles: si el gol cayó antes, no se habría entrado y no se guarda; si entró, se cuenta con la cuota mínima (o la que escribas). En +2,5 y Ambos marcan la cuota es opcional.</p>
+        <p class="small" style="margin:0">Para sumar al historial una alerta que no salió (por ejemplo, durante un corte). El resultado se calcula solo con el marcador. En +0,5 1T se toma que la cuota llega a 1,50 desde el minuto 15 con 0-0; en +1,0 1T la app lo estima con el modelo. Después lo compara con los goles: si el gol cayó antes, no se habría entrado y no se guarda; si entró, se cuenta con la cuota mínima (o la que escribas). En +2,5 y Ambos marcan la cuota es opcional.</p>
         <div class="row" style="align-items:flex-end">
           <div class="field" style="width:170px"><label for="alertAddDate">Fecha del partido</label><input id="alertAddDate" type="date"></div>
           <button id="alertAddSearch" type="button">Buscar partidos</button>
@@ -3082,6 +3082,8 @@ function settleManualAlert(market, row) {
 // ¿Habría entrado la alerta? Estima minuto a minuto la cuota de +0,5 / +1,0 1T con el mismo modelo de En Vivo
 // (λ prepartido del partido, o uno típico si no se analizó) y la compara con el mínimo; los goles salen de API-Football.
 const BOOK_MARGIN = 0.05, TYPICAL_LAMBDA_1T = 1.2, DOUBT_MINUTES = 2;
+// +0,5 1T: según la experiencia del dueño, la cuota llega a 1,50 recién desde el minuto 15 (con 0-0).
+const OVER05_REACH_MINUTE = 15;
 function goalMinutes1T(row) {
   return (row?.events || [])
     .filter(e => e && e.type === 'Goal' && e.detail !== 'Missed Penalty' && Number.isFinite(e.time?.elapsed) && e.time.elapsed <= 45)
@@ -3104,6 +3106,13 @@ function estimateManualEntry(market, row, rules) {
     return mk && mk.ok && mk.fairOdds ? mk.fairOdds / (1 + BOOK_MARGIN) : null;
   };
   let entry = null, reach = null;
+  if (market === 'over05') {
+    // Regla fija: se entra en el minuto 15 (o el «desde minuto» configurado, si es más tarde) si sigue 0-0.
+    reach = Math.max(OVER05_REACH_MINUTE, rules.start);
+    if (reach <= rules.end && goals.filter(x => x < reach).length === 0) entry = { minute: reach, goalsBefore: 0, odd: minOdd };
+    const doubtful0 = goalsMismatch || goals.some(x => Math.abs(x - reach) <= DOUBT_MINUTES);
+    return { ok: true, entry, reach, goals, lam, lamSource: 'no se usa (regla del minuto ' + reach + ')', minOdd, goalsMismatch, doubtful: doubtful0 };
+  }
   for (let m = rules.start; m <= rules.end; m++) {
     const g = goals.filter(x => x < m).length;
     if (reach === null && (oddAt(m, 0) || 0) >= minOdd) reach = m; // minuto en que se llega al mínimo con 0-0
@@ -3234,7 +3243,7 @@ async function saveManualAlert(chosen, market, group, odd, say) {
       });
       const txt = { won: 'GANADA', lost: 'PERDIDA', push: 'DEVUELTA' };
       say('Alerta guardada' + (res ? ': ' + txt[res.result_status] + '.' : '. El partido todavía no terminó: queda pendiente y se liquida sola.')
-        + (est ? ' Habría entrado cerca del ' + est.entry.minute + "' con cuota " + useOdd.toFixed(2) + (odd ? '' : ' (el mínimo)') + '; goles 1T: ' + (est.goals.length ? est.goals.map(x => x + "'").join(', ') : 'ninguno') + '. λ ' + est.lamSource + '.' : ''));
+        + (est ? ' Habría entrado cerca del ' + est.entry.minute + "' con cuota " + useOdd.toFixed(2) + (odd ? '' : ' (el mínimo)') + '; goles 1T: ' + (est.goals.length ? est.goals.map(x => x + "'").join(', ') : 'ninguno') + (market === 'over10' ? '. λ ' + est.lamSource : '') + '.' : ''));
       return true;
     } catch (e) {
       say('Firebase no dejó guardar la alerta: falta publicar las reglas nuevas de Firestore (' + (e?.code || e?.message || 'error') + ').', true);
