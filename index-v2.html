@@ -2887,7 +2887,9 @@ async function ghCalRun(){
     const ev=evDays.length?TanoAeg.calibrate(pickSet,evDays,histories,rules,{thresholds,ruleSets:TanoAeg.EV_SETS,odds,quotes:['best','median'],minEvs:TanoAeg.MIN_EVS,sorts:allSorts,minFairs:TanoAeg.MIN_FAIRS}):[];
     const evPicks=evDays.reduce((n,d)=>n+d.fixtures.filter(f=>pickSet.has(String(f.id))).length,0);
     const pickOdds=picks.filter(p=>odds.has(String(p.id))).length;
-    ghCalData={tables:{all,base,ev},days:dayList,evDays,histories,pickSet,rules,picks,odds,evPicks,pickOdds,errors:[...errors]};
+    // «Como la clase»: solo las filas con todas las reglas del video, para poder elegirlas aunque pierdan picks.
+    const clase=[...base,...ev].filter(r=>TanoAeg.RULE_SETS[r.ruleSet].video).sort((x,y)=>y.recall-x.recall||x.perDay-y.perDay||y.recallK-x.recallK);
+    ghCalData={tables:{all,base,ev,clase},days:dayList,evDays,histories,pickSet,rules,picks,odds,evPicks,pickOdds,errors:[...errors]};
     ghCalRender('all',0);
     ghCalStatus('Listo: '+picks.length+' picks, '+dates.length+' días, '+dayList.reduce((n,d)=>n+d.fixtures.length,0)+' partidos evaluados; cuotas prepartido para '+pickOdds+' picks. '+(state.calls-callsAtStart)+' consultas.'+(errors.size?' Algunos datos fallaron: '+[...errors].slice(0,2).join(' · '):''),errors.size>0);
   }catch(e){ghCalStatus('No se pudo calibrar: '+e.message,true)}
@@ -2905,6 +2907,7 @@ function ghCalRender(selKey,selIdx){
   const nPicks=d.tables.base[0]?.picks||0;
   let html='<div class="val-box" style="margin-top:12px"><b>Cómo leer:</b> la app muestra todos los partidos que pasan el filtro, ordenados. «Arriba de todo» = cuántos de tus picks quedan en los primeros puestos del día (tantos puestos como picks mandaste ese día; en promedio '+(nPicks/Math.max(1,d.days.length)).toFixed(1)+'). «Entre los 10 primeros» = cuántos quedan en el top 10. «Pasan el filtro» = cuántos aparecen en la lista, en cualquier puesto. «Partidos por día» = largo de la lista en esas ligas.'+(nPicks<20?'<br><b>Ojo:</b> con '+nPicks+' picks el resultado es orientativo.':'')+'</div>';
   html+='<h3 style="margin:16px 0 0">🎯 Que aparezcan todos tus picks · sin EV ('+d.days.length+' días, '+nPicks+' picks)</h3><p class="small" style="margin:4px 0 0">Ordenada por «Pasan el filtro»: la lista diaria es más larga, pero casi no se pierde ningún pick.</p>'+ghCalTable('all',d.tables.all,selKey,selIdx);
+  if(d.tables.clase&&d.tables.clase.length)html+='<h3 style="margin:16px 0 0">📘 Como la clase · todas las reglas del video</h3><p class="small" style="margin:4px 0 0">Muestra, cuota real, % por temporada, promedios, rachas (con la revisión de las Under) y, en las filas con EV, valor positivo. Es lo más fiel al video, pero deja afuera los picks que él eligió flexibilizando alguna regla.</p>'+ghCalTable('clase',d.tables.clase,selKey,selIdx);
   html+='<h3 style="margin:16px 0 0">Lista más corta · sin EV ('+d.days.length+' días, '+nPicks+' picks)</h3>'+ghCalTable('base',d.tables.base,selKey,selIdx);
   if(d.tables.ev.length)html+='<h3 style="margin:16px 0 0">Con EV positivo · solo días con cuotas guardadas ('+d.evDays.length+' días, '+d.evPicks+' picks)</h3><p class="small" style="margin:4px 0 0">EV = cuota de la casa ÷ cuota real − 1. API-Football guarda las cuotas prepartido solo unos días: por eso esta tabla usa menos días.</p>'+ghCalTable('ev',d.tables.ev,selKey,selIdx);
   else html+='<p class="small">No hay cuotas prepartido guardadas para los días de tus picks (API-Football las guarda pocos días): la tabla con EV aparece cuando haya picks de los últimos '+GH_ODDS_DAYS+' días.</p>';
