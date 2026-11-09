@@ -354,6 +354,8 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
 #ghStrategyView .gh-candidate-meta{font-size:12px;color:var(--muted)}
 #ghStrategyView .gh-candidate-status{font-size:11px;font-weight:700;color:var(--c2);text-transform:uppercase}
 #ghStrategyView .gh-candidate-status.ok{color:var(--c4)}
+#ghStrategyView .gh-vip-btn{font-size:12px;padding:6px 10px;min-height:32px}
+#ghStrategyView .gh-vip-btn[aria-pressed="true"]{border-color:var(--c4);color:var(--c4)}
 #ghStrategyView .gh-candidate-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 #ghStrategyView .gh-metric{min-width:0;padding:9px 10px;border-radius:9px;background:var(--bg)}
 #ghStrategyView .gh-metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
@@ -754,6 +756,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <label class="check"><input type="checkbox" data-dest-check="common"><span>⭐ Favoritos</span></label>
       <label class="check vip-choice"><input type="checkbox" data-dest-check="aeg"><span>💎 VIP · AEG</span></label>
       <label class="check vip-choice"><input type="checkbox" data-dest-check="datagol"><span>💎 VIP · dataGol</span></label>
+      <label class="check vip-choice"><input type="checkbox" data-dest-check="aegprueba"><span>🧪 VIP · AEG prueba (sin Telegram)</span></label>
     </div>
     <button id="favoriteDialogSave" type="button" class="primary">Guardar</button>
     <button id="favoriteDialogRemove" type="button" class="favorite-dialog-remove">Quitar de favoritos</button>
@@ -892,6 +895,20 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
         <div class="field" style="width:140px"><label for="tg_datagol_end">Hasta minuto</label><input id="tg_datagol_end" type="number" min="1" max="45" step="1" value="45"></div>
       </div>
     </details>
+    <details class="panel tg-strategy" data-tg-strategy="aegprueba">
+      <summary><strong>🧪 Favoritos VIP · AEG prueba (sin Telegram)</strong></summary>
+      <p class="small">No manda nada a Telegram: el monitor solo registra en el historial las alertas que habría mandado, para medir la estrategia de la pestaña Estrategia AEG. Arranca con los valores de AEG hasta que guardes los suyos.</p>
+      <div class="row">
+        <label class="check"><input id="tg_aegprueba_over05" type="checkbox" checked><span>Over 0,5 1T</span></label>
+        <div class="field" style="width:150px"><label for="tg_aegprueba_min05">Cuota mínima O0,5</label><input id="tg_aegprueba_min05" type="number" min="1.01" step="0.01" value="1.50"></div>
+        <label class="check"><input id="tg_aegprueba_over10" type="checkbox" checked><span>Over 1,0 1T</span></label>
+        <div class="field" style="width:150px"><label for="tg_aegprueba_min10">Cuota mínima O1,0</label><input id="tg_aegprueba_min10" type="number" min="1.01" step="0.01" value="1.65"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="width:140px"><label for="tg_aegprueba_start">Desde minuto</label><input id="tg_aegprueba_start" type="number" min="1" max="45" step="1" value="1"></div>
+        <div class="field" style="width:140px"><label for="tg_aegprueba_end">Hasta minuto</label><input id="tg_aegprueba_end" type="number" min="1" max="45" step="1" value="45"></div>
+      </div>
+    </details>
     <div class="row">
       <div class="field grow"><label for="tgVipChatId">Chat ID del grupo Telegram VIP</label><input id="tgVipChatId" type="text" autocomplete="off" placeholder="-1001234567890"></div>
       <span class="small">Agregá el bot al grupo VIP y pegá aquí su chat ID. Las alertas de AEG y de dataGol van a este grupo, cada una con sus propios parámetros de arriba.</span>
@@ -924,6 +941,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <button type="button" class="alert-history-tab active" data-history-group="favorites" role="tab" aria-selected="true">⭐ Favoritos</button>
       <button type="button" class="alert-history-tab" data-history-group="aeg" role="tab" aria-selected="false">💎 AEG</button>
       <button type="button" class="alert-history-tab" data-history-group="datagol" role="tab" aria-selected="false">💎 dataGol</button>
+      <button type="button" class="alert-history-tab" data-history-group="aegprueba" role="tab" aria-selected="false">🧪 AEG prueba</button>
       <button type="button" class="alert-history-tab hidden" data-history-group="vip_legacy" role="tab" aria-selected="false">💎 VIP anteriores</button>
     </div>
     <div id="alertHistorySummary" class="alert-history-summary"></div>
@@ -940,7 +958,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
         <div id="alertAddFx" class="alert-add-fx"><div class="small">Elegí la fecha y tocá «Buscar partidos».</div></div>
         <div class="row" style="align-items:flex-end">
           <div class="field" style="width:200px"><label for="alertAddMarket">Mercado</label><select id="alertAddMarket"><option value="over05">+0,5 goles 1T</option><option value="over10">+1,0 goles 1T</option><option value="over25">+2,5 goles (partido)</option><option value="btts">Ambos marcan (partido)</option></select></div>
-          <div class="field" style="width:190px"><label for="alertAddGroup">Grupo</label><select id="alertAddGroup"><option value="favorites">⭐ Favoritos</option><option value="aeg">💎 VIP AEG</option><option value="datagol">💎 VIP dataGol</option></select></div>
+          <div class="field" style="width:190px"><label for="alertAddGroup">Grupo</label><select id="alertAddGroup"><option value="favorites">⭐ Favoritos</option><option value="aeg">💎 VIP AEG</option><option value="datagol">💎 VIP dataGol</option><option value="aegprueba">🧪 AEG prueba</option></select></div>
           <div class="field" style="width:150px"><label for="alertAddOdd">Cuota (opcional)</label><input id="alertAddOdd" type="number" min="1.01" step="0.01" inputmode="decimal" placeholder="Sin cuota"></div>
           <button id="alertAddSave" type="button" class="primary">Guardar alerta</button>
         </div>
@@ -1971,12 +1989,12 @@ function saveLocalFavorites(){
 }
 function favoriteGroup(f){return f&&String(f.group||'common').toLowerCase()==='vip'?'vip':'common'}
 // Estrategias VIP: cada una con su configuración de Telegram y su historial.
-const VIP_STRATEGIES={aeg:'AEG',datagol:'dataGol'};
+const VIP_STRATEGIES={aeg:'AEG',datagol:'dataGol',aegprueba:'AEG prueba'};
 function vipStrategyOf(f){const k=String(f&&f.vipStrategy||'').toLowerCase();return VIP_STRATEGIES[k]?k:''}
 // Destinos de un favorito: 'common' (Favoritos), 'aeg', 'datagol' o 'vip' (VIP anterior, sin estrategia).
 // Un mismo partido puede estar en varios: el monitor manda una alerta por destino.
-const DEST_ORDER=['common','aeg','datagol','vip'];
-const DEST_NAME={common:'⭐ Favoritos',aeg:'💎 AEG',datagol:'💎 dataGol',vip:'💎 VIP (sin estrategia)'};
+const DEST_ORDER=['common','aeg','datagol','aegprueba','vip'];
+const DEST_NAME={common:'⭐ Favoritos',aeg:'💎 AEG',datagol:'💎 dataGol',aegprueba:'🧪 AEG prueba',vip:'💎 VIP (sin estrategia)'};
 function favDests(f){
   if(!f)return [];
   if(Array.isArray(f.destinations)){const d=DEST_ORDER.filter(k=>f.destinations.includes(k));if(d.length)return d}
@@ -2147,10 +2165,22 @@ function removeFavoriteSource(fixtureId,origin){
   favoriteState.items.set(id,{...current,sources,updatedAt:Date.now()});
   syncFavoriteToCloud(id);refreshFavoriteViews();
 }
+// Desde la pestaña Estrategia AEG: mandar (o sacar) el partido del VIP «AEG prueba», sin tocar sus otros destinos.
+function toggleAegPrueba(fixtureId){
+  const id=String(fixtureId),current=favoriteState.items.get(id),dests=favDests(current);
+  if(current&&dests.includes('aegprueba')){
+    const rest=dests.filter(k=>k!=='aegprueba');
+    if(rest.length)saveFavoriteToGroup(id,rest,'golht');else removeFavorite(id);
+  }else saveFavoriteToGroup(id,[...new Set([...(current?dests:[]),'aegprueba'])],'golht');
+}
 function toggleGolHtFavorite(fixtureId){
-  const id=String(fixtureId),current=favoriteState.items.get(id);
-  if(current&&favoriteSources(current).includes('golht'))removeFavoriteSource(id,'golht');
-  else saveFavoriteToGroup(id,[...new Set([...favDests(current),'common'])],'golht');
+  const id=String(fixtureId),current=favoriteState.items.get(id),dests=favDests(current);
+  if(current&&dests.includes('common')&&favoriteSources(current).includes('golht')){
+    // Quitar la estrella saca el partido de Favoritos, pero lo deja en los VIP donde esté (por ejemplo AEG prueba).
+    const rest=dests.filter(k=>k!=='common');
+    if(rest.length)saveFavoriteToGroup(id,rest,'golht');else removeFavoriteSource(id,'golht');
+  }
+  else saveFavoriteToGroup(id,[...new Set([...(current?dests:[]),'common'])],'golht');
 }
 function setFavoriteDests(fixtureId,dests){
   const id=String(fixtureId),current=favoriteState.items.get(id);if(!current)return;
@@ -2209,7 +2239,7 @@ $('#favoriteDestinationDialog').addEventListener('click',e=>{
     const dests=[...dlg.querySelectorAll('[data-dest-check]')].filter(c=>c.checked&&c.offsetParent!==null).map(c=>c.dataset.destCheck);
     const cur=favoriteState.items.get(String(id));
     // Un VIP «sin estrategia» guardado antes se conserva si no se tocaron las estrategias.
-    if(cur&&favDests(cur).includes('vip')&&!dests.some(k=>k==='aeg'||k==='datagol'))dests.push('vip');
+    if(cur&&favDests(cur).includes('vip')&&!dests.some(k=>VIP_STRATEGIES[k]))dests.push('vip');
     if(!dests.length){if(cur)removeFavorite(id);dlg.close();return}
     saveFavoriteToGroup(id,dests,'scanner');
     dlg.close();
@@ -2225,6 +2255,8 @@ $('#vipFavorites').addEventListener('click',favoriteDestAction);
 $('#ghCandidateList').addEventListener('click',e=>{
   const btn=e.target.closest('[data-gh-favorite]');
   if(btn){e.preventDefault();toggleGolHtFavorite(btn.dataset.ghFavorite);}
+  const vipBtn=e.target.closest('[data-gh-aegprueba]');
+  if(vipBtn){e.preventDefault();toggleAegPrueba(vipBtn.dataset.ghAegprueba);}
 });
 function loadSavedFavoriteDetails(e){
   const d=e.target;
@@ -2635,7 +2667,7 @@ function ghRenderCandidates(rows){
     const avg=x=>x==null?'s/d':x.toFixed(2);
     const status=c.manual?'Pasa por racha Under (revisar)':'Cumple la fórmula';
     const id=String(c.fx.id),saved=favoriteState.items.get(id),isSaved=!!(saved&&favDests(saved).includes('common')&&favoriteSources(saved).includes('golht'));
-    const favButton='<button class="fav-btn" type="button" data-gh-favorite="'+esc(id)+'" aria-pressed="'+isSaved+'" title="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'" aria-label="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'">'+(isSaved?'★':'☆')+'</button>';
+    const favButton='<button class="fav-btn" type="button" data-gh-favorite="'+esc(id)+'" aria-pressed="'+isSaved+'" title="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'" aria-label="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'">'+(isSaved?'★':'☆')+'</button>'+(()=>{const inVip=!!(saved&&favDests(saved).includes('aegprueba'));return '<button class="gh-vip-btn" type="button" data-gh-aegprueba="'+esc(id)+'" aria-pressed="'+inVip+'">'+(inVip?'🧪 En AEG prueba ✓':'🧪 Mandar a AEG prueba')+'</button>'})();
     const pattern=t=>t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
     const underNote=[pattern(c.a),pattern(c.b)].filter(Boolean).join(' ');
     const quote=c.quote?'Cuota '+c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+(c.quote.updatedAt?' · actualizada '+esc(c.quote.updatedAt):''):'Cuota Pregame no disponible';
@@ -3039,9 +3071,10 @@ function setTelegramForm(data={}) {
   q('#tgMin10').value = Number(data.over10?.minOdds ?? 1.65).toFixed(2);
   q('#tgMinuteStart').value = Number(data.minuteStart ?? 1);
   q('#tgMinuteEnd').value = Number(data.minuteEnd ?? 45);
-  // Cada estrategia VIP arranca con los valores VIP anteriores hasta que se guarde la suya.
-  for (const k of ['aeg', 'datagol']) {
-    const st = (data.vipStrategies && data.vipStrategies[k]) || {};
+  // Cada estrategia VIP arranca con los valores VIP anteriores hasta que se guarde la suya (AEG prueba: con los de AEG).
+  for (const k of ['aeg', 'datagol', 'aegprueba']) {
+    const vs = data.vipStrategies || {};
+    const st = vs[k] || (k === 'aegprueba' ? vs.aeg : null) || {};
     q('#tg_' + k + '_over05').checked = (st.over05 || data.vipOver05 || {}).enabled !== false;
     q('#tg_' + k + '_min05').value = Number((st.over05 || {}).minOdds ?? data.vipOver05?.minOdds ?? 1.50).toFixed(2);
     q('#tg_' + k + '_over10').checked = (st.over10 || data.vipOver10 || {}).enabled !== false;
@@ -3069,7 +3102,7 @@ function startTelegramSettings(user) {
     const min05 = Number(q('#tgMin05').value), min10 = Number(q('#tgMin10').value);
     const start = Number(q('#tgMinuteStart').value), end = Number(q('#tgMinuteEnd').value);
     const vipStrategies = {};
-    for (const k of ['aeg', 'datagol']) {
+    for (const k of ['aeg', 'datagol', 'aegprueba']) {
       vipStrategies[k] = {
         over05: { enabled: q('#tg_' + k + '_over05').checked, minOdds: Number(q('#tg_' + k + '_min05').value) },
         over10: { enabled: q('#tg_' + k + '_over10').checked, minOdds: Number(q('#tg_' + k + '_min10').value) },
@@ -3081,7 +3114,7 @@ function startTelegramSettings(user) {
       telegramStatus('Todas las cuotas mínimas deben ser iguales o mayores a 1,01.', true); return;
     }
     if (![[start, end], ...vs.map(v => [v.minuteStart, v.minuteEnd])].every(([a, b]) => Number.isInteger(a) && Number.isInteger(b) && a >= 1 && b <= 45 && a <= b)) {
-      telegramStatus('Los rangos de minutos (normal, AEG y dataGol) deben estar entre 1 y 45; el minuto inicial no puede superar al final.', true); return;
+      telegramStatus('Los rangos de minutos (normal, AEG, dataGol y AEG prueba) deben estar entre 1 y 45; el minuto inicial no puede superar al final.', true); return;
     }
     const btn = q('#tgSave'); btn.disabled = true;
     telegramStatus('Guardando…');
@@ -3096,7 +3129,7 @@ function startTelegramSettings(user) {
         vipChatId: q('#tgVipChatId').value.trim(),
         updatedBy: user.email || '', updatedAt: serverTimestamp()
       }, { merge: true });
-      telegramStatus('Configuración guardada. Favoritos normales, VIP AEG y VIP dataGol tienen parámetros independientes.');
+      telegramStatus('Configuración guardada. Favoritos normales, VIP AEG, VIP dataGol y AEG prueba tienen parámetros independientes.');
     } catch (e) {
       telegramStatus('No se pudo guardar: ' + friendly(e) + ' Revisá las reglas de Firestore.', true);
     } finally { btn.disabled = false; }
@@ -3371,7 +3404,7 @@ async function manualAlertRules(group) {
   }
   const v05 = num(raw.vipOver05?.minOdds, 1.5), v10 = num(raw.vipOver10?.minOdds, 1.65);
   const [vs, ve] = mins(raw.vipMinuteStart, raw.vipMinuteEnd, 1, 45);
-  const st = (raw.vipStrategies || {})[group] || {};
+  const st = (raw.vipStrategies || {})[group] || (group === 'aegprueba' ? (raw.vipStrategies || {}).aeg : null) || {};
   const [start, end] = mins(st.minuteStart ?? vs, st.minuteEnd ?? ve, vs, ve);
   return { min05: num(st.over05?.minOdds, v05), min10: num(st.over10?.minOdds, v10), start, end };
 }
@@ -3498,7 +3531,7 @@ function setupOutageAudit() {
   let rows = [], alertsBy = new Map();
   const say = (m, err) => { status.textContent = m; status.style.color = err ? 'var(--c1)' : ''; };
   const outcomeTxt = { won: 'Ganada', lost: 'Perdida', push: 'Devuelta', pending: 'Pendiente' };
-  const groupTxt = a => a.favorite_group === 'vip' ? '💎 ' + ({ aeg: 'AEG', datagol: 'dataGol' }[String(a.vip_strategy || '').toLowerCase()] || 'VIP') : '⭐ Fav';
+  const groupTxt = a => a.favorite_group === 'vip' ? '💎 ' + ({ aeg: 'AEG', datagol: 'dataGol', aegprueba: 'AEG prueba' }[String(a.vip_strategy || '').toLowerCase()] || 'VIP') : '⭐ Fav';
   async function loadAlerts(ids) {
     for (let i = 0; i < ids.length; i += 30) {
       const snap = await getDocs(query(collection(db, 'tanoapp_telegram_alerts'), where('fixture_id', 'in', ids.slice(i, i + 30))));
@@ -3518,7 +3551,7 @@ function setupOutageAudit() {
       return '<article class="alert-history-card"><div><strong>' + esc(r.teams.home.name + ' ' + score + ' ' + r.teams.away.name) + '</strong><div class="small">' + esc(fmtTs({ toDate: () => new Date(r.fixture.date) }) + ' · ' + r.league.country + ' · ' + r.league.name + htTxt + ' · ' + (r.fixture.status?.short || '')) + '</div></div>'
         + '<div>' + chips + '</div>'
         + '<div class="row" style="align-items:flex-end;gap:8px"><select data-audit-market="' + fid + '"><option value="over05">+0,5 1T</option></select>'
-        + '<select data-audit-group="' + fid + '"><option value="favorites">⭐ Favoritos</option><option value="aeg">💎 VIP AEG</option><option value="datagol">💎 VIP dataGol</option></select>'
+        + '<select data-audit-group="' + fid + '"><option value="favorites">⭐ Favoritos</option><option value="aeg">💎 VIP AEG</option><option value="datagol">💎 VIP dataGol</option><option value="aegprueba">🧪 AEG prueba</option></select>'
         + '<button type="button" data-audit-add="' + fid + '">＋ Agregar</button></div></article>';
     }).join('');
   }
@@ -3556,7 +3589,7 @@ function startAlertHistory(isOwner) {
   const resetBar = q('#alertResetBar');
   if (isOwner) unsubResets = onSnapshot(configRef, snap => { resets = (snap.exists() && snap.data().history_reset) || {}; renderHistory(); }, e => console.warn('No se pudo leer el reinicio del historial', e));
   const tsMs = v => v && typeof v.toMillis === 'function' ? v.toMillis() : v instanceof Date ? v.getTime() : 0;
-  const groupName = { favorites: 'Favoritos', aeg: 'AEG', datagol: 'dataGol', vip_legacy: 'VIP anteriores' };
+  const groupName = { favorites: 'Favoritos', aeg: 'AEG', datagol: 'dataGol', aegprueba: 'AEG prueba', vip_legacy: 'VIP anteriores' };
   async function setReset(group, value) {
     try {
       await setDoc(configRef, { history_reset: { [group]: value } }, { merge: true });
@@ -3687,7 +3720,7 @@ function startAlertHistory(isOwner) {
     const alerts = everyAlert.filter(a => !a.hidden);
     renderTrash(everyAlert.filter(a => a.hidden));
     // VIP se divide por estrategia; las alertas VIP de antes de la división quedan en «VIP anteriores».
-    const stratOf = a => a.favorite_group !== 'vip' ? 'favorites' : (['aeg', 'datagol'].includes(String(a.vip_strategy || '').toLowerCase()) ? String(a.vip_strategy).toLowerCase() : 'vip_legacy');
+    const stratOf = a => a.favorite_group !== 'vip' ? 'favorites' : (['aeg', 'datagol', 'aegprueba'].includes(String(a.vip_strategy || '').toLowerCase()) ? String(a.vip_strategy).toLowerCase() : 'vip_legacy');
     const legacyTab = document.querySelector('[data-history-group="vip_legacy"]');
     if (legacyTab) legacyTab.classList.toggle('hidden', !alerts.some(a => stratOf(a) === 'vip_legacy') && activeGroup !== 'vip_legacy');
     const since = Number(resets[activeGroup]) || 0;
@@ -3756,7 +3789,7 @@ function startAlertHistory(isOwner) {
       return '<article class="alert-history-card" data-alert-id="' + esc(a.id) + '">'
         + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong>' + (a.manual ? '<span class="alert-manual-badge">✍️ Manual' + (a.odd_estimated ? ' · cuota estimada' : '') + '</span>' : '') + '<div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
         + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
-        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 VIP ' + ({ aeg: 'AEG', datagol: 'dataGol' }[String(a.vip_strategy || '').toLowerCase()] || 'anterior') + ' · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || (a.manual ? 'Cargada a mano' : 'Casa no informada')) + settle + balance + '</div>'
+        + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 VIP ' + ({ aeg: 'AEG', datagol: 'dataGol', aegprueba: 'AEG prueba' }[String(a.vip_strategy || '').toLowerCase()] || 'anterior') + ' · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || (a.manual ? 'Cargada a mano' : 'Casa no informada')) + settle + balance + '</div>'
         + '<div class="alert-bet-edit"><label>Cuota real de entrada<input type="number" min="1.01" step="0.01" inputmode="decimal" data-entry-odd="' + esc(a.id) + '" value="' + esc(entryOddLabel) + '" placeholder="' + esc(originalOddLabel) + '"></label>'
         + '<label>Stake<input type="text" value="1 unidad (' + esc(unitValue.toLocaleString('es-AR')) + ' ARS)" readonly></label>'
         + '<button type="button" data-save-bet="' + esc(a.id) + '">Guardar cuota real</button></div>'
@@ -3787,7 +3820,7 @@ function startAlertHistory(isOwner) {
         }
       };
     });
-    const strategyName = { aeg: 'AEG', datagol: 'dataGol' };
+    const strategyName = { aeg: 'AEG', datagol: 'dataGol', aegprueba: 'AEG prueba' };
     const moveStatus = msg => { const el = list.querySelector('#alertMoveStatus'); if (el) el.textContent = msg; unitStatus.textContent = msg; };
     const moveAlerts = async (ids, strategy, buttons) => {
       if (!ids.length) return;
