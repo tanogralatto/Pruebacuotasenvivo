@@ -2847,13 +2847,15 @@ async function ghCalRun(){
     const pickSet=new Set(picks.map(p=>String(p.id)));
     const thresholds=TanoAeg.DEFAULT_THRESHOLDS;
     const allSorts=Object.keys(TanoAeg.SORTS),baseSorts=odds.size?allSorts:allSorts.filter(k=>k!=='ev');
-    const base=TanoAeg.calibrate(pickSet,dayList,histories,rules,{thresholds,ruleSets:TanoAeg.BASE_SETS,sorts:baseSorts,odds});
+    const base=TanoAeg.calibrate(pickSet,dayList,histories,rules,{thresholds:[...thresholds,1.45,1.50],ruleSets:TanoAeg.BASE_SETS,sorts:baseSorts,odds});
+    // «Que estén todos»: primero las que dejan pasar más picks; a igualdad, la lista más corta y con los picks más arriba.
+    const all=base.slice().sort((x,y)=>y.recall-x.recall||x.perDay-y.perDay||y.recallK-x.recallK||y.recall10-x.recall10);
     await sleep(20);
     const ev=evDays.length?TanoAeg.calibrate(pickSet,evDays,histories,rules,{thresholds,ruleSets:TanoAeg.EV_SETS,odds,quotes:['best','median'],minEvs:TanoAeg.MIN_EVS,sorts:allSorts}):[];
     const evPicks=evDays.reduce((n,d)=>n+d.fixtures.filter(f=>pickSet.has(String(f.id))).length,0);
     const pickOdds=picks.filter(p=>odds.has(String(p.id))).length;
-    ghCalData={tables:{base,ev},days:dayList,evDays,histories,pickSet,rules,picks,odds,evPicks,pickOdds,errors:[...errors]};
-    ghCalRender('base',0);
+    ghCalData={tables:{all,base,ev},days:dayList,evDays,histories,pickSet,rules,picks,odds,evPicks,pickOdds,errors:[...errors]};
+    ghCalRender('all',0);
     ghCalStatus('Listo: '+picks.length+' picks, '+dates.length+' días, '+dayList.reduce((n,d)=>n+d.fixtures.length,0)+' partidos evaluados; cuotas prepartido para '+pickOdds+' picks. '+(state.calls-callsAtStart)+' consultas.'+(errors.size?' Algunos datos fallaron: '+[...errors].slice(0,2).join(' · '):''),errors.size>0);
   }catch(e){ghCalStatus('No se pudo calibrar: '+e.message,true)}
   finally{ghCalBusy=false;runBtn.disabled=false;cancelBtn.classList.add('hidden')}
@@ -2869,10 +2871,11 @@ function ghCalRender(selKey,selIdx){
   const box=document.getElementById('ghCalResults'),d=ghCalData;if(!d){box.innerHTML='';return}
   const nPicks=d.tables.base[0]?.picks||0;
   let html='<div class="val-box" style="margin-top:12px"><b>Cómo leer:</b> la app muestra todos los partidos que pasan el filtro, ordenados. «Arriba de todo» = cuántos de tus picks quedan en los primeros puestos del día (tantos puestos como picks mandaste ese día; en promedio '+(nPicks/Math.max(1,d.days.length)).toFixed(1)+'). «Entre los 10 primeros» = cuántos quedan en el top 10. «Pasan el filtro» = cuántos aparecen en la lista, en cualquier puesto. «Partidos por día» = largo de la lista en esas ligas.'+(nPicks<20?'<br><b>Ojo:</b> con '+nPicks+' picks el resultado es orientativo.':'')+'</div>';
-  html+='<h3 style="margin:16px 0 0">Sin EV · todos los días ('+d.days.length+' días, '+nPicks+' picks)</h3>'+ghCalTable('base',d.tables.base,selKey,selIdx);
+  html+='<h3 style="margin:16px 0 0">🎯 Que aparezcan todos tus picks · sin EV ('+d.days.length+' días, '+nPicks+' picks)</h3><p class="small" style="margin:4px 0 0">Ordenada por «Pasan el filtro»: la lista diaria es más larga, pero casi no se pierde ningún pick.</p>'+ghCalTable('all',d.tables.all,selKey,selIdx);
+  html+='<h3 style="margin:16px 0 0">Lista más corta · sin EV ('+d.days.length+' días, '+nPicks+' picks)</h3>'+ghCalTable('base',d.tables.base,selKey,selIdx);
   if(d.tables.ev.length)html+='<h3 style="margin:16px 0 0">Con EV positivo · solo días con cuotas guardadas ('+d.evDays.length+' días, '+d.evPicks+' picks)</h3><p class="small" style="margin:4px 0 0">EV = cuota de la casa ÷ cuota real − 1. API-Football guarda las cuotas prepartido solo unos días: por eso esta tabla usa menos días.</p>'+ghCalTable('ev',d.tables.ev,selKey,selIdx);
   else html+='<p class="small">No hay cuotas prepartido guardadas para los días de tus picks (API-Football las guarda pocos días): la tabla con EV aparece cuando haya picks de los últimos '+GH_ODDS_DAYS+' días.</p>';
-  const row=(d.tables[selKey]||d.tables.base)[selIdx]||d.tables.base[0];
+  const row=(d.tables[selKey]||d.tables.all)[selIdx]||d.tables.all[0];
   const v=TanoAeg.variantById(row.variant),rules={...d.rules,maxFair:row.maxFair,minEv:row.minEv??0},isEv=TanoAeg.RULE_SETS[row.ruleSet].ev;
   const daysUsed=isEv?d.evDays:d.days;
   const pickRows=[],fairs=[],rankOf=new Map();
