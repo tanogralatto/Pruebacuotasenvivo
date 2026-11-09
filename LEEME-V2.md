@@ -39,3 +39,10 @@
 - Etapa 2 (hecha): al analizar se guarda la línea principal del lado con mejor precio; «Liquidar registro» la resuelve con el marcador de 90 minutos (ganada, media ganada, devuelta, media perdida, perdida) y el ROI usa esa ganancia real.
 - Etapa 3 (hecha): «Validar» arma también la tabla «Hándicap asiático» con las mismas predicciones honestas de +2,5. Mide la diferencia de goles con cuatro preguntas por partido (líneas del local −0,5, +0,5, −1,5 y +1,5), cada una contra su propia tasa base de la liga. Las ligas aprobadas usan ¼ Kelly con el modelo y las casas.
 - Tasa base corregida: `scoreRows` arranca en el valor típico de cada mercado (`BASE_PRIOR`: 0,7 para +0,5 1T y 0,5 para los demás) con peso de 3 partidos, en lugar de 70% fijo para los primeros 10.
+
+## Estrategia AEG (fórmula estilo BetPractice)
+- La pestaña «Estrategia AEG» ahora se ve con la cuenta del dueño.
+- `aeg-formula.js` (puro, con tests en `tests/aeg-formula.test.js`): **cuota real = 1 ÷ (partidos con gol en el 1T ÷ partidos de la muestra)**. Cuadra con los tres ejemplos de la clase (105/131 → 1,25 · 75/88 → 1,17 · 8/9 → 1,13). Filtros: cuota real ≤ 1,25, muestra ≥ 30, promedios 3,0 / 2,8, rachas (Over ≥ 8 o Under de 2–3; Under de 4 o más queda afuera).
+- «Calibrar con el historial VIP AEG»: lee los picks AEG (alertas del historial y favoritos AEG), baja todos los partidos de esas fechas en las mismas ligas y prueba 24 formas de armar la muestra × 3 juegos de reglas. Muestra cuántos picks encuentra cada una y cuántos partidos por día elige. «Usar esta fórmula» la guarda para «Evaluar estrategia».
+- «Evaluar estrategia» ya no corta en 10 partidos (tope 200, configurable hasta 500) y ordena como BetPractice: primero valor positivo (cuota casa ÷ cuota real − 1), después por cuota real.
+- Corregido: la cuota de casa Over 0,5 1T nunca se leía (API-Football no manda `handicap` y se tomaba como línea 0).
