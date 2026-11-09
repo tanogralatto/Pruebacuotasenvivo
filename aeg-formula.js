@@ -135,49 +135,82 @@
     return { pass: fails.length === 0, fails, streakVia, ev };
   }
 
+  // Órdenes de la lista diaria. Cada uno recibe { ms, ev } y devuelve un número: menor = más arriba.
+  const SORTS = {
+    ev: { label: 'mayor EV', key: c => -(c.ev ?? -9) * 1000 + (c.ms.fair || 9) },
+    fair: { label: 'menor cuota real', key: c => (c.ms.fair || 9) * 1000 - (c.ev ?? -9) },
+    sample: { label: 'muestra más grande', key: c => -c.ms.n * 1000 + (c.ms.fair || 9) },
+    streak: { label: 'racha Over más larga', key: c => -(c.ms.a.over + c.ms.b.over) * 1000 + (c.ms.fair || 9) }
+  };
+  const MIN_EVS = [0, -0.03, -0.05];
+
+  /** Ordena candidatos ({ ms, ev, ... }) según un orden de SORTS. */
+  function sortCandidates(list, sort) {
+    const k = (SORTS[sort] || SORTS.fair).key;
+    return list.slice().sort((x, y) => k(x) - k(y));
+  }
+
   /**
    * Calibración. picks: Set de ids (string) de los partidos VIP AEG.
    * days: [{ date, fixtures:[fx...] }] con TODOS los partidos de esas fechas en las ligas de los picks.
    * histories: Map(teamId → partidos comprimidos).
-   * opts.thresholds: cuotas reales máximas a probar. opts.ruleSets: juegos de reglas.
-   * opts.odds: Map(id → { best, median }) para los juegos con EV; opts.quotes: ['best','median'].
-   * Devuelve una fila por variante × reglas × umbral (× cuota), ordenadas por picks encontrados
-   * y, a igualdad, por menos candidatos por día.
+   * opts.thresholds: cuotas reales máximas. opts.ruleSets: juegos de reglas.
+   * opts.odds: Map(id → { best, median }); opts.quotes: ['best','median'] para las reglas con EV.
+   * opts.minEvs: EV mínimos a probar (con tolerancia negativa). opts.sorts: órdenes de la lista.
+   * Además de cuántos picks pasan, mide en qué puesto quedan: «topK» = picks que quedan entre los
+   * primeros K del día, con K = cantidad de picks de ese día; «top10» = entre los primeros 10.
    */
   function calibrate(picks, days, histories, rules, opts) {
     opts = opts || {};
     const variants = opts.variants || VARIANTS;
     const ruleSets = opts.ruleSets || BASE_SETS;
     const thresholds = opts.thresholds || [((rules && rules.maxFair) || DEFAULT_RULES.maxFair)];
+    const sorts = opts.sorts || ['fair'];
     const odds = opts.odds || new Map();
     const combos = [];
-    for (const rs of ruleSets) for (const t of thresholds) for (const q of (RULE_SETS[rs].ev ? (opts.quotes || ['best']) : [null])) combos.push({ rs, t, q });
+    for (const rs of ruleSets) for (const t of thresholds) {
+      const isEv = RULE_SETS[rs].ev;
+      for (const q of (isEv ? (opts.quotes || ['best']) : [null]))
+        for (const me of (isEv ? (opts.minEvs || [0]) : [null]))
+          for (const so of sorts) combos.push({ rs, t, q, me, so });
+    }
     const rows = [];
-    for (const v of variants) for (const c of combos) rows.push({ variant: v.id, ruleSet: c.rs, maxFair: c.t, quote: c.q, found: 0, picks: 0, candidates: 0, days: 0, missed: [] });
+    for (const v of variants) for (const c of combos) rows.push({ variant: v.id, ruleSet: c.rs, maxFair: c.t, quote: c.q, minEv: c.me, sort: c.so, found: 0, picks: 0, candidates: 0, days: 0, topK: 0, top10: 0, missed: [] });
     for (const day of days) {
       const usable = day.fixtures.filter(fx => histories.has(fx.hid) && histories.has(fx.aid));
       if (!usable.length) continue;
+      const dayPicks = usable.filter(fx => picks.has(String(fx.id))).length;
       let k = 0;
       for (const v of variants) {
         const stats = usable.map(fx => matchStats(histories.get(fx.hid), histories.get(fx.aid), fx, v));
         for (const c of combos) {
-          const row = rows[k++], r = { ...(rules || {}), maxFair: c.t };
+          const row = rows[k++], r = { ...(rules || {}), maxFair: c.t, minEv: c.me ?? 0 };
           row.days++;
+          const passing = [];
           usable.forEach((fx, i) => {
-            const o = odds.get(String(fx.id)), quote = c.q && o ? o[c.q] : null;
-            const ok = evaluate(stats[i], c.rs, r, quote).pass;
-            if (ok) row.candidates++;
-            if (picks.has(String(fx.id))) { row.picks++; if (ok) row.found++; else row.missed.push(fx.id); }
+            const o = odds.get(String(fx.id)), quote = o ? o[c.q || 'best'] : null;
+            const ev = evaluate(stats[i], c.rs, r, quote);
+            const isPick = picks.has(String(fx.id));
+            if (ev.pass) passing.push({ fx, ms: stats[i], ev: ev.ev, isPick });
+            if (isPick) { row.picks++; if (ev.pass) row.found++; else row.missed.push(fx.id); }
+          });
+          row.candidates += passing.length;
+          sortCandidates(passing, c.so).forEach((x, pos) => {
+            if (!x.isPick) return;
+            if (pos < dayPicks) row.topK++;
+            if (pos < 10) row.top10++;
           });
         }
       }
     }
     for (const row of rows) {
       row.recall = row.picks ? row.found / row.picks : 0;
+      row.recallK = row.picks ? row.topK / row.picks : 0;
+      row.recall10 = row.picks ? row.top10 / row.picks : 0;
       row.perDay = row.days ? row.candidates / row.days : 0;
       row.precision = row.candidates ? row.found / row.candidates : 0;
     }
-    rows.sort((x, y) => y.recall - x.recall || x.perDay - y.perDay);
+    rows.sort((x, y) => y.recallK - x.recallK || y.recall10 - x.recall10 || y.recall - x.recall || x.perDay - y.perDay);
     return rows;
   }
 
@@ -189,7 +222,7 @@
     return { p, odd: 1 / p };
   }
 
-  const api = { VARIANTS, DEFAULT_VARIANT, DEFAULT_RULES, RULE_SETS, BASE_SETS, EV_SETS, QUOTES, DEFAULT_THRESHOLDS, SCOPES, SEASONS, VENUES, POOLS, variantById, variantLabel, teamSample, teamStats, matchStats, evaluate, calibrate, liveFair };
+  const api = { SORTS, MIN_EVS, sortCandidates, VARIANTS, DEFAULT_VARIANT, DEFAULT_RULES, RULE_SETS, BASE_SETS, EV_SETS, QUOTES, DEFAULT_THRESHOLDS, SCOPES, SEASONS, VENUES, POOLS, variantById, variantLabel, teamSample, teamStats, matchStats, evaluate, calibrate, liveFair };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoAeg = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

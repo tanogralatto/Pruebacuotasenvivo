@@ -117,3 +117,21 @@ test('umbrales de cuota real y filtro de EV en la calibración', () => {
   const e = A.evaluate(A.matchStats(histories.get(1), histories.get(2), pickFx, v[0]), 'coreEv', { maxFair: 1.35 }, null);
   assert.deepEqual(e.fails, ['sin cuota']);
 });
+
+test('orden de la lista: mide cuántos picks quedan entre los primeros del día', () => {
+  const mk = (t, hits) => games(t, Array.from({ length: 20 }, (_, i) => [i < hits ? 1 : 0, 3]));
+  // Tres partidos que pasan: el pick (cuota real 1,18) es el de mayor EV, pero no el de menor cuota real.
+  const f1 = { ...fx, id: 1, hid: 1, aid: 2 }, f2 = { ...fx, id: 2, hid: 3, aid: 4 }, f3 = { ...fx, id: 3, hid: 5, aid: 6 };
+  const histories = new Map([[1, mk(1, 17)], [2, mk(2, 17)], [3, mk(3, 19)], [4, mk(4, 19)], [5, mk(5, 18)], [6, mk(6, 18)]]);
+  const odds = new Map([['1', { best: 1.40, median: 1.35 }], ['2', { best: 1.02, median: 1.01 }], ['3', { best: 1.12, median: 1.10 }]]);
+  const days = [{ date: 'd', fixtures: [f1, f2, f3] }];
+  const v = [A.variantById(A.DEFAULT_VARIANT)];
+  const rows = A.calibrate(new Set(['1']), days, histories, null, { variants: v, ruleSets: ['core'], thresholds: [1.25], sorts: ['ev', 'fair'], odds });
+  const byEv = rows.find(r => r.sort === 'ev'), byFair = rows.find(r => r.sort === 'fair');
+  assert.equal(byEv.topK, 1); assert.equal(byFair.topK, 0); assert.equal(byFair.top10, 1);
+  assert.equal(rows[0].sort, 'ev');
+  // Tolerancia de EV: con −5% también pasa un partido de EV −3%.
+  const tol = A.calibrate(new Set(['2']), days, histories, null, { variants: v, ruleSets: ['coreEv'], thresholds: [1.25], minEvs: [0, -0.05], odds });
+  assert.equal(tol.find(r => r.minEv === 0).found, 0);
+  assert.equal(tol.find(r => r.minEv === -0.05).found, 1);
+});
