@@ -977,7 +977,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
 
 <script src="./modelo-poisson.js"></script>
 <script src="./asiaticos.js"></script>
-<script src="./aeg-formula.js"></script>
+<script src="./aeg-formula.js?v=2026-11-09b"></script><!-- cambiar ?v= cada vez que cambie aeg-formula.js: evita que Safari mezcle versiones -->
 <script src="./modelo-xg.js"></script>
 <script>
 /*PURE*/
@@ -2013,7 +2013,7 @@ function favoriteForView(id,origin){
 }
 function refreshFavoriteViews(){
   renderFavorites();renderVipFavorites();renderResults();renderLive();
-  if(Array.isArray(ghLastCandidates))ghRenderCandidates(ghLastCandidates);
+  try{if(Array.isArray(ghLastCandidates))ghRenderCandidates(ghLastCandidates)}catch(e){console.warn('Estrategia AEG: no se pudo redibujar',e)}
 }
 function favoriteMarketKey(f){
   if(favoriteSources(f).includes('golht')&&!favoriteSources(f).includes('scanner'))return 'ht05';
@@ -2536,7 +2536,8 @@ function ghSettings(){
   return saved;
 }
 function ghStatus(text,error=false){const el=document.getElementById('ghStatus');el.textContent=text;el.classList.toggle('err',error)}
-ghApply(ghSettings());
+// La pestaña AEG nunca debe frenar el resto de la app (por ejemplo, si el navegador trae un aeg-formula.js viejo).
+try{ghApply(ghSettings())}catch(e){console.warn('Estrategia AEG: no se pudieron aplicar los ajustes',e);try{document.getElementById('ghStatus').textContent='Recargá la página: el navegador mezcló una versión vieja de la estrategia.'}catch(_){}}
 document.getElementById('ghSettingsForm').addEventListener('submit',event=>{
   event.preventDefault();
   const prev=ghSettings(),next={variant:prev.variant,ruleSet:prev.ruleSet,quote:prev.quote||'best',minEv:prev.minEv??0,sort:prev.sort||'fair',calibratedAt:prev.calibratedAt||null};
