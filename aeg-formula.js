@@ -37,12 +37,18 @@
   const DEFAULT_VARIANT = 'pooled|all|cp|both';
 
   // Reglas de la clase. Los conjuntos crecen de a una regla para ver cuál aporta.
-  const DEFAULT_RULES = { maxFair: 1.25, minSample: 30, avgHigh: 3.0, avgLow: 2.8, overStreak: 8, underMin: 2, underMax: 3 };
+  const DEFAULT_RULES = { maxFair: 1.25, minSample: 30, avgHigh: 3.0, avgLow: 2.8, overStreak: 8, underMin: 2, underMax: 3, minEv: 0 };
   const RULE_SETS = {
-    core: { label: 'Cuota real + muestra', avg: false, streak: false },
-    avg: { label: 'Cuota real + muestra + promedios', avg: true, streak: false },
-    full: { label: 'Cuota real + muestra + promedios + rachas', avg: true, streak: true }
+    core: { label: 'Cuota real + muestra', avg: false, streak: false, ev: false },
+    avg: { label: 'Cuota real + muestra + promedios', avg: true, streak: false, ev: false },
+    full: { label: 'Cuota real + muestra + promedios + rachas', avg: true, streak: true, ev: false },
+    coreEv: { label: 'Cuota real + muestra + EV', avg: false, streak: false, ev: true },
+    avgEv: { label: 'Cuota real + muestra + promedios + EV', avg: true, streak: false, ev: true },
+    fullEv: { label: 'Cuota real + muestra + promedios + rachas + EV', avg: true, streak: true, ev: true }
   };
+  const BASE_SETS = ['core', 'avg', 'full'], EV_SETS = ['coreEv', 'avgEv', 'fullEv'];
+  const QUOTES = { best: 'mejor cuota entre casas', median: 'cuota mediana de las casas' };
+  const DEFAULT_THRESHOLDS = [1.25, 1.30, 1.35, 1.40];
 
   function variantById(id) { return VARIANTS.find(v => v.id === id) || VARIANTS.find(v => v.id === DEFAULT_VARIANT); }
   function variantLabel(v) {
@@ -99,8 +105,9 @@
     return { a, b, n, hits, rate, fair, current: season('current'), previous: season('previous'), variant: variant.id, sampleA, sampleB };
   }
 
-  /** Aplica las reglas. Devuelve si pasa y, si no, qué regla falló primero (en orden de la clase). */
-  function evaluate(ms, ruleSet, rules) {
+  /** Aplica las reglas. Devuelve si pasa y, si no, qué reglas fallaron (en orden de la clase).
+   *  quote: cuota de la casa (solo la usan los juegos de reglas con EV). */
+  function evaluate(ms, ruleSet, rules, quote) {
     const set = RULE_SETS[ruleSet] || RULE_SETS.full;
     const r = { ...DEFAULT_RULES, ...(rules || {}) };
     const fails = [];
@@ -119,36 +126,49 @@
       else if (maxUnder >= r.underMin) streakVia = 'under';
       else fails.push('rachas');
     }
-    return { pass: fails.length === 0, fails, streakVia };
+    let ev = null;
+    if (quote > 1 && ms.fair) ev = quote / ms.fair - 1;
+    if (set.ev) {
+      if (ev === null) fails.push('sin cuota');
+      else if (ev < r.minEv - 1e-9) fails.push('EV');
+    }
+    return { pass: fails.length === 0, fails, streakVia, ev };
   }
 
   /**
    * Calibración. picks: Set de ids (string) de los partidos VIP AEG.
    * days: [{ date, fixtures:[fx...] }] con TODOS los partidos de esas fechas en las ligas de los picks.
    * histories: Map(teamId → partidos comprimidos).
-   * Devuelve una fila por variante × conjunto de reglas, ordenadas por picks encontrados
+   * opts.thresholds: cuotas reales máximas a probar. opts.ruleSets: juegos de reglas.
+   * opts.odds: Map(id → { best, median }) para los juegos con EV; opts.quotes: ['best','median'].
+   * Devuelve una fila por variante × reglas × umbral (× cuota), ordenadas por picks encontrados
    * y, a igualdad, por menos candidatos por día.
    */
   function calibrate(picks, days, histories, rules, opts) {
-    const variants = (opts && opts.variants) || VARIANTS;
-    const ruleSets = (opts && opts.ruleSets) || Object.keys(RULE_SETS);
+    opts = opts || {};
+    const variants = opts.variants || VARIANTS;
+    const ruleSets = opts.ruleSets || BASE_SETS;
+    const thresholds = opts.thresholds || [((rules && rules.maxFair) || DEFAULT_RULES.maxFair)];
+    const odds = opts.odds || new Map();
+    const combos = [];
+    for (const rs of ruleSets) for (const t of thresholds) for (const q of (RULE_SETS[rs].ev ? (opts.quotes || ['best']) : [null])) combos.push({ rs, t, q });
     const rows = [];
-    for (const v of variants) for (const rs of ruleSets) rows.push({ variant: v.id, ruleSet: rs, found: 0, picks: 0, candidates: 0, days: 0, missed: [] });
+    for (const v of variants) for (const c of combos) rows.push({ variant: v.id, ruleSet: c.rs, maxFair: c.t, quote: c.q, found: 0, picks: 0, candidates: 0, days: 0, missed: [] });
     for (const day of days) {
       const usable = day.fixtures.filter(fx => histories.has(fx.hid) && histories.has(fx.aid));
       if (!usable.length) continue;
-      const stats = new Map();
       let k = 0;
       for (const v of variants) {
-        for (const fx of usable) stats.set(fx.id, matchStats(histories.get(fx.hid), histories.get(fx.aid), fx, v));
-        for (const rs of ruleSets) {
-          const row = rows[k++];
+        const stats = usable.map(fx => matchStats(histories.get(fx.hid), histories.get(fx.aid), fx, v));
+        for (const c of combos) {
+          const row = rows[k++], r = { ...(rules || {}), maxFair: c.t };
           row.days++;
-          for (const fx of usable) {
-            const ok = evaluate(stats.get(fx.id), rs, rules).pass;
+          usable.forEach((fx, i) => {
+            const o = odds.get(String(fx.id)), quote = c.q && o ? o[c.q] : null;
+            const ok = evaluate(stats[i], c.rs, r, quote).pass;
             if (ok) row.candidates++;
             if (picks.has(String(fx.id))) { row.picks++; if (ok) row.found++; else row.missed.push(fx.id); }
-          }
+          });
         }
       }
     }
@@ -169,7 +189,7 @@
     return { p, odd: 1 / p };
   }
 
-  const api = { VARIANTS, DEFAULT_VARIANT, DEFAULT_RULES, RULE_SETS, SCOPES, SEASONS, VENUES, POOLS, variantById, variantLabel, teamSample, teamStats, matchStats, evaluate, calibrate, liveFair };
+  const api = { VARIANTS, DEFAULT_VARIANT, DEFAULT_RULES, RULE_SETS, BASE_SETS, EV_SETS, QUOTES, DEFAULT_THRESHOLDS, SCOPES, SEASONS, VENUES, POOLS, variantById, variantLabel, teamSample, teamStats, matchStats, evaluate, calibrate, liveFair };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoAeg = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

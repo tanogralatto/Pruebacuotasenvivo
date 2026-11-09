@@ -96,3 +96,24 @@ test('cuota justa en vivo con 0-0 (tabla del análisis)', () => {
   close(A.liveFair(0.85, 10).odd, 1.30, 0.01);
   assert.equal(A.liveFair(0.8, 45), null);
 });
+
+test('umbrales de cuota real y filtro de EV en la calibración', () => {
+  const pickFx = { ...fx, id: 1 }, otherFx = { ...fx, id: 2, hid: 3, aid: 4 };
+  // Pick con 15/20 por equipo (cuota real 1,33) y otro partido con 18/20 (1,11).
+  const mk = (t, hits) => games(t, Array.from({ length: 20 }, (_, i) => [i < hits ? 1 : 0, 3]));
+  const histories = new Map([[1, mk(1, 15)], [2, mk(2, 15)], [3, mk(3, 18)], [4, mk(4, 18)]]);
+  const days = [{ date: 'd', fixtures: [pickFx, otherFx] }];
+  const v = [A.variantById(A.DEFAULT_VARIANT)];
+  const rows = A.calibrate(new Set(['1']), days, histories, null, { variants: v, ruleSets: ['core'], thresholds: [1.25, 1.35] });
+  assert.equal(rows.find(r => r.maxFair === 1.25).found, 0);
+  const r135 = rows.find(r => r.maxFair === 1.35);
+  assert.equal(r135.found, 1); assert.equal(r135.perDay, 2);
+  // EV: el pick paga 1,45 (EV +9%) y el otro 1,08 (EV −3%): con EV queda solo el pick.
+  const odds = new Map([['1', { best: 1.45, median: 1.30 }], ['2', { best: 1.08, median: 1.05 }]]);
+  const ev = A.calibrate(new Set(['1']), days, histories, null, { variants: v, ruleSets: ['coreEv'], thresholds: [1.35], odds, quotes: ['best', 'median'] });
+  const best = ev.find(r => r.quote === 'best'), med = ev.find(r => r.quote === 'median');
+  assert.equal(best.found, 1); assert.equal(best.perDay, 1);
+  assert.equal(med.found, 0);
+  const e = A.evaluate(A.matchStats(histories.get(1), histories.get(2), pickFx, v[0]), 'coreEv', { maxFair: 1.35 }, null);
+  assert.deepEqual(e.fails, ['sin cuota']);
+});
