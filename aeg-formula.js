@@ -37,16 +37,21 @@
   const DEFAULT_VARIANT = 'pooled|all|cp|both';
 
   // Reglas de la clase. Los conjuntos crecen de a una regla para ver cuál aporta.
-  const DEFAULT_RULES = { maxFair: 1.25, minSample: 30, avgHigh: 3.0, avgLow: 2.8, overStreak: 8, underMin: 2, underMax: 3, minEv: 0 };
+  const DEFAULT_RULES = { maxFair: 1.25, minFair: 1.0, minSample: 30, avgHigh: 3.0, avgLow: 2.8, overStreak: 8, underMin: 2, underMax: 3, minEv: 0,
+    seasonTol: 0.01, seasonMinN: 10, breakMin: 0.75, strongSample: 40 };
   const RULE_SETS = {
     core: { label: 'Cuota real + muestra', avg: false, streak: false, ev: false },
     avg: { label: 'Cuota real + muestra + promedios', avg: true, streak: false, ev: false },
     full: { label: 'Cuota real + muestra + promedios + rachas', avg: true, streak: true, ev: false },
     coreEv: { label: 'Cuota real + muestra + EV', avg: false, streak: false, ev: true },
     avgEv: { label: 'Cuota real + muestra + promedios + EV', avg: true, streak: false, ev: true },
-    fullEv: { label: 'Cuota real + muestra + promedios + rachas + EV', avg: true, streak: true, ev: true }
+    fullEv: { label: 'Cuota real + muestra + promedios + rachas + EV', avg: true, streak: true, ev: true },
+    // Todas las reglas de la clase, sin saltear ninguna (ver evaluate).
+    video: { label: 'Como la clase (todas las reglas)', video: true, ev: false },
+    videoEv: { label: 'Como la clase (todas las reglas) + EV', video: true, ev: true }
   };
-  const BASE_SETS = ['core', 'avg', 'full'], EV_SETS = ['coreEv', 'avgEv', 'fullEv'];
+  const BASE_SETS = ['core', 'avg', 'full', 'video'], EV_SETS = ['coreEv', 'avgEv', 'fullEv', 'videoEv'];
+  const MIN_FAIRS = [1.0, 1.10];
   const QUOTES = { best: 'mejor cuota entre casas', median: 'cuota mediana de las casas' };
   const DEFAULT_THRESHOLDS = [1.25, 1.30, 1.35, 1.40];
 
@@ -80,7 +85,18 @@
     const hits = ht.filter(g => g.fh >= 1).length;
     const bySeason = s => { const x = ht.filter(g => Number(g.s) === s), h = x.filter(g => g.fh >= 1).length; return { n: x.length, hits: h, rate: x.length ? h / x.length : null }; };
     const streak = target => { let n = 0; for (const g of ht) { if ((g.fh >= 1) === target) n++; else break; } return n; };
+    // Revisión manual de la clase: en el historial, ¿las rachas de 2 (o 3) sin gol se cortaron en el partido siguiente?
+    const underPattern = { b2: 0, e2: 0, b3: 0, e3: 0 };
+    let run = 0;
+    for (const g of ht.slice().reverse()) {
+      if (g.fh >= 1) {
+        if (run === 2) underPattern.b2++; else if (run > 2) underPattern.e2++;
+        if (run === 3) underPattern.b3++; else if (run > 3) underPattern.e3++;
+        run = 0;
+      } else run++;
+    }
     return {
+      underPattern,
       n: ht.length, hits, rate: ht.length ? hits / ht.length : null,
       avg: ft.length ? ft.reduce((t, g) => t + g.fs[0] + g.fs[1], 0) / ft.length : null,
       over: streak(true), under: streak(false),
@@ -110,6 +126,7 @@
   function evaluate(ms, ruleSet, rules, quote) {
     const set = RULE_SETS[ruleSet] || RULE_SETS.full;
     const r = { ...DEFAULT_RULES, ...(rules || {}) };
+    if (set.video) return evaluateVideo(ms, set, r, quote);
     const fails = [];
     if (!(ms.n >= r.minSample) || !(ms.a.n > 0) || !(ms.b.n > 0)) fails.push('muestra');
     if (!(ms.fair !== null && ms.fair <= r.maxFair + 1e-9)) fails.push('cuota real');
@@ -126,13 +143,67 @@
       else if (maxUnder >= r.underMin) streakVia = 'under';
       else fails.push('rachas');
     }
+    return finishEv({ fails, streakVia }, ms, set, r, quote);
+  }
+
+  function finishEv(res, ms, set, r, quote) {
     let ev = null;
     if (quote > 1 && ms.fair) ev = quote / ms.fair - 1;
     if (set.ev) {
-      if (ev === null) fails.push('sin cuota');
-      else if (ev < r.minEv - 1e-9) fails.push('EV');
+      if (ev === null) res.fails.push('sin cuota');
+      else if (ev < r.minEv - 1e-9) res.fails.push('EV');
     }
-    return { pass: fails.length === 0, fails, streakVia, ev };
+    return { pass: res.fails.length === 0, fails: res.fails, streakVia: res.streakVia, ev, notes: res.notes || [] };
+  }
+
+  /**
+   * Reglas de la clase, todas (documento «Análisis método Over 0,5 HT – Clase 2»):
+   *  1. Muestra ≥ 30 partidos (los dos equipos, como en Versus); 3/3 o 9 partidos no alcanzan.
+   *  2. Cuota real dentro del rango: ≤ máximo (1,25 = 80%) y ≥ mínimo (el rango de ejemplo arranca en 1,10).
+   *  3. % de gol en el 1T ≈ 80% o más en la temporada actual, en la anterior y en las dos juntas
+   *     (con la tolerancia del ejemplo de Rangers: 79,1%). Una temporada con muy pocos partidos no cuenta.
+   *  4. Racha que apoye: Over de 8–10+ en un equipo o sumando los dos; si no, Under de 2 (o 3) que en el
+   *     historial casi siempre se cortó en el partido siguiente. Under de 4 o más: afuera.
+   *  5. Promedios: uno ≥ 3,0 y el otro ≥ 2,8. Si son bajos, se descarta solo si además no hay racha
+   *     convincente ni buena muestra.
+   *  6. EV positivo (o neutro) si el juego de reglas lo pide.
+   */
+  function evaluateVideo(ms, set, r, quote) {
+    const fails = [], notes = [];
+    const minRate = 1 / r.maxFair - r.seasonTol;
+    if (!(ms.n >= r.minSample) || !(ms.a.n > 0) || !(ms.b.n > 0)) fails.push('muestra');
+    if (!(ms.fair !== null && ms.fair <= r.maxFair + 1e-9)) fails.push('cuota real');
+    else if (ms.fair < r.minFair - 1e-9) fails.push('cuota real baja');
+    for (const [k, name] of [['current', 'temporada actual'], ['previous', 'temporada anterior']]) {
+      const x = ms[k];
+      if (x && x.n >= r.seasonMinN && x.rate < minRate) fails.push(name);
+      else if (x && x.n > 0 && x.n < r.seasonMinN) notes.push(name + ' con pocos partidos (' + x.hits + '/' + x.n + '): no cuenta');
+    }
+    const maxUnder = Math.max(ms.a.under, ms.b.under);
+    const overStrong = Math.max(ms.a.over, ms.b.over) >= r.overStreak || ms.a.over + ms.b.over >= r.overStreak;
+    let streakVia = null;
+    if (maxUnder > r.underMax) fails.push('racha Under larga');
+    else if (overStrong) streakVia = 'over';
+    else if (maxUnder >= r.underMin) {
+      // Para cada equipo en racha Under: ¿en su historial esa racha se cortó en el partido siguiente?
+      let ok = true;
+      for (const t of [ms.a, ms.b]) {
+        if (t.under < r.underMin) continue;
+        const p = t.underPattern || {}, broke = t.under === 2 ? p.b2 : p.b3, cont = t.under === 2 ? p.e2 : p.e3;
+        const cases = (broke || 0) + (cont || 0);
+        if (!cases) notes.push('racha Under de ' + t.under + ' sin antecedentes en la muestra');
+        else if (broke / cases < r.breakMin) ok = false;
+        else notes.push('racha Under de ' + t.under + ': se cortó ' + broke + ' de ' + cases + ' veces');
+      }
+      if (ok) streakVia = 'under'; else fails.push('racha Under que suele seguir');
+    } else fails.push('rachas');
+    const hi = Math.max(ms.a.avg ?? -1, ms.b.avg ?? -1), lo = Math.min(ms.a.avg ?? -1, ms.b.avg ?? -1);
+    const avgOk = hi >= r.avgHigh && lo >= r.avgLow;
+    if (!avgOk) {
+      if (overStrong && ms.n >= r.strongSample) notes.push('promedios bajos, compensados por racha y muestra');
+      else fails.push('promedios');
+    }
+    return finishEv({ fails, streakVia, notes }, ms, set, r, quote);
   }
 
   // Órdenes de la lista diaria. Cada uno recibe { ms, ev } y devuelve un número: menor = más arriba.
@@ -172,10 +243,11 @@
       const isEv = RULE_SETS[rs].ev;
       for (const q of (isEv ? (opts.quotes || ['best']) : [null]))
         for (const me of (isEv ? (opts.minEvs || [0]) : [null]))
-          for (const so of sorts) combos.push({ rs, t, q, me, so });
+          for (const mf of (RULE_SETS[rs].video ? (opts.minFairs || [DEFAULT_RULES.minFair]) : [null]))
+            for (const so of sorts) combos.push({ rs, t, q, me, mf, so });
     }
     const rows = [];
-    for (const v of variants) for (const c of combos) rows.push({ variant: v.id, ruleSet: c.rs, maxFair: c.t, quote: c.q, minEv: c.me, sort: c.so, found: 0, picks: 0, candidates: 0, days: 0, topK: 0, top10: 0, missed: [] });
+    for (const v of variants) for (const c of combos) rows.push({ variant: v.id, ruleSet: c.rs, maxFair: c.t, quote: c.q, minEv: c.me, minFair: c.mf, sort: c.so, found: 0, picks: 0, candidates: 0, days: 0, topK: 0, top10: 0, missed: [] });
     for (const day of days) {
       const usable = day.fixtures.filter(fx => histories.has(fx.hid) && histories.has(fx.aid));
       if (!usable.length) continue;
@@ -184,7 +256,7 @@
       for (const v of variants) {
         const stats = usable.map(fx => matchStats(histories.get(fx.hid), histories.get(fx.aid), fx, v));
         for (const c of combos) {
-          const row = rows[k++], r = { ...(rules || {}), maxFair: c.t, minEv: c.me ?? 0 };
+          const row = rows[k++], r = { ...(rules || {}), maxFair: c.t, minEv: c.me ?? 0, ...(c.mf != null ? { minFair: c.mf } : {}) };
           row.days++;
           const passing = [];
           usable.forEach((fx, i) => {
@@ -222,7 +294,7 @@
     return { p, odd: 1 / p };
   }
 
-  const api = { SORTS, MIN_EVS, sortCandidates, VARIANTS, DEFAULT_VARIANT, DEFAULT_RULES, RULE_SETS, BASE_SETS, EV_SETS, QUOTES, DEFAULT_THRESHOLDS, SCOPES, SEASONS, VENUES, POOLS, variantById, variantLabel, teamSample, teamStats, matchStats, evaluate, calibrate, liveFair };
+  const api = { MIN_FAIRS, SORTS, MIN_EVS, sortCandidates, VARIANTS, DEFAULT_VARIANT, DEFAULT_RULES, RULE_SETS, BASE_SETS, EV_SETS, QUOTES, DEFAULT_THRESHOLDS, SCOPES, SEASONS, VENUES, POOLS, variantById, variantLabel, teamSample, teamStats, matchStats, evaluate, calibrate, liveFair };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (root) root.TanoAeg = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

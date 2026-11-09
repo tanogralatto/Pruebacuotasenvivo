@@ -977,7 +977,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
 
 <script src="./modelo-poisson.js"></script>
 <script src="./asiaticos.js"></script>
-<script src="./aeg-formula.js?v=2026-11-09b"></script><!-- cambiar ?v= cada vez que cambie aeg-formula.js: evita que Safari mezcle versiones -->
+<script src="./aeg-formula.js?v=2026-11-09c"></script><!-- cambiar ?v= cada vez que cambie aeg-formula.js: evita que Safari mezcle versiones -->
 <script src="./modelo-xg.js"></script>
 <script>
 /*PURE*/
@@ -2515,7 +2515,7 @@ if(state.key) checkStatus();
 })();
 
 const ghKey='tano:golht:settings:v1';
-const ghDefaults={oddsLimit:30,maxFixtures:200,maxFair:1.25,variant:'pooled|all|cp|both',ruleSet:'full',quote:'best',minEv:0,sort:'fair',minSample:30,minRate:80,avgFirst:3.0,avgSecond:2.8,overStreak:8,underMax:2,seasonCurrent:true,seasonPrevious:true,liveMin:1.50,minuteStart:10,minuteEnd:18,only00:true};
+const ghDefaults={oddsLimit:30,maxFixtures:200,maxFair:1.25,variant:'pooled|all|cp|both',ruleSet:'video',minFair:1,quote:'best',minEv:0,sort:'fair',minSample:30,minRate:80,avgFirst:3.0,avgSecond:2.8,overStreak:8,underMax:2,seasonCurrent:true,seasonPrevious:true,liveMin:1.50,minuteStart:10,minuteEnd:18,only00:true};
 const ghFields={oddsLimit:'ghOddsLimit',maxFixtures:'ghMaxFixtures',maxFair:'ghMaxFair',minSample:'ghMinSample',minRate:'ghMinRate',avgFirst:'ghAvgFirst',avgSecond:'ghAvgSecond',overStreak:'ghOverStreak',underMax:'ghUnderMax',liveMin:'ghLiveMin',minuteStart:'ghMinuteStart',minuteEnd:'ghMinuteEnd'};
 function ghApply(config){
   const saved={...ghDefaults,...(config&&typeof config==='object'?config:{})};
@@ -2526,7 +2526,7 @@ function ghApply(config){
 function ghRenderFormula(cfg){
   const el=document.getElementById('ghFormulaLabel');if(!el||!window.TanoAeg)return;
   const rs=TanoAeg.RULE_SETS[cfg.ruleSet]||TanoAeg.RULE_SETS.full;
-  el.innerHTML='<b>Fórmula:</b> '+esc(TanoAeg.variantLabel(cfg.variant||TanoAeg.DEFAULT_VARIANT))+'. <b>Reglas:</b> '+esc(rs.label)+' · cuota real ≤ '+Number(cfg.maxFair||1.25).toFixed(2)+(rs.ev?' · EV ≥ '+Math.round((cfg.minEv||0)*100)+'% con '+esc(TanoAeg.QUOTES[cfg.quote]||TanoAeg.QUOTES.best):'')+' · ordenados por '+esc((TanoAeg.SORTS[cfg.sort]||TanoAeg.SORTS.fair).label)+'.'+(cfg.calibratedAt?' Elegida con la calibración del '+esc(new Date(cfg.calibratedAt).toLocaleDateString('es-AR'))+'.':' Valor inicial: todavía sin calibrar.');
+  el.innerHTML='<b>Fórmula:</b> '+esc(TanoAeg.variantLabel(cfg.variant||TanoAeg.DEFAULT_VARIANT))+'. <b>Reglas:</b> '+esc(rs.label)+(Number(cfg.minFair)>1?' · cuota real entre '+Number(cfg.minFair).toFixed(2)+' y '+Number(cfg.maxFair||1.25).toFixed(2):' · cuota real ≤ '+Number(cfg.maxFair||1.25).toFixed(2))+(rs.ev?' · EV ≥ '+Math.round((cfg.minEv||0)*100)+'% con '+esc(TanoAeg.QUOTES[cfg.quote]||TanoAeg.QUOTES.best):'')+' · ordenados por '+esc((TanoAeg.SORTS[cfg.sort]||TanoAeg.SORTS.fair).label)+'.'+(cfg.calibratedAt?' Elegida con la calibración del '+esc(new Date(cfg.calibratedAt).toLocaleDateString('es-AR'))+'.':' Valor inicial: todavía sin calibrar.');
 }
 function ghSettings(){
   const saved={...ghDefaults,...(LS.get(ghKey,ghDefaults)||{})};
@@ -2540,7 +2540,7 @@ function ghStatus(text,error=false){const el=document.getElementById('ghStatus')
 try{ghApply(ghSettings())}catch(e){console.warn('Estrategia AEG: no se pudieron aplicar los ajustes',e);try{document.getElementById('ghStatus').textContent='Recargá la página: el navegador mezcló una versión vieja de la estrategia.'}catch(_){}}
 document.getElementById('ghSettingsForm').addEventListener('submit',event=>{
   event.preventDefault();
-  const prev=ghSettings(),next={variant:prev.variant,ruleSet:prev.ruleSet,quote:prev.quote||'best',minEv:prev.minEv??0,sort:prev.sort||'fair',calibratedAt:prev.calibratedAt||null};
+  const prev=ghSettings(),next={variant:prev.variant,ruleSet:prev.ruleSet,quote:prev.quote||'best',minEv:prev.minEv??0,minFair:prev.minFair??1,sort:prev.sort||'fair',calibratedAt:prev.calibratedAt||null};
   for(const [key,id] of Object.entries(ghFields))next[key]=Number(document.getElementById(id).value);
   for(const key of ['seasonCurrent','seasonPrevious','only00']){const el=document.getElementById('gh'+key[0].toUpperCase()+key.slice(1));next[key]=el.checked}
   const validOdds=Number.isFinite(next.liveMin)&&next.liveMin>=1.01;
@@ -2556,12 +2556,12 @@ document.getElementById('ghSettingsForm').addEventListener('submit',event=>{
   ghStatus('Parámetros guardados en este navegador. No modifican el Escáner ni las alertas.');
 });
 document.getElementById('ghReset').addEventListener('click',()=>{
-  const keep=ghSettings(),reset={...ghDefaults,variant:keep.variant,ruleSet:keep.ruleSet,maxFair:keep.maxFair,quote:keep.quote||'best',minEv:keep.minEv??0,sort:keep.sort||'fair',calibratedAt:keep.calibratedAt||null};
+  const keep=ghSettings(),reset={...ghDefaults,variant:keep.variant,ruleSet:keep.ruleSet,maxFair:keep.maxFair,quote:keep.quote||'best',minEv:keep.minEv??0,minFair:keep.minFair??1,sort:keep.sort||'fair',calibratedAt:keep.calibratedAt||null};
   LS.set(ghKey,reset);ghApply(reset);ghStatus('Valores iniciales restaurados (se mantiene la fórmula calibrada).');
 });
 
 
-function ghRules(cfg){return {maxFair:cfg.maxFair,minSample:cfg.minSample,avgHigh:cfg.avgFirst,avgLow:cfg.avgSecond,overStreak:cfg.overStreak,underMin:2,underMax:Math.max(2,cfg.underMax||2)}}
+function ghRules(cfg){return {maxFair:cfg.maxFair,minFair:Number(cfg.minFair)||1,minSample:cfg.minSample,avgHigh:cfg.avgFirst,avgLow:cfg.avgSecond,overStreak:cfg.overStreak,underMin:2,underMax:Math.max(2,cfg.underMax||2)}}
 function ghCandidateStatus(text,error=false){const el=document.getElementById('ghCandidateStatus');el.textContent=text;el.classList.toggle('err',error)}
 function ghSeasonStats(games,season){
   const selected=games.filter(g=>Number(g.s)===Number(season));
@@ -2639,7 +2639,7 @@ function ghRenderCandidates(rows){
     const pattern=t=>t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
     const underNote=[pattern(c.a),pattern(c.b)].filter(Boolean).join(' ');
     const quote=c.quote?'Cuota '+c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+(c.quote.updatedAt?' · actualizada '+esc(c.quote.updatedAt):''):'Cuota Pregame no disponible';
-    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+(c.rank?'#'+c.rank+' · ':'')+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span>'+favButton+'</div><div class="gh-candidate-metrics">'+(c.ms?'<div class="gh-metric"><span>Cuota real (muestra)</span><strong>'+c.ms.fair.toFixed(2)+' · '+c.ms.hits+'/'+c.ms.n+'</strong></div><div class="gh-metric"><span>EV vs casa</span><strong>'+(c.ev==null?'s/d':(c.ev>=0?'+':'')+Math.round(c.ev*100)+'%')+'</strong></div><div class="gh-metric"><span>Actual · anterior (juntos)</span><strong>'+frac(c.ms.current)+' · '+frac(c.ms.previous)+'</strong></div>':'')+'<div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Cuota de casa Over 0,5 HT</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(underNote?esc(underNote)+' ':'')+'Cuota real = 1 ÷ % de la muestra (fórmula estilo BetPractice con datos de API-Football). Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
+    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+(c.rank?'#'+c.rank+' · ':'')+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span>'+favButton+'</div><div class="gh-candidate-metrics">'+(c.ms?'<div class="gh-metric"><span>Cuota real (muestra)</span><strong>'+c.ms.fair.toFixed(2)+' · '+c.ms.hits+'/'+c.ms.n+'</strong></div><div class="gh-metric"><span>EV vs casa</span><strong>'+(c.ev==null?'s/d':(c.ev>=0?'+':'')+Math.round(c.ev*100)+'%')+'</strong></div><div class="gh-metric"><span>Actual · anterior (juntos)</span><strong>'+frac(c.ms.current)+' · '+frac(c.ms.previous)+'</strong></div>':'')+'<div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Cuota de casa Over 0,5 HT</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(c.notes&&c.notes.length?'<b>'+esc(c.notes.join(' · '))+'.</b> ':'')+(underNote?esc(underNote)+' ':'')+'Cuota real = 1 ÷ % de la muestra (fórmula estilo BetPractice con datos de API-Football). Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
   }).join('');
 }
 
@@ -2713,7 +2713,7 @@ async function ghEvaluateCandidates(){
       const ev=TanoAeg.evaluate(ms,baseSet,rules);
       if(!ev.pass)continue;
       ms.a.underPattern=ghUnderPattern(ms.sampleA);ms.b.underPattern=ghUnderPattern(ms.sampleB);
-      eligible.push({fx:f,a:ms.a,b:ms.b,ms,manual:ev.streakVia==='under',overOk:ev.streakVia==='over'});
+      eligible.push({fx:f,a:ms.a,b:ms.b,ms,notes:ev.notes||[],manual:ev.streakVia==='under',overOk:ev.streakVia==='over'});
     }
     if(!eligible.length){ghRenderCandidates([]);ghCandidateStatus('Se evaluaron '+selectedFixtures.length+' partidos; ninguno superó la fórmula (cuota real ≤ '+settings.maxFair.toFixed(2)+', muestra, promedios y rachas según las reglas elegidas). '+historyCalls+' consultas nuevas de historial.',false);return}
     eligible.sort((a,b)=>a.ms.fair-b.ms.fair||b.ms.n-a.ms.n);
@@ -2847,11 +2847,11 @@ async function ghCalRun(){
     const pickSet=new Set(picks.map(p=>String(p.id)));
     const thresholds=TanoAeg.DEFAULT_THRESHOLDS;
     const allSorts=Object.keys(TanoAeg.SORTS),baseSorts=odds.size?allSorts:allSorts.filter(k=>k!=='ev');
-    const base=TanoAeg.calibrate(pickSet,dayList,histories,rules,{thresholds:[...thresholds,1.45,1.50],ruleSets:TanoAeg.BASE_SETS,sorts:baseSorts,odds});
+    const base=TanoAeg.calibrate(pickSet,dayList,histories,rules,{thresholds:[...thresholds,1.45,1.50],ruleSets:TanoAeg.BASE_SETS,sorts:baseSorts,odds,minFairs:TanoAeg.MIN_FAIRS});
     // «Que estén todos»: primero las que dejan pasar más picks; a igualdad, la lista más corta y con los picks más arriba.
     const all=base.slice().sort((x,y)=>y.recall-x.recall||x.perDay-y.perDay||y.recallK-x.recallK||y.recall10-x.recall10);
     await sleep(20);
-    const ev=evDays.length?TanoAeg.calibrate(pickSet,evDays,histories,rules,{thresholds,ruleSets:TanoAeg.EV_SETS,odds,quotes:['best','median'],minEvs:TanoAeg.MIN_EVS,sorts:allSorts}):[];
+    const ev=evDays.length?TanoAeg.calibrate(pickSet,evDays,histories,rules,{thresholds,ruleSets:TanoAeg.EV_SETS,odds,quotes:['best','median'],minEvs:TanoAeg.MIN_EVS,sorts:allSorts,minFairs:TanoAeg.MIN_FAIRS}):[];
     const evPicks=evDays.reduce((n,d)=>n+d.fixtures.filter(f=>pickSet.has(String(f.id))).length,0);
     const pickOdds=picks.filter(p=>odds.has(String(p.id))).length;
     ghCalData={tables:{all,base,ev},days:dayList,evDays,histories,pickSet,rules,picks,odds,evPicks,pickOdds,errors:[...errors]};
@@ -2860,7 +2860,7 @@ async function ghCalRun(){
   }catch(e){ghCalStatus('No se pudo calibrar: '+e.message,true)}
   finally{ghCalBusy=false;runBtn.disabled=false;cancelBtn.classList.add('hidden')}
 }
-function ghCalRowLabel(r){return TanoAeg.RULE_SETS[r.ruleSet].label+' · cuota real ≤ '+r.maxFair.toFixed(2)+(r.quote?' · EV ≥ '+Math.round((r.minEv||0)*100)+'% con '+TanoAeg.QUOTES[r.quote]:'')+' · ordenados por '+(TanoAeg.SORTS[r.sort]||TanoAeg.SORTS.fair).label}
+function ghCalRowLabel(r){return TanoAeg.RULE_SETS[r.ruleSet].label+(r.minFair>1?' · cuota real entre '+r.minFair.toFixed(2)+' y '+r.maxFair.toFixed(2):' · cuota real ≤ '+r.maxFair.toFixed(2))+(r.quote?' · EV ≥ '+Math.round((r.minEv||0)*100)+'% con '+TanoAeg.QUOTES[r.quote]:'')+' · ordenados por '+(TanoAeg.SORTS[r.sort]||TanoAeg.SORTS.fair).label}
 function ghCalTable(key,rows,selKey,selIdx){
   const pct=x=>Math.round(x*100)+'%';
   return '<div style="overflow:auto;margin-top:8px"><table class="val-table"><thead><tr><th>Fórmula (muestra)</th><th>Reglas y orden</th><th>Arriba de todo</th><th>Entre los 10 primeros</th><th>Pasan el filtro</th><th>Partidos por día</th><th></th></tr></thead><tbody>'+
@@ -2876,7 +2876,7 @@ function ghCalRender(selKey,selIdx){
   if(d.tables.ev.length)html+='<h3 style="margin:16px 0 0">Con EV positivo · solo días con cuotas guardadas ('+d.evDays.length+' días, '+d.evPicks+' picks)</h3><p class="small" style="margin:4px 0 0">EV = cuota de la casa ÷ cuota real − 1. API-Football guarda las cuotas prepartido solo unos días: por eso esta tabla usa menos días.</p>'+ghCalTable('ev',d.tables.ev,selKey,selIdx);
   else html+='<p class="small">No hay cuotas prepartido guardadas para los días de tus picks (API-Football las guarda pocos días): la tabla con EV aparece cuando haya picks de los últimos '+GH_ODDS_DAYS+' días.</p>';
   const row=(d.tables[selKey]||d.tables.all)[selIdx]||d.tables.all[0];
-  const v=TanoAeg.variantById(row.variant),rules={...d.rules,maxFair:row.maxFair,minEv:row.minEv??0},isEv=TanoAeg.RULE_SETS[row.ruleSet].ev;
+  const v=TanoAeg.variantById(row.variant),rules={...d.rules,maxFair:row.maxFair,minEv:row.minEv??0,...(row.minFair!=null?{minFair:row.minFair}:{})},isEv=TanoAeg.RULE_SETS[row.ruleSet].ev;
   const daysUsed=isEv?d.evDays:d.days;
   const pickRows=[],fairs=[],rankOf=new Map();
   for(const day of daysUsed){
@@ -2903,7 +2903,7 @@ function ghCalRender(selKey,selIdx){
   html+='<h3 style="margin:16px 0 6px">Detalle: '+esc(TanoAeg.variantLabel(v))+' · '+esc(ghCalRowLabel(row))+'</h3>';
   if(fairs.length)html+='<p class="small">Con esta muestra, la cuota real de tus picks va de <b>'+fairs[0].toFixed(2)+'</b> a <b>'+fairs[fairs.length-1].toFixed(2)+'</b>: la mitad queda en '+q(0.5).toFixed(2)+' o menos y el 80% en '+q(0.8).toFixed(2)+' o menos.</p>';
   html+='<div style="overflow:auto"><table class="val-table"><thead><tr><th>Pick</th><th>Puesto en el día</th><th>Cuota real</th><th>Muestra</th><th>Cuota casa</th><th>EV</th><th>Actual · anterior</th><th>Prom. A/B</th><th>Racha Over A/B</th><th>Racha Under A/B</th><th>Resultado</th></tr></thead><tbody>'+
-    pickRows.sort((a,b)=>b.date.localeCompare(a.date)).map(p=>'<tr><td style="text-align:left;min-width:180px">'+esc(p.fx.hn+' vs '+p.fx.an)+'<div class="small">'+esc(p.date+' · '+p.fx.lc+' · '+p.fx.ln)+'</div></td><td>'+(rankOf.has(String(p.fx.id))?'#'+rankOf.get(String(p.fx.id)):'—')+'</td><td>'+(p.ms.fair?p.ms.fair.toFixed(2):'s/d')+'</td><td>'+p.ms.hits+'/'+p.ms.n+'</td><td>'+(p.quote?p.quote.toFixed(2):'s/d')+'</td><td>'+(p.ev.ev==null?'s/d':(p.ev.ev>=0?'+':'')+Math.round(p.ev.ev*100)+'%')+'</td><td>'+p.ms.current.hits+'/'+p.ms.current.n+' · '+p.ms.previous.hits+'/'+p.ms.previous.n+'</td><td>'+avg(p.ms.a.avg)+' · '+avg(p.ms.b.avg)+'</td><td>'+p.ms.a.over+' · '+p.ms.b.over+'</td><td>'+p.ms.a.under+' · '+p.ms.b.under+'</td><td style="text-align:left">'+(p.ev.pass?'✅ pasa':'❌ '+esc(p.ev.fails.join(', ')))+'</td></tr>').join('')+
+    pickRows.sort((a,b)=>b.date.localeCompare(a.date)).map(p=>'<tr><td style="text-align:left;min-width:180px">'+esc(p.fx.hn+' vs '+p.fx.an)+'<div class="small">'+esc(p.date+' · '+p.fx.lc+' · '+p.fx.ln)+'</div></td><td>'+(rankOf.has(String(p.fx.id))?'#'+rankOf.get(String(p.fx.id)):'—')+'</td><td>'+(p.ms.fair?p.ms.fair.toFixed(2):'s/d')+'</td><td>'+p.ms.hits+'/'+p.ms.n+'</td><td>'+(p.quote?p.quote.toFixed(2):'s/d')+'</td><td>'+(p.ev.ev==null?'s/d':(p.ev.ev>=0?'+':'')+Math.round(p.ev.ev*100)+'%')+'</td><td>'+p.ms.current.hits+'/'+p.ms.current.n+' · '+p.ms.previous.hits+'/'+p.ms.previous.n+'</td><td>'+avg(p.ms.a.avg)+' · '+avg(p.ms.b.avg)+'</td><td>'+p.ms.a.over+' · '+p.ms.b.over+'</td><td>'+p.ms.a.under+' · '+p.ms.b.under+'</td><td style="text-align:left;min-width:160px">'+(p.ev.pass?'✅ pasa':'❌ '+esc(p.ev.fails.join(', ')))+(p.ev.notes&&p.ev.notes.length?'<div class="small">'+esc(p.ev.notes.join(' · '))+'</div>':'')+'</td></tr>').join('')+
     '</tbody></table></div>';
   html+='<div class="gh-actions" style="margin-top:12px"><button type="button" class="primary" data-cal-use="'+selKey+':'+selIdx+'">Usar esta fórmula en la estrategia</button><span class="small">Guarda la muestra, las reglas, el umbral'+(isEv?', el EV mínimo':'')+' y el orden de la lista. Después tocá «Evaluar estrategia» con la fecha de hoy.</span></div>';
   box.innerHTML=html;
@@ -2914,7 +2914,7 @@ document.getElementById('ghCalResults').addEventListener('click',e=>{
   const view=e.target.closest('[data-cal-view]');if(view){const [k,i]=view.dataset.calView.split(':');ghCalRender(k,Number(i));return}
   const use=e.target.closest('[data-cal-use]');if(!use||!ghCalData)return;
   const [k,i]=use.dataset.calUse.split(':'),r=(ghCalData.tables[k]||[])[Number(i)];if(!r)return;
-  const next={...ghSettings(),variant:r.variant,ruleSet:r.ruleSet,maxFair:r.maxFair,quote:r.quote||'best',minEv:r.minEv??0,sort:r.sort||'fair',calibratedAt:Date.now()};
+  const next={...ghSettings(),variant:r.variant,ruleSet:r.ruleSet,maxFair:r.maxFair,quote:r.quote||'best',minEv:r.minEv??0,minFair:r.minFair??1,sort:r.sort||'fair',calibratedAt:Date.now()};
   if(!LS.set(ghKey,next)){ghCalStatus('No se pudo guardar la fórmula en este navegador.',true);return}
   ghApply(next);ghCalStatus('Fórmula guardada: '+TanoAeg.variantLabel(r.variant)+' · '+ghCalRowLabel(r)+'.');
 });

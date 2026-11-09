@@ -135,3 +135,46 @@ test('orden de la lista: mide cuántos picks quedan entre los primeros del día'
   assert.equal(tol.find(r => r.minEv === 0).found, 0);
   assert.equal(tol.find(r => r.minEv === -0.05).found, 1);
 });
+
+test('reglas de la clase: temporadas, rango de cuota, Under que se corta y promedios compensados', () => {
+  const v = A.DEFAULT_VARIANT;
+  const seq = (t, rows) => games(t, rows);
+  const ok = Array(20).fill([1, 3]);
+  // Base que pasa todo: 40/40 con racha Over larga.
+  const pass = A.matchStats(seq(1, ok), seq(2, ok), fx, v);
+  assert.ok(A.evaluate(pass, 'video', { maxFair: 1.25 }).pass);
+  // Cuota real por debajo del mínimo del rango (1,10).
+  assert.deepEqual(A.evaluate(pass, 'video', { maxFair: 1.25, minFair: 1.10 }).fails, ['cuota real baja']);
+
+  // Temporada anterior floja (60%) aunque el total llegue al 80%: afuera.
+  const cur = Array(30).fill([1, 3]), prev = [...Array(6).fill([1, 3, 2025]), ...Array(4).fill([0, 3, 2025])];
+  const ms = A.matchStats(seq(1, [...cur.slice(0, 15), ...prev]), seq(2, cur.slice(0, 15)), fx, v);
+  assert.ok(ms.fair <= 1.25);
+  assert.ok(A.evaluate(ms, 'video', { maxFair: 1.25 }).fails.includes('temporada anterior'));
+  assert.ok(A.evaluate(ms, 'full', { maxFair: 1.25 }).pass, 'las reglas viejas no lo miraban');
+
+  // Rangers (documento): 53/67 = 79,1% en la temporada actual y 105/131 en total → se acepta con cuota real 1,25.
+  const mkSeason = (t, curHits, curN, prevHits, prevN) => games(t, [
+    ...Array.from({ length: curN }, (_, i) => [i < curHits ? 1 : 0, 3, 2026]),
+    ...Array.from({ length: prevN }, (_, i) => [i < prevHits ? 1 : 0, 3, 2025])]);
+  const rangers = A.matchStats(mkSeason(1, 31, 40, 30, 34), mkSeason(2, 22, 27, 22, 30), fx, v);
+  assert.deepEqual([rangers.current.hits, rangers.current.n, rangers.hits, rangers.n], [53, 67, 105, 131]);
+  const re = A.evaluate(rangers, 'video', { maxFair: 1.25 });
+  assert.equal(re.fails.includes('temporada actual'), false);
+  assert.equal(re.fails.includes('cuota real'), false);
+  // Racha Under de 2 que en el historial casi siempre se cortó → pasa; que suele seguir → afuera.
+  const breaks = [[0, 3], [0, 3], ...Array(4).fill([[1, 3], [1, 3], [1, 3], [0, 3], [0, 3]]).flat(), ...Array(10).fill([1, 3])];
+  const cont = [[0, 3], [0, 3], ...Array(4).fill([[1, 3], [1, 3], [1, 3], [1, 3], [0, 3], [0, 3], [0, 3]]).flat(), ...Array(20).fill([1, 3])];
+  const other = seq(2, Array(30).fill([1, 3]).map((x, i) => i === 0 ? [0, 3] : x));
+  const good = A.evaluate(A.matchStats(seq(1, breaks), other, fx, v), 'video', { maxFair: 1.40 });
+  assert.equal(good.streakVia, 'under'); assert.ok(!good.fails.includes('racha Under que suele seguir'));
+  const bad = A.evaluate(A.matchStats(seq(1, cont), other, fx, v), 'video', { maxFair: 1.40 });
+  assert.ok(bad.fails.includes('racha Under que suele seguir'));
+
+  // Promedios bajos: se compensan con racha Over fuerte y muestra ≥ 40; sin eso, afuera.
+  const low = A.matchStats(seq(1, Array(25).fill([1, 2])), seq(2, Array(25).fill([1, 2])), fx, v);
+  const lowEv = A.evaluate(low, 'video', { maxFair: 1.25 });
+  assert.ok(lowEv.pass); assert.ok(lowEv.notes.some(n => n.includes('compensados')));
+  const lowSmall = A.matchStats(seq(1, Array(16).fill([1, 2])), seq(2, Array(16).fill([1, 2])), fx, v);
+  assert.deepEqual(A.evaluate(lowSmall, 'video', { maxFair: 1.25 }).fails, ['promedios']);
+});
