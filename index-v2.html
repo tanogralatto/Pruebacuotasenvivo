@@ -756,7 +756,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <label class="check"><input type="checkbox" data-dest-check="common"><span>⭐ Favoritos</span></label>
       <label class="check vip-choice"><input type="checkbox" data-dest-check="aeg"><span>💎 VIP · AEG</span></label>
       <label class="check vip-choice"><input type="checkbox" data-dest-check="datagol"><span>💎 VIP · dataGol</span></label>
-      <label class="check vip-choice"><input type="checkbox" data-dest-check="aegprueba"><span>🧪 VIP · AEG prueba (sin Telegram)</span></label>
+      <label class="check vip-choice"><input type="checkbox" data-dest-check="aegprueba"><span>🧪 VIP · AEG prueba</span></label>
     </div>
     <button id="favoriteDialogSave" type="button" class="primary">Guardar</button>
     <button id="favoriteDialogRemove" type="button" class="favorite-dialog-remove">Quitar de favoritos</button>
@@ -896,8 +896,8 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       </div>
     </details>
     <details class="panel tg-strategy" data-tg-strategy="aegprueba">
-      <summary><strong>🧪 Favoritos VIP · AEG prueba (sin Telegram)</strong></summary>
-      <p class="small">No manda nada a Telegram: el monitor solo registra en el historial las alertas que habría mandado, para medir la estrategia de la pestaña Estrategia AEG. Arranca con los valores de AEG hasta que guardes los suyos.</p>
+      <summary><strong>🧪 Favoritos VIP · AEG prueba</strong></summary>
+      <p class="small">Partidos de la pestaña Estrategia AEG. Manda las alertas al grupo VIP, como AEG y dataGol («ALERTA VIP AEG prueba»), con estos parámetros propios. Arranca con los valores de AEG hasta que guardes los suyos.</p>
       <div class="row">
         <label class="check"><input id="tg_aegprueba_over05" type="checkbox" checked><span>Over 0,5 1T</span></label>
         <div class="field" style="width:150px"><label for="tg_aegprueba_min05">Cuota mínima O0,5</label><input id="tg_aegprueba_min05" type="number" min="1.01" step="0.01" value="1.50"></div>
@@ -2667,7 +2667,8 @@ function ghRenderCandidates(rows){
     const avg=x=>x==null?'s/d':x.toFixed(2);
     const status=c.manual?'Pasa por racha Under (revisar)':'Cumple la fórmula';
     const id=String(c.fx.id),saved=favoriteState.items.get(id),isSaved=!!(saved&&favDests(saved).includes('common')&&favoriteSources(saved).includes('golht'));
-    const favButton='<button class="fav-btn" type="button" data-gh-favorite="'+esc(id)+'" aria-pressed="'+isSaved+'" title="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'" aria-label="'+(isSaved?'Quitar origen Gol HT +0,5':'Guardar en Favoritos')+'">'+(isSaved?'★':'☆')+'</button>'+(()=>{const inVip=!!(saved&&favDests(saved).includes('aegprueba'));return '<button class="gh-vip-btn" type="button" data-gh-aegprueba="'+esc(id)+'" aria-pressed="'+inVip+'">'+(inVip?'🧪 En AEG prueba ✓':'🧪 Mandar a AEG prueba')+'</button>'})();
+    // En esta pestaña la única opción es mandar el partido al VIP «AEG prueba» (sin estrella de Favoritos).
+    const favButton=(()=>{const inVip=!!(saved&&favDests(saved).includes('aegprueba'));return '<button class="gh-vip-btn" type="button" data-gh-aegprueba="'+esc(id)+'" aria-pressed="'+inVip+'">'+(inVip?'🧪 En AEG prueba ✓':'🧪 Mandar a AEG prueba')+'</button>'})();
     const pattern=t=>t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
     const underNote=[pattern(c.a),pattern(c.b)].filter(Boolean).join(' ');
     const quote=c.quote?'Cuota '+c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+(c.quote.updatedAt?' · actualizada '+esc(c.quote.updatedAt):''):'Cuota Pregame no disponible';
