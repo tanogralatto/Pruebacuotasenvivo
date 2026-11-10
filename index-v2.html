@@ -779,7 +779,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
           <div class="gh-field"><label for="ghMaxFixtures">Máximo de partidos a evaluar</label><input id="ghMaxFixtures" type="number" min="1" max="500" step="1" value="200"><small>Cada equipo nuevo gasta 1 consulta (después queda 12 h en caché)</small></div>
           <div class="gh-field"><label for="ghMaxFair">Cuota real máxima</label><input id="ghMaxFair" type="number" min="1.01" max="2" step="0.01" value="1.25"><small>1,25 = 80% de partidos con gol en el 1T</small></div>
           <div class="small" id="ghFormulaLabel">Fórmula: suma de los dos equipos · todas las competiciones · temporada actual + anterior · local y visitante. Reglas: cuota real + muestra + promedios + rachas.</div>
-          <div class="small">El EV se calcula con la cuota de la casa (si API-Football la tiene): cuota casa ÷ cuota real − 1, igual que el % verde/rojo de BetPractice.</div>
+          <div class="small">Cada partido muestra una sola cuota: la de la casa que más paga entre las que informa API-Football. EV = esa cuota ÷ cuota real − 1, igual que el % verde/rojo de BetPractice.</div>
         </div>
         <div class="gh-group">
           <h3>Historial y equipos</h3>
@@ -2565,6 +2565,7 @@ function ghSettings(){
   // Los ajustes viejos (de antes de la fórmula) tenían 10 partidos como tope: se suben al nuevo valor.
   if(!saved.variant){saved.variant=ghDefaults.variant;saved.ruleSet=ghDefaults.ruleSet;if(saved.maxFixtures<=50)saved.maxFixtures=ghDefaults.maxFixtures}
   if(!(saved.oddsLimit>5))saved.oddsLimit=ghDefaults.oddsLimit;
+  saved.quote='best'; // el EV usa siempre la casa que más paga
   return saved;
 }
 function ghStatus(text,error=false){const el=document.getElementById('ghStatus');el.textContent=text;el.classList.toggle('err',error)}
@@ -2671,8 +2672,10 @@ function ghRenderCandidates(rows){
     const favButton=(()=>{const inVip=!!(saved&&favDests(saved).includes('aegprueba'));return '<button class="gh-vip-btn" type="button" data-gh-aegprueba="'+esc(id)+'" aria-pressed="'+inVip+'">'+(inVip?'🧪 En AEG prueba ✓':'🧪 Mandar a AEG prueba')+'</button>'})();
     const pattern=t=>t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
     const underNote=[pattern(c.a),pattern(c.b)].filter(Boolean).join(' ');
-    const quote=c.quote?'Cuota '+c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+(c.quote.updatedAt?' · actualizada '+esc(c.quote.updatedAt):''):'Cuota Pregame no disponible';
-    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+(c.rank?'#'+c.rank+' · ':'')+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span>'+favButton+'</div><div class="gh-candidate-metrics">'+(c.ms?'<div class="gh-metric"><span>Cuota real (muestra)</span><strong>'+c.ms.fair.toFixed(2)+' · '+c.ms.hits+'/'+c.ms.n+'</strong></div><div class="gh-metric"><span>EV vs casa</span><strong>'+(c.ev==null?'s/d':(c.ev>=0?'+':'')+Math.round(c.ev*100)+'%')+'</strong></div><div class="gh-metric"><span>Actual · anterior (juntos)</span><strong>'+frac(c.ms.current)+' · '+frac(c.ms.previous)+'</strong></div>':'')+'<div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Cuota de casa Over 0,5 HT</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(c.notes&&c.notes.length?'<b>'+esc(c.notes.join(' · '))+'.</b> ':'')+(underNote?esc(underNote)+' ':'')+'Cuota real = 1 ÷ % de la muestra (fórmula estilo BetPractice con datos de API-Football). Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
+    // Una sola cuota: la de la casa que más paga entre las que informa API-Football.
+    const quoteWhen=c.quote&&c.quote.updatedAt&&Number.isFinite(Date.parse(c.quote.updatedAt))?' · '+fmtTime(c.quote.updatedAt)+' h':'';
+    const quote=c.quote?c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+'<small style="display:block;font-weight:400;color:var(--muted);font-size:11px">'+(c.quote.books>1?'la más alta de '+c.quote.books+' casas':'única casa con cuota')+quoteWhen+'</small>':'Sin cuota prepartido';
+    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+(c.rank?'#'+c.rank+' · ':'')+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span>'+favButton+'</div><div class="gh-candidate-metrics">'+(c.ms?'<div class="gh-metric"><span>Cuota real (muestra)</span><strong>'+c.ms.fair.toFixed(2)+' · '+c.ms.hits+'/'+c.ms.n+'</strong></div><div class="gh-metric"><span>EV con la casa que más paga</span><strong>'+(c.ev==null?'s/d':(c.ev>=0?'+':'')+Math.round(c.ev*100)+'%')+'</strong></div><div class="gh-metric"><span>Actual · anterior (juntos)</span><strong>'+frac(c.ms.current)+' · '+frac(c.ms.previous)+'</strong></div>':'')+'<div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Casa que más paga · Over 0,5 1T</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(c.notes&&c.notes.length?'<b>'+esc(c.notes.join(' · '))+'.</b> ':'')+(underNote?esc(underNote)+' ':'')+'Cuota real = 1 ÷ % de la muestra (fórmula estilo BetPractice con datos de API-Football). Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
   }).join('');
 }
 
@@ -2762,7 +2765,7 @@ async function ghEvaluateCandidates(){
         if(i+1<chosen.length)await sleep(250);
       }
       c.quote=quote;
-      const price=quote?(settings.quote==='median'&&quote.median?quote.median:quote.price):null;
+      const price=quote?quote.price:null; // siempre la casa que más paga
       c.ev=price&&c.ms.fair?price/c.ms.fair-1:null;c.evPrice=price;
     }
     const needEv=!!(TanoAeg.RULE_SETS[settings.ruleSet]||{}).ev;
@@ -2884,7 +2887,7 @@ async function ghCalRun(){
     // «Que estén todos»: primero las que dejan pasar más picks; a igualdad, la lista más corta y con los picks más arriba.
     const all=base.slice().sort((x,y)=>y.recall-x.recall||x.perDay-y.perDay||y.recallK-x.recallK||y.recall10-x.recall10);
     await sleep(20);
-    const ev=evDays.length?TanoAeg.calibrate(pickSet,evDays,histories,rules,{thresholds,ruleSets:TanoAeg.EV_SETS,odds,quotes:['best','median'],minEvs:TanoAeg.MIN_EVS,sorts:allSorts,minFairs:TanoAeg.MIN_FAIRS}):[];
+    const ev=evDays.length?TanoAeg.calibrate(pickSet,evDays,histories,rules,{thresholds,ruleSets:TanoAeg.EV_SETS,odds,quotes:['best'],minEvs:TanoAeg.MIN_EVS,sorts:allSorts,minFairs:TanoAeg.MIN_FAIRS}):[];
     const evPicks=evDays.reduce((n,d)=>n+d.fixtures.filter(f=>pickSet.has(String(f.id))).length,0);
     const pickOdds=picks.filter(p=>odds.has(String(p.id))).length;
     // «Como la clase»: solo las filas con todas las reglas del video, para poder elegirlas aunque pierdan picks.
