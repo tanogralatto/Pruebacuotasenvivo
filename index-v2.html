@@ -1676,11 +1676,15 @@ function ahHtml(v,fx){
     '<div class="small">'+srcNote+' <b>'+hn+' −1,5</b> = tiene que ganar por 2 o más; <b>'+an+' +1,5</b> = no puede perder por más de 1. En las de ,25 y ,75 se puede ganar o perder la mitad; en las enteras, el empate en la línea devuelve la plata. El <b>stake</b> siempre usa el precio de las casas'+(v.validated?' y el modelo (¼ Kelly)':' (⅛ Kelly)')+'.</div>'+
     '<div class="poisson-note">La mejor apuesta según las casas se guarda en el registro y se liquida con «Liquidar registro».</div></section>';
 }
+// El recuadro completo del modelo propio queda oculto: en las tarjetas se ven solo las seis fichas principales
+// (probabilidad, rango, cuota justa, goles esperados, mejor cuota y EV). Poner true para volver a mostrar todo.
+const POISSON_FULL_BOX=false;
 function poissonHtml(model){
   const mk=(model&&model.market)||state.market, M=MKT_TXT[mk];
   if(!M) return '';
   const metric=(label,value,style,hint)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value"'+(style?' style="'+style+'"':'')+'>'+value+'</span>'+(hint?'<span class="hint">'+hint+'</span>':'')+'</div>';
   if(!model||!model.ok){
+    if(!POISSON_FULL_BOX) return ''; // sin datos suficientes no hay fichas que mostrar
     const odds=model&&model.marketOdds;
     return '<section class="poisson-panel"><div class="poisson-title"><span>Modelo propio · Poisson '+M.title+'</span><span class="ev-badge none">No evaluable</span></div>'+
       '<div class="poisson-status">'+esc(model&&model.reason||'No hay datos HT verificados suficientes para calcular.')+'</div>'+
@@ -1708,10 +1712,12 @@ function poissonHtml(model){
     metric(M.lamLabel,fmtNum(model.lambdas.total)+(mk==='btts'?' ('+fmtNum(model.lambdas.home)+' + '+fmtNum(model.lambdas.away)+')':''),'',M.lamHint)+
     metric(odds?'Mejor cuota · '+esc(odds.bookmaker||'casa no informada'):'Cuota prepartido '+M.name,odds?Number(odds.price).toFixed(2):'No disponible','',M.oddsHint)+
     metric('EV estimado',evText,evColor,'Ganancia promedio por cada 100 apostados si el cálculo de la app fuera exacto. Verde = a favor. '+(model.validated?'✅ Esta liga está aprobada para '+M.name+'.':'⚠️ Esta liga no está aprobada para '+M.name+': tomalo como provisorio.'))+
+    (!POISSON_FULL_BOX?'':
     metric('EV conservador',evLowText,'','Lo mismo, pero suponiendo que el cálculo fue demasiado optimista. Si da negativo, la ventaja no es segura.')+
     metric('Mercado sin margen',Number.isFinite(model.marketProb)?fmtPct(model.marketProb,1):'—','','Chances que dan las casas de apuestas juntas, sacándoles su ganancia. Es la referencia más confiable.')+
     metric('EV vs mercado (sin margen)',evMktText,evMktColor,'Igual que el EV, pero usando las chances de las casas. Verde = tu cuota paga más de lo justo. Es la señal más confiable.')+
-    metric('Stake sugerido (Kelly)',kelText,'',kelHint);
+    metric('Stake sugerido (Kelly)',kelText,'',kelHint));
+  if(!POISSON_FULL_BOX) return '<section class="poisson-panel"><div class="poisson-grid">'+grid+'</div></section>';
   // Resumen en palabras simples (semáforo). Se guía por "EV vs mercado", no por el cálculo propio.
   let verdict;
   if(!odds||!(Number(odds.price)>1)){
