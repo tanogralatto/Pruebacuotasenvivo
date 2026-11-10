@@ -347,22 +347,24 @@ summary{cursor:pointer;font-size:13px;color:var(--muted);min-height:28px}
   #ghStrategyView .gh-group{padding:13px}
 }
 
-#ghStrategyView .gh-candidates{display:flex;flex-direction:column;gap:10px}
-#ghStrategyView .gh-candidate{padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--surface);display:flex;flex-direction:column;gap:12px}
-#ghStrategyView .gh-candidate-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-#ghStrategyView .gh-candidate-teams{font-size:17px;font-weight:700;overflow-wrap:anywhere}
-#ghStrategyView .gh-candidate-meta{font-size:12px;color:var(--muted)}
-#ghStrategyView .gh-candidate-status{font-size:11px;font-weight:700;color:var(--c2);text-transform:uppercase}
-#ghStrategyView .gh-candidate-status.ok{color:var(--c4)}
-#ghStrategyView .gh-vip-btn{font-size:12px;padding:6px 10px;min-height:32px}
-#ghStrategyView .gh-vip-btn[aria-pressed="true"]{border-color:var(--c4);color:var(--c4)}
-#ghStrategyView .gh-candidate-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-#ghStrategyView .gh-metric{min-width:0;padding:9px 10px;border-radius:9px;background:var(--bg)}
-#ghStrategyView .gh-metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
-#ghStrategyView .gh-metric strong{display:block;margin-top:3px;font-family:var(--font-data);font-size:15px;overflow-wrap:anywhere}
-#ghStrategyView .gh-candidate-note{font-size:11px;color:var(--muted)}
-@media(max-width:760px){#ghStrategyView .gh-candidate-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:480px){#ghStrategyView .gh-candidate-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.gh-candidates{display:flex;flex-direction:column;gap:10px}
+.gh-candidate{padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--surface);display:flex;flex-direction:column;gap:12px}
+.gh-candidate-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.gh-candidate-teams{font-size:17px;font-weight:700;overflow-wrap:anywhere}
+.gh-candidate-meta{font-size:12px;color:var(--muted)}
+.gh-candidate-status{font-size:11px;font-weight:700;color:var(--c2);text-transform:uppercase}
+.gh-candidate-status.ok{color:var(--c4)}
+.gh-vip-btn{font-size:12px;padding:6px 10px;min-height:32px}
+.gh-vip-btn[aria-pressed="true"]{border-color:var(--c4);color:var(--c4)}
+.gh-saved-pair{display:flex;flex-direction:column;gap:8px}
+.gh-saved-label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:2px 2px 0}
+.gh-candidate-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.gh-metric{min-width:0;padding:9px 10px;border-radius:9px;background:var(--bg)}
+.gh-metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.gh-metric strong{display:block;margin-top:3px;font-family:var(--font-data);font-size:15px;overflow-wrap:anywhere}
+.gh-candidate-note{font-size:11px;color:var(--muted)}
+@media(max-width:760px){.gh-candidate-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:480px){.gh-candidate-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 #ghStrategyView .gh-league-tools{display:flex;flex-direction:column;gap:10px}
 #ghStrategyView .gh-leagues{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;max-height:260px;overflow:auto;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
 #ghStrategyView .gh-league{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:var(--surface);font-size:12px;min-width:0;cursor:pointer}
@@ -2015,7 +2017,7 @@ function favoriteSources(f){
   return ['scanner'];
 }
 function favoriteOriginLabel(f){
-  const labels={scanner:'Escáner',golht:'Gol HT +0,5'};
+  const labels={scanner:'Escáner',golht:'Estrategia AEG'};
   return favoriteSources(f).map(s=>labels[s]).filter(Boolean).join(' · ')||'Escáner';
 }
 function favoriteForView(id,origin){
@@ -2056,6 +2058,11 @@ function renderSavedFavoriteCard(f,group){
   const others=dests.filter(k=>k!==(group==='common'?'common':group));
   const strat=others.length?'<span class="vip-strategy-badge">También en: '+esc(others.map(k=>DEST_NAME[k]).join(', '))+'</span>':(group==='vip'?'<span class="vip-strategy-badge none">Sin estrategia</span>':'');
   const origin='<p class="favorite-origin">Guardado desde: '+esc(favoriteOriginLabel(f))+strat+'</p>';
+  // Partidos mandados desde la pestaña Estrategia AEG: en «AEG prueba» se ve solo la tarjeta de la estrategia;
+  // en las demás secciones, esa tarjeta y debajo la del Escáner.
+  const stratCard=f.strategyAnalysis&&f.strategyAnalysis.card&&f.strategyAnalysis.card.a&&f.strategyAnalysis.card.b?f.strategyAnalysis.card:null;
+  if(stratCard&&group==='aegprueba')return ghCardHtml(stratCard,fx,'',{saved:true,below:origin+actions});
+  const withStrategy=html=>stratCard?'<div class="gh-saved-pair"><div class="gh-saved-label">🧪 Estrategia AEG</div>'+ghCardHtml(stratCard,fx,'',{saved:true})+'<div class="gh-saved-label">Escáner</div>'+html+'</div>':html;
   // Modelo propio: el guardado con el favorito; si no tiene, el del análisis actual (si es el mismo mercado).
   const savedPoisson=f.poisson||(currentResult&&currentResult.poisson&&(!f.market||f.market===marketDefs[state.market].short)?currentResult.poisson:undefined);
   if(a&&Array.isArray(a.tr)){
@@ -2067,9 +2074,9 @@ function renderSavedFavoriteCard(f,group){
     html=html.replace('<article class="card result-card" data-i="-1">','<article class="card result-card" data-fav-detail="'+esc(f.id)+'">');
     html=html.replace(/<button class="fav-btn"[^>]*>.*?<\/button>/,actions);
     html=html.replace('<p class="league">',origin+'<p class="league">');
-    return html;
+    return withStrategy(html);
   }
-  return `<article class="card result-card fav-legacy" data-fav-detail="${esc(f.id)}"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">${typeof a?.avg==='number'?Math.round(a.avg)+'%':'—'}</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">${a&&Array.isArray(a.tr)?'Promedio descriptivo · '+a.n+' de 7 indicadores':'Análisis histórico no guardado'}</span>${actions}</div>${origin}<p class="league">${esc(fx.lc||'')} · ${esc(fx.ln||f.league||'')} · ${esc(f.market||'')}</p>${a&&Array.isArray(a.tr)?'<div class="cells">'+a.tr.map(cellHtml).join('')+'</div>':'<p class="small">Este partido se guardó sin los indicadores históricos. Si vuelve a aparecer en el Escáner, guardalo de nuevo para conservar el análisis.</p>'}</div></details></article>`;
+  return withStrategy(`<article class="card result-card fav-legacy" data-fav-detail="${esc(f.id)}"><details class="result-detail"><summary class="fav-summary"><span class="fav-teams"><span class="when">${esc(dateTime)}</span><span class="result-teams">${esc(f.home||fx.hn||'')} vs ${esc(f.away||fx.an||'')}</span></span><span class="fav-average">${typeof a?.avg==='number'?Math.round(a.avg)+'%':'—'}</span><span class="fav-arrow" aria-hidden="true">▾</span></summary><div class="result-expanded"><div class="result-actions"><span class="small">${a&&Array.isArray(a.tr)?'Promedio descriptivo · '+a.n+' de 7 indicadores':'Análisis histórico no guardado'}</span>${actions}</div>${origin}<p class="league">${esc(fx.lc||'')} · ${esc(fx.ln||f.league||'')} · ${esc(f.market||'')}</p>${a&&Array.isArray(a.tr)?'<div class="cells">'+a.tr.map(cellHtml).join('')+'</div>':'<p class="small">Este partido se guardó sin los indicadores históricos. Si vuelve a aparecer en el Escáner, guardalo de nuevo para conservar el análisis.</p>'}</div></details></article>`);
 }
 function favoriteMatches(f,inputId){
   const el=$(inputId);const raw=el?el.value.trim():'';if(!raw)return true;
@@ -2146,7 +2153,8 @@ function saveFavoriteToGroup(id,group,origin,vipStrategy){
     strategyAnalysis:origin==='golht'&&found?.candidate?{
       sampleA:found.candidate.a.n,sampleB:found.candidate.b.n,
       rateA:found.candidate.a.rate,rateB:found.candidate.b.rate,
-      averageA:found.candidate.a.avg,averageB:found.candidate.b.avg
+      averageA:found.candidate.a.avg,averageB:found.candidate.b.avg,
+      card:ghSnapshot(found.candidate)
     }:(current?.strategyAnalysis||null),
     savedAt:current?.savedAt||Date.now(),updatedAt:Date.now()
   };
@@ -2658,24 +2666,42 @@ function ghBestPrematchOver05(response){
   const ps=list.map(c=>c.price).sort((a,b)=>a-b),m=ps.length;
   return {...list[0],median:m%2?ps[(m-1)/2]:(ps[m/2-1]+ps[m/2])/2,books:m};
 }
+// «Foto» de un candidato de la estrategia: datos simples para guardar con el favorito y volver a dibujar la tarjeta.
+function ghSnapshot(c){
+  const team=t=>({n:t.n,hits:t.hits,rate:t.rate,avg:t.avg,over:t.over,under:t.under,
+    current:t.current?{n:t.current.n,hits:t.current.hits,rate:t.current.rate}:null,
+    previous:t.previous?{n:t.previous.n,hits:t.previous.hits,rate:t.previous.rate}:null});
+  const season=x=>x?{n:x.n,hits:x.hits,rate:x.rate}:null;
+  const pattern=t=>!t.underPattern?'':t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
+  return {v:1,rank:c.rank||null,manual:!!c.manual,fair:c.ms?c.ms.fair:null,hits:c.ms?c.ms.hits:null,n:c.ms?c.ms.n:null,
+    current:c.ms?season(c.ms.current):null,previous:c.ms?season(c.ms.previous):null,ev:c.ev??null,
+    quote:c.quote?{price:c.quote.price,bookmaker:c.quote.bookmaker||'',books:c.quote.books||1,updatedAt:c.quote.updatedAt||null}:null,
+    a:team(c.a),b:team(c.b),notes:(c.notes||[]).slice(0,6),underNote:[pattern(c.a),pattern(c.b)].filter(Boolean).join(' '),savedAt:Date.now()};
+}
+// Tarjeta de la estrategia a partir de la foto. headRight: botones que van arriba a la derecha.
+function ghCardHtml(k,fx,headRight,opts){
+  const pct=x=>x==null?'s/d':Math.round(x*100)+'%';
+  const frac=x=>x?x.hits+'/'+x.n+' ('+pct(x.rate)+')':'s/d';
+  const avg=x=>x==null?'s/d':Number(x).toFixed(2);
+  const status=k.manual?'Pasa por racha Under (revisar)':'Cumple la fórmula';
+  // Una sola cuota: la de la casa que más paga entre las que informa API-Football.
+  const quoteWhen=k.quote&&k.quote.updatedAt&&Number.isFinite(Date.parse(k.quote.updatedAt))?' · '+fmtTime(k.quote.updatedAt)+' h':'';
+  const quote=k.quote?Number(k.quote.price).toFixed(2)+' · '+esc(k.quote.bookmaker)+'<small style="display:block;font-weight:400;color:var(--muted);font-size:11px">'+(k.quote.books>1?'la más alta de '+k.quote.books+' casas':'única casa con cuota')+quoteWhen+'</small>':'Sin cuota prepartido';
+  const when=fx.iso&&Number.isFinite(Date.parse(fx.iso))?fmtDate(Math.floor(new Date(fx.iso).getTime()/1000))+' '+fmtTime(fx.iso):'';
+  const meta=[fx.lc,fx.ln,when].filter(Boolean).map(esc).join(' · ');
+  const saved=opts&&opts.saved?' Datos del momento en que se evaluó la estrategia'+(k.savedAt?' ('+fmtDate(Math.floor(k.savedAt/1000))+' '+fmtTime(new Date(k.savedAt).toISOString())+')':'')+'.':'';
+  return '<article class="gh-candidate"'+(opts&&opts.attrs?' '+opts.attrs:'')+'><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+(k.rank?'#'+k.rank+' · ':'')+esc(fx.hn)+' vs '+esc(fx.an)+'</div><div class="gh-candidate-meta">'+meta+'</div></div><span class="gh-candidate-status '+(k.manual?'':'ok')+'">'+status+'</span>'+(headRight||'')+'</div>'+(opts&&opts.below?opts.below:'')+'<div class="gh-candidate-metrics">'+(k.fair?'<div class="gh-metric"><span>Cuota real (muestra)</span><strong>'+Number(k.fair).toFixed(2)+' · '+k.hits+'/'+k.n+'</strong></div><div class="gh-metric"><span>EV con la casa que más paga</span><strong>'+(k.ev==null?'s/d':(k.ev>=0?'+':'')+Math.round(k.ev*100)+'%')+'</strong></div><div class="gh-metric"><span>Actual · anterior (juntos)</span><strong>'+frac(k.current)+' · '+frac(k.previous)+'</strong></div>':'')+'<div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(k.a)+' · '+frac(k.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(k.a.current)+' · '+frac(k.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(k.a.previous)+' · '+frac(k.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(k.a.avg)+' · '+avg(k.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+k.a.over+' · '+k.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+k.a.under+' · '+k.b.under+'</strong></div><div class="gh-metric"><span>Casa que más paga · Over 0,5 1T</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(k.notes&&k.notes.length?'<b>'+esc(k.notes.join(' · '))+'.</b> ':'')+(k.underNote?esc(k.underNote)+' ':'')+'Cuota real = 1 ÷ % de la muestra (fórmula estilo BetPractice con datos de API-Football).'+saved+'</div></article>';
+}
 function ghRenderCandidates(rows){
   ghLastCandidates=rows;
   const box=document.getElementById('ghCandidateList');
   if(!rows.length){box.innerHTML='<div class="empty">No hay partidos que cumplan el filtro Pregame con los datos disponibles.</div>';return}
   box.innerHTML=rows.map(c=>{
-    const pct=x=>x==null?'s/d':Math.round(x*100)+'%';
-    const frac=x=>x?x.hits+'/'+x.n+' ('+pct(x.rate)+')':'s/d';
-    const avg=x=>x==null?'s/d':x.toFixed(2);
-    const status=c.manual?'Pasa por racha Under (revisar)':'Cumple la fórmula';
-    const id=String(c.fx.id),saved=favoriteState.items.get(id),isSaved=!!(saved&&favDests(saved).includes('common')&&favoriteSources(saved).includes('golht'));
+    const id=String(c.fx.id),saved=favoriteState.items.get(id);
     // En esta pestaña la única opción es mandar el partido al VIP «AEG prueba» (sin estrella de Favoritos).
-    const favButton=(()=>{const inVip=!!(saved&&favDests(saved).includes('aegprueba'));return '<button class="gh-vip-btn" type="button" data-gh-aegprueba="'+esc(id)+'" aria-pressed="'+inVip+'">'+(inVip?'🧪 En AEG prueba ✓':'🧪 Mandar a AEG prueba')+'</button>'})();
-    const pattern=t=>t.under===2?'Tras 2 Under: '+t.underPattern.breakAfter2+' cortes / '+(t.underPattern.breakAfter2+t.underPattern.extendAfter2)+' casos; '+t.underPattern.extendAfter2+' se extendieron a 3.':t.under===3?'Tras 3 Under: '+t.underPattern.breakAfter3+' cortes / '+(t.underPattern.breakAfter3+t.underPattern.extendAfter3)+' casos; '+t.underPattern.extendAfter3+' se extendieron a 4.':'';
-    const underNote=[pattern(c.a),pattern(c.b)].filter(Boolean).join(' ');
-    // Una sola cuota: la de la casa que más paga entre las que informa API-Football.
-    const quoteWhen=c.quote&&c.quote.updatedAt&&Number.isFinite(Date.parse(c.quote.updatedAt))?' · '+fmtTime(c.quote.updatedAt)+' h':'';
-    const quote=c.quote?c.quote.price.toFixed(2)+' · '+esc(c.quote.bookmaker)+'<small style="display:block;font-weight:400;color:var(--muted);font-size:11px">'+(c.quote.books>1?'la más alta de '+c.quote.books+' casas':'única casa con cuota')+quoteWhen+'</small>':'Sin cuota prepartido';
-    return '<article class="gh-candidate"><div class="gh-candidate-head"><div><div class="gh-candidate-teams">'+(c.rank?'#'+c.rank+' · ':'')+esc(c.fx.hn)+' vs '+esc(c.fx.an)+'</div><div class="gh-candidate-meta">'+esc(c.fx.lc)+' · '+esc(c.fx.ln)+' · '+fmtDate(Math.floor(new Date(c.fx.iso).getTime()/1000))+' '+fmtTime(c.fx.iso)+'</div></div><span class="gh-candidate-status '+(c.manual?'':'ok')+'">'+status+'</span>'+favButton+'</div><div class="gh-candidate-metrics">'+(c.ms?'<div class="gh-metric"><span>Cuota real (muestra)</span><strong>'+c.ms.fair.toFixed(2)+' · '+c.ms.hits+'/'+c.ms.n+'</strong></div><div class="gh-metric"><span>EV con la casa que más paga</span><strong>'+(c.ev==null?'s/d':(c.ev>=0?'+':'')+Math.round(c.ev*100)+'%')+'</strong></div><div class="gh-metric"><span>Actual · anterior (juntos)</span><strong>'+frac(c.ms.current)+' · '+frac(c.ms.previous)+'</strong></div>':'')+'<div class="gh-metric"><span>Over HT combinado A / B</span><strong>'+frac(c.a)+' · '+frac(c.b)+'</strong></div><div class="gh-metric"><span>Temporada actual A / B</span><strong>'+frac(c.a.current)+' · '+frac(c.b.current)+'</strong></div><div class="gh-metric"><span>Temporada anterior A / B</span><strong>'+frac(c.a.previous)+' · '+frac(c.b.previous)+'</strong></div><div class="gh-metric"><span>Promedio goles totales A / B</span><strong>'+avg(c.a.avg)+' · '+avg(c.b.avg)+'</strong></div><div class="gh-metric"><span>Rachas Over HT A / B</span><strong>'+c.a.over+' · '+c.b.over+'</strong></div><div class="gh-metric"><span>Rachas Under HT A / B</span><strong>'+c.a.under+' · '+c.b.under+'</strong></div><div class="gh-metric"><span>Casa que más paga · Over 0,5 1T</span><strong>'+quote+'</strong></div></div><div class="gh-candidate-note">'+(c.notes&&c.notes.length?'<b>'+esc(c.notes.join(' · '))+'.</b> ':'')+(underNote?esc(underNote)+' ':'')+'Cuota real = 1 ÷ % de la muestra (fórmula estilo BetPractice con datos de API-Football). Las frecuencias de racha son descriptivas y no predicen que una secuencia vaya a romperse.</div></article>';
+    const inVip=!!(saved&&favDests(saved).includes('aegprueba'));
+    const favButton='<button class="gh-vip-btn" type="button" data-gh-aegprueba="'+esc(id)+'" aria-pressed="'+inVip+'">'+(inVip?'🧪 En AEG prueba ✓':'🧪 Mandar a AEG prueba')+'</button>';
+    return ghCardHtml(ghSnapshot(c),c.fx,favButton);
   }).join('');
 }
 
@@ -2777,6 +2803,8 @@ async function ghEvaluateCandidates(){
     eligible.forEach((c,i)=>{c.rank=i+1});
     const newOddsCalls=state.calls-oddsCallsStart;
     ghRenderCandidates(eligible);
+    // Los que ya estaban en AEG prueba toman los datos nuevos (y los guardados antes de este cambio ganan su tarjeta).
+    for(const c of eligible){const fav=favoriteState.items.get(String(c.fx.id));if(fav&&favDests(fav).includes('aegprueba'))saveFavoriteToGroup(c.fx.id,favDests(fav),'golht')}
     const skipped=beforeEv-chosen.length,manualCount=eligible.filter(c=>c.manual).length;
     if(!eligible.length){ghRenderCandidates([]);ghCandidateStatus(beforeEv+' partidos pasan la fórmula, pero ninguno tiene EV positivo con la cuota disponible'+(skipped>0?' ('+skipped+' quedaron sin consultar la cuota por el límite)':'')+'.',false);return}
     ghCandidateStatus(eligible.length+' candidatos del filtro Pregame; '+manualCount+' para revisión manual de racha Under. Ordenados por '+(TanoAeg.SORTS[settings.sort]||TanoAeg.SORTS.fair).label+' (#1 = más parecido a los picks). '+historyCalls+' consultas nuevas de historial, '+newOddsCalls+' consultas nuevas de cuota.'+(skipped?' '+skipped+' cuotas omitidas por el límite.':''),false);
