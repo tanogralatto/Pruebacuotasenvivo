@@ -859,6 +859,10 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <p style="margin:0"><strong>⭐ Favoritos</strong></p>
     <p class="small">Estos ajustes solo afectan las alertas de Favoritos normales. No cambian las de VIP AEG ni VIP dataGol.</p>
     <div class="row">
+      <label class="check"><input id="tgCommonTelegram" type="checkbox" checked><span>Enviar a Telegram</span></label>
+    </div>
+    <p class="small" style="margin-top:0">Si lo desmarcás, las alertas de Favoritos no se mandan al grupo: solo se anotan en el historial (🔕), con las mismas reglas y la misma liquidación.</p>
+    <div class="row">
       <label class="check"><input id="tgOver05" type="checkbox" checked><span>Over 0,5 1T</span></label>
       <div class="field" style="width:150px"><label for="tgMin05">Cuota mínima O0,5</label><input id="tgMin05" type="number" min="1.01" step="0.01" value="1.50"></div>
     </div>
@@ -3118,6 +3122,7 @@ function telegramStatus(message, error=false) {
 function setTelegramForm(data={}) {
   q('#tgLiveSearch').checked = data.liveSearchEnabled !== false;
   q('#tgEnabled').checked = data.enabled !== false;
+  q('#tgCommonTelegram').checked = data.commonTelegram !== false;
   q('#tgOver05').checked = !data.over05 || data.over05.enabled !== false;
   q('#tgMin05').value = Number(data.over05?.minOdds ?? 1.50).toFixed(2);
   q('#tgOver10').checked = !data.over10 || data.over10.enabled !== false;
@@ -3178,6 +3183,7 @@ function startTelegramSettings(user) {
       await setDoc(ref, {
         liveSearchEnabled: q('#tgLiveSearch').checked,
         enabled: q('#tgEnabled').checked,
+        commonTelegram: q('#tgCommonTelegram').checked,
         over05: { enabled: q('#tgOver05').checked, minOdds: min05 },
         over10: { enabled: q('#tgOver10').checked, minOdds: min10 },
         minuteStart: start, minuteEnd: end,
