@@ -873,6 +873,10 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <summary><strong>💎 Favoritos VIP · AEG</strong></summary>
       <p class="small">Estos ajustes solo afectan las alertas VIP de la estrategia AEG. No cambian la otra estrategia ni los Favoritos normales.</p>
       <div class="row">
+        <label class="check"><input id="tg_aeg_telegram" type="checkbox" checked><span>Enviar a Telegram</span></label>
+      </div>
+      <p class="small" style="margin-top:0">Si lo desmarcás, las alertas de esta estrategia no se mandan al grupo: solo se anotan en el historial (🔕), con las mismas reglas y la misma liquidación.</p>
+      <div class="row">
         <label class="check"><input id="tg_aeg_over05" type="checkbox" checked><span>Over 0,5 1T</span></label>
         <div class="field" style="width:150px"><label for="tg_aeg_min05">Cuota mínima O0,5</label><input id="tg_aeg_min05" type="number" min="1.01" step="0.01" value="1.50"></div>
         <label class="check"><input id="tg_aeg_over10" type="checkbox" checked><span>Over 1,0 1T</span></label>
@@ -887,6 +891,10 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
       <summary><strong>💎 Favoritos VIP · dataGol</strong></summary>
       <p class="small">Estos ajustes solo afectan las alertas VIP de la estrategia dataGol. No cambian la otra estrategia ni los Favoritos normales.</p>
       <div class="row">
+        <label class="check"><input id="tg_datagol_telegram" type="checkbox" checked><span>Enviar a Telegram</span></label>
+      </div>
+      <p class="small" style="margin-top:0">Si lo desmarcás, las alertas de esta estrategia no se mandan al grupo: solo se anotan en el historial (🔕), con las mismas reglas y la misma liquidación.</p>
+      <div class="row">
         <label class="check"><input id="tg_datagol_over05" type="checkbox" checked><span>Over 0,5 1T</span></label>
         <div class="field" style="width:150px"><label for="tg_datagol_min05">Cuota mínima O0,5</label><input id="tg_datagol_min05" type="number" min="1.01" step="0.01" value="1.50"></div>
         <label class="check"><input id="tg_datagol_over10" type="checkbox" checked><span>Over 1,0 1T</span></label>
@@ -900,6 +908,10 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <details class="panel tg-strategy" data-tg-strategy="aegprueba">
       <summary><strong>🧪 Favoritos VIP · AEG prueba</strong></summary>
       <p class="small">Partidos de la pestaña Estrategia AEG. Manda las alertas al grupo VIP, como AEG y dataGol («ALERTA VIP AEG prueba»), con estos parámetros propios. Arranca con los valores de AEG hasta que guardes los suyos.</p>
+      <div class="row">
+        <label class="check"><input id="tg_aegprueba_telegram" type="checkbox" checked><span>Enviar a Telegram</span></label>
+      </div>
+      <p class="small" style="margin-top:0">Si lo desmarcás, las alertas de esta estrategia no se mandan al grupo: solo se anotan en el historial (🔕), con las mismas reglas y la misma liquidación.</p>
       <div class="row">
         <label class="check"><input id="tg_aegprueba_over05" type="checkbox" checked><span>Over 0,5 1T</span></label>
         <div class="field" style="width:150px"><label for="tg_aegprueba_min05">Cuota mínima O0,5</label><input id="tg_aegprueba_min05" type="number" min="1.01" step="0.01" value="1.50"></div>
@@ -3122,6 +3134,8 @@ function setTelegramForm(data={}) {
     q('#tg_' + k + '_min10').value = Number((st.over10 || {}).minOdds ?? data.vipOver10?.minOdds ?? 1.65).toFixed(2);
     q('#tg_' + k + '_start').value = Number(st.minuteStart ?? data.vipMinuteStart ?? 1);
     q('#tg_' + k + '_end').value = Number(st.minuteEnd ?? data.vipMinuteEnd ?? 45);
+    // «Enviar a Telegram» es propio de cada estrategia (AEG prueba no lo copia de AEG).
+    q('#tg_' + k + '_telegram').checked = (vs[k] || {}).telegram !== false;
   }
   q('#tgVipChatId').value = String(data.vipChatId || '');
 }
@@ -3147,7 +3161,8 @@ function startTelegramSettings(user) {
       vipStrategies[k] = {
         over05: { enabled: q('#tg_' + k + '_over05').checked, minOdds: Number(q('#tg_' + k + '_min05').value) },
         over10: { enabled: q('#tg_' + k + '_over10').checked, minOdds: Number(q('#tg_' + k + '_min10').value) },
-        minuteStart: Number(q('#tg_' + k + '_start').value), minuteEnd: Number(q('#tg_' + k + '_end').value)
+        minuteStart: Number(q('#tg_' + k + '_start').value), minuteEnd: Number(q('#tg_' + k + '_end').value),
+        telegram: q('#tg_' + k + '_telegram').checked
       };
     }
     const vs = Object.values(vipStrategies);
@@ -3828,7 +3843,7 @@ function startAlertHistory(isOwner) {
       const originalOddLabel = Number.isFinite(originalOdd) && originalOdd > 1 ? originalOdd.toFixed(2) : '—';
       const entryOddLabel = nums.hasOdd ? nums.odd.toFixed(2) : '';
       return '<article class="alert-history-card" data-alert-id="' + esc(a.id) + '">'
-        + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong>' + (a.manual ? '<span class="alert-manual-badge">✍️ Manual' + (a.odd_estimated ? ' · cuota estimada' : '') + '</span>' : '') + '<div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
+        + '<div class="alert-history-head"><div><strong>' + esc(match) + '</strong>' + (a.manual ? '<span class="alert-manual-badge">✍️ Manual' + (a.odd_estimated ? ' · cuota estimada' : '') + '</span>' : '') + (a.telegram_sent === false ? '<span class="alert-manual-badge">🔕 Sin Telegram</span>' : '') + '<div class="small">' + esc(a.league || 'Competición') + ' · ' + esc(fmtTs(a.created_at)) + '</div></div>'
         + '<span class="alert-result ' + status[1] + '">' + esc(status[0]) + '</span></div>'
         + '<div class="alert-history-meta">' + (a.favorite_group === 'vip' ? '💎 VIP ' + ({ aeg: 'AEG', datagol: 'dataGol', aegprueba: 'AEG prueba' }[String(a.vip_strategy || '').toLowerCase()] || 'anterior') + ' · ' : '⭐ Favoritos · ') + esc(marketLabel) + ' · Cuota alerta ' + esc(originalOddLabel) + ' · ' + esc(a.bookmaker || (a.manual ? 'Cargada a mano' : 'Casa no informada')) + settle + balance + '</div>'
         + '<div class="alert-bet-edit"><label>Cuota real de entrada<input type="number" min="1.01" step="0.01" inputmode="decimal" data-entry-odd="' + esc(a.id) + '" value="' + esc(entryOddLabel) + '" placeholder="' + esc(originalOddLabel) + '"></label>'
