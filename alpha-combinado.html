@@ -68,13 +68,62 @@ table.mk .num{font-family:var(--mono)}
 .upd .small{flex:1;min-width:140px}
 @media (max-width:560px){table.mk{font-size:12.5px}table.mk th,table.mk td{padding:7px 4px}.tile .v{font-size:18px}.tile{padding:8px 9px}}
 
+.back{display:inline-block;margin-top:14px;color:var(--muted);font-size:14px}
+.mh{margin:8px 0 4px;font-size:24px;font-weight:800;line-height:1.2}
+.mh span{color:var(--dim);font-weight:600}
+.model{font-size:12px;color:var(--muted);margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.g{color:var(--good);border-color:rgba(34,197,94,.35)}
+.grp{margin:18px 0}
+.grp-h{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.grp-h .n{font-weight:700;font-size:15px}
+.grp-h .k{color:var(--dim);font-size:13px}
+table.mk .ev{font-family:var(--mono);font-weight:700}
+.more{margin-top:6px;background:none;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:12.5px;padding:5px 10px}
+.none{padding:14px;text-align:center;color:var(--dim);font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.vsm{margin-top:12px;padding:10px 12px}
+.vsm h3{margin:0 0 6px;font-size:14px}
+.vsm table{width:100%;border-collapse:collapse;font-size:13px}
+.vsm th,.vsm td{padding:5px 4px;border-bottom:1px solid var(--line);text-align:right}
+.vsm th:first-child,.vsm td:first-child{text-align:left}
+.vsm th{color:var(--muted);font-weight:600}
+.study{display:grid;gap:12px;margin-top:12px}
+.study h3{margin:0 0 8px;font-size:14px;color:var(--muted)}
+.bar{width:46px;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px}
+.lamrow{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.lamrow .nm{width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lamrow .bar{flex:1;width:auto;height:8px}
+.lamrow b{font-family:var(--mono);width:40px;text-align:right}
+.res3{display:flex;height:28px;border-radius:8px;overflow:hidden;font-size:12px;font-weight:700}
+.res3 div{display:flex;align-items:center;justify-content:center;color:#071014;min-width:30px}
+.legend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+table.mat{border-collapse:collapse;font-family:var(--mono);font-size:11.5px;margin:0 auto}
+table.mat td,table.mat th{width:40px;height:30px;text-align:center;border:1px solid var(--bg)}
+table.mat th{color:var(--muted);font-weight:500}
+table.ctx{width:100%;border-collapse:collapse;font-size:13.5px}
+table.ctx td,table.ctx th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right}
+table.ctx th{color:var(--muted);font-weight:600;font-size:12px}
+table.ctx td:first-child,table.ctx th:first-child{text-align:left}
+.rate{position:relative;height:10px;background:var(--line);border-radius:10px;margin:18px 0 4px}
+.rate .dot{position:absolute;top:-3px;width:16px;height:16px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--bg)}
+.rate .mid{position:absolute;top:-4px;width:2px;height:18px;background:var(--muted);left:50%}
+.sig{margin-top:12px}
+.sig-h{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.sig-h b{font-weight:600}
+.sig-bar{position:relative;height:10px;background:var(--line);border-radius:10px;margin-top:6px}
+.sig-bar i{position:absolute;top:0;height:10px;border-radius:10px}
+.sig-bar .mid{position:absolute;top:-3px;width:2px;height:16px;background:var(--muted);left:50%}
+.sig-total{margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-size:14px;line-height:1.45}
+.tb tr.go{cursor:pointer}
+
 /* ---- LO NUEVO: los dos detalles que combinan con la lista ---- */
 /* 1) valores en un cuadradito de color */
 .num2{display:inline-block;min-width:34px;text-align:center;font-family:var(--mono);font-weight:700;font-size:13px;padding:2px 6px;border-radius:6px;color:#071014}
 .num2.g{background:var(--good)}.num2.m{background:var(--mid)}.num2.b{background:var(--bad)}.num2.d{background:var(--line);color:var(--text)}
 .num2.t{font-family:inherit;font-size:12px}
 /* 2) títulos de columnas en letra chica y mayúscula */
-table.lg th,table.mk th,table.tb th{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+table.lg th,table.mk th,table.tb th,.vsm th,table.ctx th{font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 /* la lista de Partidos (opción 2) */
 table.tb{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px;table-layout:fixed}
 .tb th{color:var(--muted);font-weight:600;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
@@ -100,6 +149,31 @@ table.tb{width:100%;border-collapse:collapse;background:var(--panel);border:1px 
   <div class="row"><div class="seg"><button class="on">Hoy</button><button>Mañana</button><button>★ Guardados</button></div></div>
   <div class="upd"><span class="small">Última actualización <b>hace 2 h</b></span><button class="btn pri">↻ Actualizar todo</button><button class="btn">↻ Actualizar cuotas</button></div>
   <table class="tb"><thead><tr><th class="h">Hora</th><th>Partido</th><th class="s">Score</th><th class="e"></th></tr></thead><tbody id="tPartidos"></tbody></table>
+</section>
+
+<!-- ============ PARTIDO (armado como hoy) ============ -->
+<section id="v-partido" class="hidden">
+  <a class="back" href="#partidos">‹ Partidos</a>
+  <div class="row" style="margin-top:10px"><span>🇦🇷</span><span class="small">Argentina · Liga Profesional · 16:00</span><button class="star on" style="margin-left:auto">★</button></div>
+  <div class="mh">River Plate <span>vs</span> Banfield</div><div class="small">Última lectura hace 2 h</div>
+  <div class="model">Modelo: Poisson + corrección Dixon-Coles + xG · córners esperados 5,8 – 3,9</div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="btnStudy">Ver estudio del partido</button><button class="btn">↻ Cuotas de este partido</button></div>
+  <div id="study" class="study hidden">
+    <div class="box"><h3>Qué mueve el partido <button class="info">i</button></h3><div class="small">Hacia qué lado empuja cada señal: <span style="color:var(--acc)">■</span> River Plate · <span style="color:var(--info)">■</span> Banfield</div><div id="sigs"></div>
+      <div class="sig-total">Pinnacle sin margen da <b>62%</b> a la victoria de River Plate: hay valor si tu casa paga <b>más de 1,61</b>. El modelo dice 65%.</div></div>
+    <div class="box"><h3>Goles esperados <button class="info">i</button></h3>
+      <div class="lamrow"><span class="nm">River Plate</span><span class="bar"><i style="width:76%;background:var(--acc)"></i></span><b>1,90</b></div>
+      <div class="lamrow"><span class="nm">Banfield</span><span class="bar"><i style="width:32%;background:var(--info)"></i></span><b>0,80</b></div>
+      <div class="small">En total esperamos ~2,70 goles. Datos: River Plate 34 partidos · Banfield 31 partidos.</div></div>
+    <div class="box"><h3>Resultado del partido</h3><div class="res3"><div style="width:65%;background:var(--acc)">65%</div><div style="width:21%;background:#9aa4ae">21%</div><div style="width:14%;background:var(--info)">14%</div></div><div class="legend"><span>River Plate</span><span>Empate</span><span>Banfield</span></div></div>
+    <div class="box"><h3>Contexto de liga <span class="small">(812 partidos)</span></h3><table class="ctx" id="tCtx"></table></div>
+    <div class="box"><h3>Matriz de marcadores</h3><div class="small" style="margin-bottom:6px">Filas: goles de River Plate · columnas: goles de Banfield</div><div style="overflow-x:auto"><table class="mat" id="tMat"></table></div></div>
+    <div class="box"><h3>Ratings de equipos</h3><div id="rates"></div></div>
+  </div>
+  <div class="row" style="margin-top:10px"><span class="small">Match score</span><span class="num2 g">82</span></div>
+  <div class="box vsm"><h3>Modelo vs mercado <button class="info">i</button></h3><table><thead><tr><th></th><th>Modelo</th><th>Mercado (Pinnacle)</th><th>Diferencia</th></tr></thead><tbody>
+    <tr><td>River Plate</td><td class="mono">65%</td><td class="mono">62%</td><td class="mono">+3</td></tr><tr><td>Empate</td><td class="mono">21%</td><td class="mono">23%</td><td class="mono">−2</td></tr><tr><td>Banfield</td><td class="mono">14%</td><td class="mono">15%</td><td class="mono">−1</td></tr><tr><td>Más de 2,5 goles</td><td class="mono">55%</td><td class="mono">48%</td><td class="mono">+7</td></tr></tbody></table></div>
+  <div id="grupos"></div>
 </section>
 
 <!-- ============ MIS APUESTAS (armado como hoy) ============ -->
@@ -150,7 +224,29 @@ const LIGAS=[
  ['🇪🇸 España · La Liga',[['17:00','Sevilla','Real Betis',66],['17:00','Getafe','Osasuna',12],['21:00','Atlético Madrid','Villarreal',39]]],
  ['🇬🇧 Inglaterra · Premier League',[['16:45','Brighton','Aston Villa',90],['19:30','Everton','Fulham',null]]]
 ];
-$('#tPartidos').innerHTML=LIGAS.map(([n,l])=>'<tr class="gr"><td colspan="4">'+n+'</td></tr>'+l.map(p=>'<tr><td class="h">'+p[0]+'</td><td class="p">'+p[1]+' <span class="c-d">–</span> '+p[2]+'</td><td class="s">'+(p[3]==null?'<span class="c-d">–</span>':'<span class="num2 '+col(p[3])+'">'+p[3]+'</span>')+'</td><td class="e"><button class="star'+(p[4]?' on':'')+'">'+(p[4]?'★':'☆')+'</button></td></tr>').join('')).join('');
+$('#tPartidos').innerHTML=LIGAS.map(([n,l])=>'<tr class="gr"><td colspan="4">'+n+'</td></tr>'+l.map(p=>'<tr class="go" onclick="location.hash=\'partido\'"><td class="h">'+p[0]+'</td><td class="p">'+p[1]+' <span class="c-d">–</span> '+p[2]+'</td><td class="s">'+(p[3]==null?'<span class="c-d">–</span>':'<span class="num2 '+col(p[3])+'">'+p[3]+'</span>')+'</td><td class="e"><button onclick="event.stopPropagation()" class="star'+(p[4]?' on':'')+'">'+(p[4]?'★':'☆')+'</button></td></tr>').join('')).join('');
+
+/* Ficha del partido: armada como hoy; el Score va en el cuadradito */
+const GR=[
+ ['Muchos goles',6,1,[['Más de 2,5 goles','2,10','Bet365','1,82','+15,4%',82],['Ambos marcan: sí','1,95','Betano','1,85','+5,4%',34]]],
+ ['Pocos goles',5,1,[]],
+ ['Resultado River Plate',4,0,null],
+ ['Goles por equipo',8,1,[['River Plate más de 1,5','1,90','1xBet','1,68','+13,1%',64],['Banfield menos de 1,5','1,30','Bet365','1,24','+4,8%',41]]],
+ ['Córners',6,1,[['Más de 9,5 córners','1,95','Bet365','1,80','+8,3%',52]]]
+];
+$('#grupos').innerHTML=GR.map(([n,k,ok,l])=>'<div class="grp"><div class="grp-h"><span class="n">'+n+'</span><span class="k">('+k+')</span><span class="chip'+(ok?' g':'')+'">'+(ok?'✓':'✕')+' en esta liga</span></div>'
+ +(l===null?'<div class="none">El modelo todavía no está probado en este mercado en esta liga: no acierta mejor que el mercado (Pinnacle). No cuenta para el match score.</div><button class="more">Mostrar igual</button>'
+  :l.length?'<div class="xs"><table class="mk"><thead><tr><th>Mercado</th><th>Cuota</th><th>Cuota justa</th><th>EV</th><th>Score</th><th></th></tr></thead><tbody>'
+   +l.map(r=>'<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'<span class="bk">'+r[2]+'</span></td><td class="num">'+r[3]+'</td><td class="ev c-m">'+r[4]+'</td><td><span class="num2 '+col(r[5])+'">'+r[5]+'</span></td><td><button class="addb">＋</button></td></tr>').join('')+'</tbody></table></div><button class="more">Mostrar todos los mercados ('+k+')</button>'
+  :'<div class="none">No se encontraron mercados con valor en este grupo</div><button class="more">Mostrar todos los mercados ('+k+')</button>')+'</div>').join('');
+$('#sigs').innerHTML=[['Ataque',.7,'River Plate: top 12% de la liga · Banfield: top 61%'],['Defensa',.4,'River Plate: top 20% de la liga · Banfield: top 48%'],['Forma (últimos 5)',.6,'River Plate: GGEGP · Banfield: PEPPG'],['Goles recientes (diferencia)',.65,'River Plate: +1,20 · Banfield: −0,40 por partido'],['Ventaja de local en esta liga',.55,'el local hace 28% más goles']]
+ .map(([n,v,d])=>'<div class="sig"><div class="sig-h"><b>'+n+'</b><span>River Plate</span></div><div class="sig-bar"><span class="mid"></span><i style="left:50%;width:'+v*50+'%;background:var(--acc)"></i></div><div class="small">'+d+'</div></div>').join('');
+$('#tCtx').innerHTML='<tr><th></th><th>Liga</th><th>Este partido</th><th>Δ</th></tr>'+[['Goles por partido','2,31','2,70','+0,39',1],['Gana River Plate','44,0%','65,0%','+21,0 pp',1],['Empate','29,0%','21,0%','−8,0 pp',0],['Gana Banfield','27,0%','14,0%','−13,0 pp',0],['Ambos marcan','46,0%','41,0%','−5,0 pp',0],['Más de 2,5 goles','41,0%','51,0%','+10,0 pp',1]]
+ .map(r=>'<tr><td>'+r[0]+'</td><td class="mono" style="color:var(--muted)">'+r[1]+'</td><td class="mono"><b>'+r[2]+'</b></td><td class="mono '+(r[4]?'c-g':'c-b')+'">'+r[3]+'</td></tr>').join('');
+const MAT=[[4,5,3,1,0,0],[8,11,7,3,1,0],[7,10,6,3,1,0],[4,6,4,2,1,0],[2,3,2,1,0,0],[1,1,1,0,0,0]]; // [goles River][goles Banfield] en %
+$('#tMat').innerHTML='<tr><th></th>'+[0,1,2,3,4,5].map(j=>'<th>'+j+'</th>').join('')+'</tr>'+[5,4,3,2,1,0].map(i=>'<tr><th>'+i+'</th>'+[0,1,2,3,4,5].map(j=>{const v=MAT[i][j],o=v/11;return '<td style="background:rgba(20,184,166,'+(o*0.85).toFixed(2)+');color:'+(o>0.55?'#04211e':'var(--muted)')+'">'+(v?v+'%':'')+'</td>'}).join('')+'</tr>').join('');
+$('#rates').innerHTML=[['Ataque',12,88,61,39],['Defensa',20,80,48,52]].map(r=>'<div style="margin-top:10px"><div class="row" style="justify-content:space-between"><b style="font-size:13px">'+r[0]+'</b><span class="small">River Plate: top '+r[1]+'% · Banfield: top '+r[3]+'%</span></div><div class="rate"><span class="mid"></span><span class="dot" style="left:'+r[2]+'%;background:var(--acc)"></span><span class="dot" style="left:'+r[4]+'%;background:var(--info)"></span></div><div class="legend"><span>Peor de la liga</span><span>Mejor de la liga</span></div></div>').join('');
+$('#btnStudy').onclick=()=>{const h=$('#study').classList.toggle('hidden');$('#btnStudy').textContent=h?'Ver estudio del partido':'Ocultar estudio'};
 
 /* Mis apuestas: misma tabla que hoy; el resultado va en el cuadradito */
 const RES={g:['g','ganada'],p:['b','perdida'],e:['d','pendiente']};
@@ -183,7 +279,7 @@ $('#tPrecision').innerHTML=PR.map(r=>'<tr><td>'+r[0]+'<span class="cn">'+r[1]+'<
 function ir(){
   const v=(location.hash||'#partidos').slice(1);
   document.querySelectorAll('main section').forEach(s=>s.classList.toggle('hidden',s.id!=='v-'+v));
-  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+v));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+(v==='partido'?'partidos':v)&&!a.style.pointerEvents));
   scrollTo(0,0);
 }
 addEventListener('hashchange',ir);ir();
