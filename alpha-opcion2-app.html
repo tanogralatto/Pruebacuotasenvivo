@@ -8,7 +8,7 @@
 <!-- ARCHIVO DE PRUEBA: cómo quedaría el estilo "tabla compacta" (opción 2) en cada pantalla de alpha.html.
      Todos los partidos, cuotas y números son inventados. No trae datos reales ni guarda nada. -->
 <style>
-:root{--bg:#0b0d10;--panel:#12161b;--panel2:#181d24;--line:#252c35;--text:#e8edf2;--muted:#8a96a3;--dim:#5b6672;--acc:#14b8a6;--good:#22c55e;--mid:#eab308;--bad:#ef4444;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+:root{--bg:#0b0d10;--panel:#12161b;--panel2:#181d24;--line:#252c35;--text:#e8edf2;--muted:#8a96a3;--dim:#5b6672;--acc:#14b8a6;--good:#22c55e;--mid:#eab308;--bad:#ef4444;--info:#60a5fa;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
 button{font:inherit;color:inherit;cursor:pointer}
@@ -67,6 +67,15 @@ table.tb{width:100%;border-collapse:collapse;background:var(--panel);border:1px 
 .strip div:last-child{border-right:0}
 .strip small{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .strip b{font-family:var(--mono);font-size:16px}
+.tb .fav{font-size:12px;font-weight:700}
+.tb .fav.h1{color:var(--acc)}.tb .fav.h2{color:var(--info)}
+.res3{display:flex;height:24px;border-radius:6px;overflow:hidden;font-size:12px;font-weight:700}
+.res3 div{display:flex;align-items:center;justify-content:center;color:#071014}
+.lgd{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:3px}
+.resumen{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:10px;padding:8px 12px;font-size:13.5px;margin:8px 0}
+table.mat{border-collapse:collapse;font-family:var(--mono);font-size:11.5px;margin:0 auto}
+table.mat td,table.mat th{width:40px;height:26px;text-align:center;border:1px solid var(--panel);padding:0}
+table.mat th{color:var(--muted);font-weight:500}
 .mh{margin:6px 0 0;font-size:20px;font-weight:800;line-height:1.2}.mh span{color:var(--dim);font-weight:600}
 </style>
 </head>
@@ -104,7 +113,17 @@ table.tb{width:100%;border-collapse:collapse;background:var(--panel);border:1px 
   <p class="sub">🇦🇷 Argentina · Liga Profesional · hoy 16:00</p>
   <div class="strip"><div><small>Match score</small><b class="c-g">82</b></div><div><small>Goles esperados</small><b>1,9 – 0,8</b></div><div><small>Cuotas</small><b>hace 2 h</b></div></div>
   <div class="bar"><span class="grow">Elegí una sola apuesta por partido.</span><button class="btn">↻ Cuotas de este partido</button></div>
+  <div class="bar"><div class="seg" id="fichaTabs"><button class="on" data-t="ap">Apuestas</button><button data-t="es">Estudio del partido</button></div></div>
+  <div id="f-ap">
   <table class="tb"><thead><tr><th>Apuesta</th><th>Cuota</th><th>Justa</th><th>EV</th><th>Score</th><th></th></tr></thead><tbody id="tFicha"></tbody></table>
+  </div>
+  <div id="f-es" class="hidden">
+    <div class="resumen">Pinnacle sin margen da <b>62%</b> a la victoria de River Plate: hay valor si tu casa paga <b>más de 1,61</b>. El modelo dice 65%.</div>
+    <table class="tb"><thead><tr><th>Señal</th><th>River</th><th>Banfield</th><th>A favor de</th></tr></thead><tbody id="tEstudio"></tbody></table>
+    <table class="tb"><thead><tr><th>Contexto de liga</th><th>Liga</th><th>Este partido</th><th>Dif.</th></tr></thead><tbody id="tCtx"></tbody></table>
+    <table class="tb"><tbody><tr class="gr"><td>Resultado del partido</td></tr><tr><td><div class="res3"><div style="width:65%;background:var(--acc)">65%</div><div style="width:21%;background:#9aa4ae">21%</div><div style="width:14%;background:var(--info)">14%</div></div><div class="lgd"><span>River Plate</span><span>Empate</span><span>Banfield</span></div></td></tr>
+    <tr class="gr"><td>Marcadores más probables <span>filas: River · columnas: Banfield</span></td></tr><tr><td style="padding:10px 4px"><table class="mat" id="tMat"></table></td></tr></tbody></table>
+  </div>
 </section>
 
 <!-- ============ MERCADOS ============ -->
@@ -156,6 +175,19 @@ const FICHA=[
  ['Córners','✓ probado en esta liga',[['Más de 9,5','1,95','1,80','+8%',52],['Menos de 9,5','1,85','2,25','−18%',0]]]
 ];
 $('#tFicha').innerHTML=FICHA.map(([n,ok,l])=>grupo(n,6,ok)+l.map(r=>'<tr><td class="l">'+r[0]+'</td><td class="n">'+r[1]+'</td><td class="n c-d">'+r[2]+'</td><td class="n '+(r[3][0]==='+'?'c-g':'c-b')+'">'+r[3]+'</td><td>'+pill(r[4])+'</td><td class="e"><button class="add">＋</button></td></tr>').join('')).join('');
+
+/* Estudio del partido */
+const fav=(k)=>k===1?'<span class="fav h1">River</span>':k===2?'<span class="fav h2">Banfield</span>':'<span class="c-d">Parejo</span>';
+const EST=[
+ ['Qué mueve el partido',[['Ataque','top 12%','top 61%',1],['Defensa','top 20%','top 48%',1],['Forma (últimos 5)','GGEGP','PEPPG',1],['Goles recientes','+1,2','−0,4',1],['Ventaja de local','+28%','',1]]],
+ ['Goles esperados',[['Goles que esperamos','1,9','0,8',1],['Partidos usados','34','31',0]]]
+];
+$('#tEstudio').innerHTML=EST.map(([n,l])=>grupo(n,4)+l.map(r=>'<tr><td class="l">'+r[0]+'</td><td class="n">'+r[1]+'</td><td class="n">'+r[2]+'</td><td>'+fav(r[3])+'</td></tr>').join('')).join('');
+const CTX=[['Goles por partido','2,31','2,70','+0,39',1],['Gana River Plate','44%','65%','+21',1],['Empate','29%','21%','−8',-1],['Gana Banfield','27%','14%','−13',-1],['Ambos marcan','46%','41%','−5',-1],['Más de 2,5 goles','41%','51%','+10',1]];
+$('#tCtx').innerHTML=CTX.map(r=>'<tr><td class="l">'+r[0]+'</td><td class="n c-d">'+r[1]+'</td><td class="n"><b>'+r[2]+'</b></td><td class="n '+(r[4]>0?'c-g':'c-b')+'">'+r[3]+'</td></tr>').join('');
+const MAT=[[4,8,7,4,2],[5,11,10,6,3],[3,7,6,4,2],[1,3,3,2,1],[0,1,1,1,0]]; // [goles Banfield][goles River] en %
+$('#tMat').innerHTML='<tr><th></th>'+[0,1,2,3,4].map(j=>'<th>'+j+'</th>').join('')+'</tr>'+[4,3,2,1,0].map(i=>'<tr><th>'+i+'</th>'+[0,1,2,3,4].map(j=>{const v=MAT[j][i],o=v/11;return '<td style="background:rgba(20,184,166,'+(o*0.85).toFixed(2)+');color:'+(o>0.55?'#04211e':'var(--muted)')+'">'+(v?v+'%':'')+'</td>'}).join('')+'</tr>').join('');
+$('#fichaTabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(!t)return;$('#f-ap').classList.toggle('hidden',t!=='ap');$('#f-es').classList.toggle('hidden',t!=='es')});
 
 /* Mercados */
 const MERC=[
