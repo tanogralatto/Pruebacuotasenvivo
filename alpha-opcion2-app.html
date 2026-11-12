@@ -69,6 +69,10 @@ table.tb{width:100%;border-collapse:collapse;background:var(--panel);border:1px 
 .strip b{font-family:var(--mono);font-size:16px}
 .tb .fav{font-size:12px;font-weight:700}
 .tb .fav.h1{color:var(--acc)}.tb .fav.h2{color:var(--info)}
+.tb .w{width:34%;padding-left:0}
+.sigb{position:relative;height:8px;background:var(--line);border-radius:8px}
+.sigb i{position:absolute;top:0;height:8px;border-radius:8px}
+.sigb .mid{position:absolute;top:-3px;width:2px;height:14px;background:var(--muted);left:50%}
 .res3{display:flex;height:24px;border-radius:6px;overflow:hidden;font-size:12px;font-weight:700}
 .res3 div{display:flex;align-items:center;justify-content:center;color:#071014}
 .lgd{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:3px}
@@ -113,13 +117,13 @@ table.mat th{color:var(--muted);font-weight:500}
   <p class="sub">🇦🇷 Argentina · Liga Profesional · hoy 16:00</p>
   <div class="strip"><div><small>Match score</small><b class="c-g">82</b></div><div><small>Goles esperados</small><b>1,9 – 0,8</b></div><div><small>Cuotas</small><b>hace 2 h</b></div></div>
   <div class="bar"><span class="grow">Elegí una sola apuesta por partido.</span><button class="btn">↻ Cuotas de este partido</button></div>
-  <div class="bar"><div class="seg" id="fichaTabs"><button class="on" data-t="ap">Apuestas</button><button data-t="es">Estudio del partido</button></div></div>
   <div id="f-ap">
   <table class="tb"><thead><tr><th>Apuesta</th><th>Cuota</th><th>Justa</th><th>EV</th><th>Score</th><th></th></tr></thead><tbody id="tFicha"></tbody></table>
   </div>
-  <div id="f-es" class="hidden">
+  <div id="f-es">
+    <h1 style="font-size:18px;margin-top:18px">Estudio del partido</h1>
     <div class="resumen">Pinnacle sin margen da <b>62%</b> a la victoria de River Plate: hay valor si tu casa paga <b>más de 1,61</b>. El modelo dice 65%.</div>
-    <table class="tb"><thead><tr><th>Señal</th><th>River</th><th>Banfield</th><th>A favor de</th></tr></thead><tbody id="tEstudio"></tbody></table>
+    <table class="tb"><tbody id="tEstudio"></tbody></table>
     <table class="tb"><thead><tr><th>Contexto de liga</th><th>Liga</th><th>Este partido</th><th>Dif.</th></tr></thead><tbody id="tCtx"></tbody></table>
     <table class="tb"><tbody><tr class="gr"><td>Resultado del partido</td></tr><tr><td><div class="res3"><div style="width:65%;background:var(--acc)">65%</div><div style="width:21%;background:#9aa4ae">21%</div><div style="width:14%;background:var(--info)">14%</div></div><div class="lgd"><span>River Plate</span><span>Empate</span><span>Banfield</span></div></td></tr>
     <tr class="gr"><td>Marcadores más probables <span>filas: River · columnas: Banfield</span></td></tr><tr><td style="padding:10px 4px"><table class="mat" id="tMat"></table></td></tr></tbody></table>
@@ -178,16 +182,16 @@ $('#tFicha').innerHTML=FICHA.map(([n,ok,l])=>grupo(n,6,ok)+l.map(r=>'<tr><td cla
 
 /* Estudio del partido */
 const fav=(k)=>k===1?'<span class="fav h1">River</span>':k===2?'<span class="fav h2">Banfield</span>':'<span class="c-d">Parejo</span>';
-const EST=[
- ['Qué mueve el partido',[['Ataque','top 12%','top 61%',1],['Defensa','top 20%','top 48%',1],['Forma (últimos 5)','GGEGP','PEPPG',1],['Goles recientes','+1,2','−0,4',1],['Ventaja de local','+28%','',1]]],
- ['Goles esperados',[['Goles que esperamos','1,9','0,8',1],['Partidos usados','34','31',0]]]
-];
-$('#tEstudio').innerHTML=EST.map(([n,l])=>grupo(n,4)+l.map(r=>'<tr><td class="l">'+r[0]+'</td><td class="n">'+r[1]+'</td><td class="n">'+r[2]+'</td><td>'+fav(r[3])+'</td></tr>').join('')).join('');
+const SIG=[['Ataque','River: top 12% de la liga · Banfield: top 61%',.7],['Defensa','River: top 20% de la liga · Banfield: top 48%',.4],['Forma (últimos 5)','River: GGEGP · Banfield: PEPPG',.6],['Goles recientes','River: +1,2 · Banfield: −0,4 por partido',.65],['Ventaja de local','el local hace 28% más goles',.55]];
+const sigBar=v=>'<div class="sigb"><span class="mid"></span><i style="'+(v>=0?'left:50%;background:var(--acc)':'left:'+(50-Math.abs(v)*50)+'%;background:var(--info)')+';width:'+Math.abs(v)*50+'%"></i></div>';
+const lam=(n,v,c)=>'<tr><td class="l">'+n+'</td><td class="w"><div class="sigb"><i style="left:0;width:'+v/2.5*100+'%;background:var(--'+c+')"></i></div></td><td class="n"><b>'+String(v).replace('.',',')+'</b></td></tr>';
+$('#tEstudio').innerHTML=grupo('Qué mueve el partido',3,'<b style="color:var(--acc)">■</b> River · <b style="color:var(--info)">■</b> Banfield')
+ +SIG.map(r=>'<tr><td class="l">'+r[0]+'<small>'+r[1]+'</small></td><td class="w">'+sigBar(r[2])+'</td><td>'+fav(r[2]>.1?1:r[2]<-.1?2:0)+'</td></tr>').join('')
+ +grupo('Goles esperados',3,'en total ~2,7')+lam('River Plate',1.9,'acc')+lam('Banfield',0.8,'info');
 const CTX=[['Goles por partido','2,31','2,70','+0,39',1],['Gana River Plate','44%','65%','+21',1],['Empate','29%','21%','−8',-1],['Gana Banfield','27%','14%','−13',-1],['Ambos marcan','46%','41%','−5',-1],['Más de 2,5 goles','41%','51%','+10',1]];
 $('#tCtx').innerHTML=CTX.map(r=>'<tr><td class="l">'+r[0]+'</td><td class="n c-d">'+r[1]+'</td><td class="n"><b>'+r[2]+'</b></td><td class="n '+(r[4]>0?'c-g':'c-b')+'">'+r[3]+'</td></tr>').join('');
 const MAT=[[4,8,7,4,2],[5,11,10,6,3],[3,7,6,4,2],[1,3,3,2,1],[0,1,1,1,0]]; // [goles Banfield][goles River] en %
 $('#tMat').innerHTML='<tr><th></th>'+[0,1,2,3,4].map(j=>'<th>'+j+'</th>').join('')+'</tr>'+[4,3,2,1,0].map(i=>'<tr><th>'+i+'</th>'+[0,1,2,3,4].map(j=>{const v=MAT[j][i],o=v/11;return '<td style="background:rgba(20,184,166,'+(o*0.85).toFixed(2)+');color:'+(o>0.55?'#04211e':'var(--muted)')+'">'+(v?v+'%':'')+'</td>'}).join('')+'</tr>').join('');
-$('#fichaTabs').addEventListener('click',e=>{const t=e.target.dataset.t;if(!t)return;$('#f-ap').classList.toggle('hidden',t!=='ap');$('#f-es').classList.toggle('hidden',t!=='es')});
 
 /* Mercados */
 const MERC=[
