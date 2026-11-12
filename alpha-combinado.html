@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0d10">
 <title>TanoApp Alpha · Prueba combinada</title>
-<!-- ARCHIVO DE PRUEBA: la lista de Partidos como tabla compacta (opción 2) y las pantallas Mercados, Mis apuestas
+<!-- ARCHIVO DE PRUEBA: la lista de Partidos como tabla compacta (opción 2) y las pantallas Mis apuestas
      y Precisión armadas igual que en alpha.html, con solo dos cambios para que combinen: los valores en un
      cuadradito de color y los títulos de las columnas en letra chica y mayúscula.
      Todos los partidos, cuotas y números son inventados. No trae datos reales ni guarda nada. -->
@@ -55,17 +55,6 @@ table.mk td .bk{display:block;font-size:11px;color:var(--dim)}
 table.mk .num{font-family:var(--mono)}
 .xs{overflow-x:auto;border-radius:12px}
 .xs table.lg td:first-child{min-width:130px}
-.mkr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:6px 0;cursor:pointer}
-.mkr .t{font-family:var(--mono);color:var(--muted);font-size:13px;width:44px;flex:none}
-.mkr .m{flex:1;min-width:0}
-.mkr .m div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mkr .m .ln{font-size:13px;color:var(--muted);margin-top:2px}
-.mkr .r{text-align:right;flex:none;font-family:var(--mono);font-size:14px}
-.mkr .r .mo{display:block;font-size:12px;color:var(--muted)}
-.mkr .go{color:var(--dim);font-size:18px;flex:none;transition:transform .15s}
-.mkr.open .go{transform:rotate(90deg)}
-.mkx{margin:-2px 0 10px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px}
-.mkc-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .vsw{color:var(--dim);font-size:12px}
 .addb{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px;padding:2px 7px}
 .oddsbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
@@ -73,7 +62,6 @@ table.mk .num{font-family:var(--mono)}
 .tools input[type=search]{flex:1;min-width:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--text);font:inherit}
 .tools select{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:inherit}
 .filters{margin:10px 0}
-.mkf summary{cursor:pointer}
 .status{font-size:13px;color:var(--muted);margin:10px 0}
 .star{background:none;border:0;color:var(--dim);font-size:19px;padding:0 2px;line-height:1}.star.on{color:var(--mid)}
 .upd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0}
@@ -101,7 +89,7 @@ table.tb{width:100%;border-collapse:collapse;background:var(--panel);border:1px 
 </head>
 <body>
 <header><div class="wrap"><nav>
-  <a href="#partidos">Partidos</a><a href="#mercados">Mercados</a><a href="#apuestas">Mis apuestas</a><a href="#precision">Precisión</a>
+  <a href="#partidos">Partidos</a><a href="#apuestas">Mis apuestas</a><a href="#precision">Precisión</a><a href="#partidos" style="pointer-events:none">⚙︎</a>
 </nav></div></header>
 
 <main class="wrap">
@@ -112,18 +100,6 @@ table.tb{width:100%;border-collapse:collapse;background:var(--panel);border:1px 
   <div class="row"><div class="seg"><button class="on">Hoy</button><button>Mañana</button><button>★ Guardados</button></div></div>
   <div class="upd"><span class="small">Última actualización <b>hace 2 h</b></span><button class="btn pri">↻ Actualizar todo</button><button class="btn">↻ Actualizar cuotas</button></div>
   <table class="tb"><thead><tr><th class="h">Hora</th><th>Partido</th><th class="s">Score</th><th class="e"></th></tr></thead><tbody id="tPartidos"></tbody></table>
-</section>
-
-<!-- ============ MERCADOS (armado como hoy) ============ -->
-<section id="v-mercados" class="hidden">
-  <h1>Goles</h1>
-  <p class="small" style="margin-top:-4px">Cada partido con la probabilidad y la <b>cuota justa del modelo</b> y, al lado, la de <b>Pinnacle</b> (sin margen). Arriba van los partidos donde el modelo ve <b>más probabilidad que Pinnacle</b>. Si tu casa paga la <b>Mínima</b> o más, hay valor. <button class="info">i</button></p>
-  <div class="row"><div class="seg"><button class="on">Hoy</button><button>Mañana</button></div></div>
-  <div class="oddsbar"><button class="btn pri">↻ Actualizar cuotas</button><span class="small">Cuotas de hace 2 h</span></div>
-  <div class="tools"><input type="search" placeholder="Buscar equipo"></div>
-  <details class="filters box mkf"><summary><b>Filtros y orden</b> <span class="small">Todas las ligas · Mayor diferencia</span></summary></details>
-  <div class="status">6 de 41 partidos con esos filtros. Tocá uno para ver todas sus líneas.</div>
-  <div id="mkList"></div>
 </section>
 
 <!-- ============ MIS APUESTAS (armado como hoy) ============ -->
@@ -175,21 +151,6 @@ const LIGAS=[
  ['🇬🇧 Inglaterra · Premier League',[['16:45','Brighton','Aston Villa',90],['19:30','Everton','Fulham',null]]]
 ];
 $('#tPartidos').innerHTML=LIGAS.map(([n,l])=>'<tr class="gr"><td colspan="4">'+n+'</td></tr>'+l.map(p=>'<tr><td class="h">'+p[0]+'</td><td class="p">'+p[1]+' <span class="c-d">–</span> '+p[2]+'</td><td class="s">'+(p[3]==null?'<span class="c-d">–</span>':'<span class="num2 '+col(p[3])+'">'+p[3]+'</span>')+'</td><td class="e"><button class="star'+(p[4]?' on':'')+'">'+(p[4]?'★':'☆')+'</button></td></tr>').join('')).join('');
-
-/* Mercados: mismas filas que hoy; la diferencia va en el cuadradito */
-const dif=d=>'<span class="num2 '+(d>=6?'g':d>=2?'m':'d')+'">'+(d>0?'+':d<0?'−':'')+Math.abs(d)+'</span>';
-const MK=[
- ['16:45','Brighton','Aston Villa','Más de 2,5','Premier League',8,'1,70'],
- ['16:00','River Plate','Banfield','Más de 2,5','Liga Profesional',7,'1,88'],
- ['16:30','Flamengo','Grêmio','Menos de 2,5','Serie A',6,'1,78'],
- ['17:00','Sevilla','Real Betis','Más de 2,5','La Liga',3,'2,19'],
- ['18:15','Racing Club','Lanús','Menos de 2,5','Liga Profesional',0,'1,84'],
- ['20:45','Napoli','Atalanta','Más de 2,5','Serie A',-1,'1,81']
-];
-const LIN=[['Más de 1,5','1,22','82%','1,28','78%',4,'1,25'],['Más de 2,5','1,64','61%','1,89','53%',8,'1,70'],['Más de 3,5','2,70','37%','3,10','32%',5,'2,84'],['Menos de 2,5','2,56','39%','2,13','47%',-8,'2,13']];
-$('#mkList').innerHTML=MK.map((r,i)=>'<div class="mkr'+(i===0?' open':'')+'"><span class="t">'+r[0]+'</span><span class="m"><div>'+r[1]+' <span class="vsw">vs</span> '+r[2]+'</div><div class="ln">'+r[3]+' · '+r[4]+'</div></span><span class="r">'+dif(r[5])+'<span class="mo">'+r[6]+'</span></span><span class="go">›</span></div>'
- +(i===0?'<div class="mkx"><div class="mkc-h small">🇬🇧 Inglaterra · Premier League <a href="#">Ver partido ›</a></div><div class="xs"><table class="mk"><thead><tr><th>Mercado</th><th>Modelo</th><th>Pinnacle</th><th>Dif.</th><th>Mínima</th><th></th></tr></thead><tbody>'
-  +LIN.map(x=>'<tr><td>'+x[0]+'</td><td class="num">'+x[1]+'<span class="bk">'+x[2]+'</span></td><td class="num">'+x[3]+'<span class="bk">'+x[4]+'</span></td><td>'+dif(x[5])+'</td><td class="num"><b>'+x[6]+'</b></td><td><button class="addb">＋</button></td></tr>').join('')+'</tbody></table></div></div>':'')).join('');
 
 /* Mis apuestas: misma tabla que hoy; el resultado va en el cuadradito */
 const RES={g:['g','ganada'],p:['b','perdida'],e:['d','pendiente']};
