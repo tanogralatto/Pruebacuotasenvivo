@@ -840,7 +840,7 @@ async function sealHtml(){
   for(const [lo,hi] of [[60,69],[70,79],[80,100]]){const l=done.filter(e=>e.sc>=lo&&e.sc<=hi);h+=row(lo+'–'+(hi===100?'100':hi),l)}
   h+=`</tbody></table></div>`;
   const last=done.sort((x,y)=>y.ts-x.ts).slice(0,15);
-  if(last.length)h+=`<div class="xs" style="margin-top:10px"><table class="lg"><thead><tr><th>Últimas</th><th>Cuota</th><th>Score</th><th>Resultado</th></tr></thead><tbody>${last.map(e=>`<tr><td>${esc(e.l)}<span class="cn">${esc(e.hn)} vs ${esc(e.an)} · ${esc(e.bk||'')}</span></td><td>${dec(e.pr)}</td><td>${e.sc}</td><td>${e.res.r>0?`<span class="c-g">${e.res.r<1?'½ ':''}ganada</span>`:e.res.r<0?`<span class="c-b">${e.res.r>-1?'½ ':''}perdida</span>`:'devuelta'}<span class="cn">${e.res.hg}-${e.res.ag}</span></td></tr>`).join('')}</tbody></table></div>`;
+  if(last.length)h+=`<details class="guide" style="margin-top:10px"${window.__sealLastOpen?' open':''} ontoggle="window.__sealLastOpen=this.open"><summary>Últimas ${last.length} liquidadas</summary><div class="xs" style="margin-top:8px"><table class="lg"><thead><tr><th>Últimas</th><th>Cuota</th><th>Score</th><th>Resultado</th></tr></thead><tbody>${last.map(e=>`<tr><td>${esc(e.l)}<span class="cn">${esc(e.hn)} vs ${esc(e.an)} · ${esc(e.bk||'')}</span></td><td>${dec(e.pr)}</td><td>${e.sc}</td><td>${e.res.r>0?`<span class="c-g">${e.res.r<1?'½ ':''}ganada</span>`:e.res.r<0?`<span class="c-b">${e.res.r>-1?'½ ':''}perdida</span>`:'devuelta'}<span class="cn">${e.res.hg}-${e.res.ag}</span></td></tr>`).join('')}</tbody></table></div></details>`;
   h+=`<p class="small">Cada lectura se guarda la primera vez que la app la recomienda y no se cambia después. Con menos de unas 100 liquidadas, el resultado es casi todo suerte.</p>`;
   return h;
 }
