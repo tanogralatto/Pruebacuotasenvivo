@@ -82,6 +82,7 @@
       if (g.h == null || g.a == null || !validGoals(g.hg) || !validGoals(g.ag)) continue;
       let w = Math.pow(0.5, (cutoff - g.ts) / DAY / o.halfLifeDays);
       if (o.currentSeason != null && String(g.season) !== String(o.currentSeason)) w *= o.prevSeasonWeight;
+      if (isNum(g.wf) && g.wf > 0) w *= g.wf; // peso propio del partido (p. ej. amistosos)
       if (w < o.minWeight) continue;
       let hg = g.hg, ag = g.ag, usedXg = false;
       if (o.xgWeight > 0 && validGoals(g.xh) && validGoals(g.xa)) {
