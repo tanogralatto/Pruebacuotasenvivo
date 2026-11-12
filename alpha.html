@@ -555,6 +555,51 @@ async function loadLeague(lid,season){
   const [cur,prev]=await Promise.all([seasonGames(lid,season,true),seasonGames(lid,Number(season)-1,false)]);
   return {lid,season,raw:[...prev.g,...cur.g],names:Object.assign({},prev.t||{},cur.t||{})};
 }
+/* ---------------- selecciones: un solo historial ---------------- */
+// Las selecciones juegan pocos partidos por competición: todos sus partidos oficiales de los últimos 3 años
+// (y los amistosos, a medio peso) se juntan en una sola «liga» Selecciones (lid -1).
+const NAT_LID=-1;
+// id de API-Football -> texto que tiene que aparecer en el nombre (si no aparece, no se usa: evita mezclar otra competición).
+const NAT_COMPS={1:'World Cup',4:'Euro',5:'Nations League',6:'Africa Cup',7:'Asian Cup',9:'Copa America',10:'Friendl',22:'Gold Cup',29:'Qualification',30:'Qualification',31:'Qualification',32:'Qualification',33:'Qualification',34:'Qualification',36:'Qualification',536:'Nations League',960:'Qualification'};
+const NAT_NEUTRAL=new Set([1,4,6,7,9,22]); // torneos finales: casi siempre en cancha neutral
+const NAT_FRIENDLY=10;
+const isNat=lid=>Object.prototype.hasOwnProperty.call(NAT_COMPS,String(lid));
+const modelLid=lid=>isNat(lid)?NAT_LID:lid;
+async function natSeason(lid,season,ttl){
+  const k='nt:'+lid+':'+season,c=await DB.get(k);
+  if(c&&Array.isArray(c.g)&&Date.now()-c.ts<ttl)return c;
+  try{
+    const j=await api('/fixtures',{league:lid,season,status:'FT-AET-PEN',timezone:TZ});
+    const re=new RegExp(NAT_COMPS[lid],'i'),g=[],t={};
+    for(const f of j.response||[]){
+      if(!re.test(f.league&&f.league.name||''))continue;
+      const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
+      const hg=Number.isInteger(ft.home)?ft.home:gl.home, ag=Number.isInteger(ft.away)?ft.away:gl.away;
+      if(!DONE.includes(f.fixture.status.short)||!Number.isInteger(hg)||!Number.isInteger(ag))continue;
+      g.push([f.fixture.id,Math.floor(new Date(f.fixture.date).getTime()/1000),f.teams.home.id,f.teams.away.id,hg,ag,season]);
+      t[f.teams.home.id]=f.teams.home.name;t[f.teams.away.id]=f.teams.away.name;
+    }
+    const entry={ts:Date.now(),g,t};
+    await DB.set(k,entry);
+    return entry;
+  }catch(e){if(e.fatal)throw e;if(c&&Array.isArray(c.g))return c;return {ts:Date.now(),g:[],t:{}}}
+}
+// playing = competiciones de selecciones con partidos hoy o mañana: solo esas se refrescan cada día.
+async function loadNational(playing){
+  const Y=new Date().getFullYear(),seen=new Set(),raw=[],names={},jobs=[];
+  for(const lid of Object.keys(NAT_COMPS).map(Number))for(const s of [Y-2,Y-1,Y]){
+    const ttl=s<Y-1?30*864e5:playing&&playing.has(lid)?20*3600e3:7*864e5;
+    jobs.push(async()=>{
+      const e=await natSeason(lid,s,ttl);
+      for(const r of e.g)if(!seen.has(r[0])){seen.add(r[0]);raw.push([r[0],r[1],r[2],r[3],r[4],r[5],Y,lid===NAT_FRIENDLY?0.5:1])}
+      Object.assign(names,e.t);
+    });
+  }
+  await pool(jobs);
+  raw.sort((a,b)=>a[1]-b[1]);
+  await DB.set('lg:'+NAT_LID+':'+Y,{ts:Date.now(),g:raw,t:names});
+  return {lid:NAT_LID,season:Y,raw,names};
+}
 // xG de cada partido: [xg local, xg visitante, fuente (1 = API, 2 = aproximado, 0 = sin datos), tiros…]
 let XG=null, XGCOEF=null;
 async function loadXg(){if(!XG){XG=(await DB.get('xg'))||{};XGCOEF=(await DB.get('xgcoef'))||F.XG_DEFAULT}return XG}
@@ -565,8 +610,9 @@ function xgOf(id){
   return Number.isFinite(h)&&Number.isFinite(a)?[h,a]:null;
 }
 function modelGames(L){
-  const out=L.raw.map(r=>{const x=xgOf(r[0]);return {id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5],fth:r[4],fta:r[5],season:r[6],leagueId:L.lid,xh:x?x[0]:null,xa:x?x[1]:null}});
+  const out=L.raw.map(r=>{const x=xgOf(r[0]);return {id:r[0],ts:r[1],h:r[2],a:r[3],hg:r[4],ag:r[5],fth:r[4],fta:r[5],season:r[6],leagueId:L.lid,xh:x?x[0]:null,xa:x?x[1]:null,wf:r[7]}});
   out.mkt=marketOf(L);
+  if(L.lid===NAT_LID)out.hl=365; // el nivel de una selección cambia más despacio
   return out;
 }
 // Cuotas de cierre sin margen (Pinnacle o mediana) de los partidos ya jugados de una liga: Map(id -> [pL, pE, pV]).
@@ -712,7 +758,7 @@ function fitLeagueAt(games,cutoff,season,cfg){
     fit.market=true;
     return fit;
   }
-  const fm=T.buildFitMatches(games,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:240,xgWeight:cfg&&cfg.xg?0.5:0});
+  const fm=T.buildFitMatches(games,{cutoffTs:cutoff,currentSeason:season,goals:'ft',halfLifeDays:games.hl||240,xgWeight:cfg&&cfg.xg?0.5:0});
   const priorMean=games.length?ncMean(games[0].leagueId,season):null;
   const fit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.shape,priorMean});
   if(fit.ok)fit.totalFit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.total,priorMean});
@@ -982,10 +1028,11 @@ async function updateAll(){
     const getOdds=(d,id)=>deserOdds(po[d]&&po[d][String(id)]);
     // 2) Historial de cada liga que tiene cuotas.
     const need=new Map();
-    for(const d of dates)for(const f of fixtures[d])if(odds[d].has(String(f.id)))need.set(f.lid,f.season);
+    const natPlaying=new Set();
+    for(const d of dates)for(const f of fixtures[d])if(odds[d].has(String(f.id))){if(isNat(f.lid)){natPlaying.add(f.lid);need.set(NAT_LID,0)}else need.set(f.lid,f.season)}
     say(`Historial de ${need.size} ligas…`);
     const leagues=new Map();
-    await pool([...need].map(([lid,season])=>async()=>{leagues.set(lid,await loadLeague(lid,season))}),(d,t)=>{say(`Historial de ligas: ${d} de ${t}`);prog(2+d/t*2,8)});
+    await pool([...need].map(([lid,season])=>async()=>{leagues.set(lid,lid===NAT_LID?await loadNational(natPlaying):await loadLeague(lid,season))}),(d,t)=>{say(`Historial de ligas: ${d} de ${t}`);prog(2+d/t*2,8)});
     // 3) xG (de la API o aproximado con los tiros).
     const budget=reused===dates.length?0:Number(LS.get('tg:xgBudget',150));
     try{await fetchXg([...leagues.values()],budget,t=>{say(t);});await refitProxy([...leagues.values()])}catch(e){if(e.fatal)throw e;warn.push('xG: '+e.message)}
@@ -1000,27 +1047,30 @@ async function updateAll(){
     const areg=state.areg=(await DB.get('areg'))||{};
     for(const d of dates){
       const day={date:d,ts:Date.now(),fx:[]};
-      const byL=new Map();for(const f of fixtures[d])if(odds[d].has(String(f.id))){if(!byL.has(f.lid))byL.set(f.lid,[]);byL.get(f.lid).push(f)}
+      const byL=new Map();for(const f of fixtures[d])if(odds[d].has(String(f.id))){const k=modelLid(f.lid);if(!byL.has(k))byL.set(k,[]);byL.get(k).push(f)}
       for(const [lid,fxs] of byL){
         const L=leagues.get(lid);
         const games=L?modelGames(L):[];
-        const cfg=games.length?leagueCfg(lid,games,fxs[0].season):null;
-        const fit=games.length>=40?fitLeagueAt(games,Math.min(...fxs.map(f=>f.ts)),fxs[0].season,cfg):null;
-        const cur=games.filter(g=>String(g.season)===String(fxs[0].season));
+        const season=lid===NAT_LID&&L?L.season:fxs[0].season;
+        const cfg=games.length?leagueCfg(lid,games,season):null;
+        const fit=games.length>=40?fitLeagueAt(games,Math.min(...fxs.map(f=>f.ts)),season,cfg):null;
+        const cur=games.filter(g=>String(g.season)===String(season));
         const ls=leagueStats(cur.length>=40?cur:games);
-        const cfitL=L?cornerFitAt(L,Math.min(...fxs.map(f=>f.ts)),fxs[0].season):null;
+        const cfitL=L?cornerFitAt(L,Math.min(...fxs.map(f=>f.ts)),season):null;
         for(const f of fxs){
-          const a=Object.assign({},f,{readAt:Date.now()});
+          const a=Object.assign({},f,{readAt:Date.now(),ml:lid});
           if(cfitL){const cp=T.predictMatch(cfitL,f.hid,f.aid,{});if(cp.ok)a.clam={home:cp.lambdaHome,away:cp.lambdaAway,size:cornerSize(lid)}}
           if(!fit||!fit.ok)a.reason='La liga tiene pocos partidos en la API para calcular.';
           else{
-            const pr=predictFt(fit,f.hid,f.aid);
+            let pr=predictFt(fit,f.hid,f.aid);
+            // Torneo final de selecciones: cancha neutral, se promedian los dos sentidos (sin ventaja de local).
+            if(pr.ok&&NAT_NEUTRAL.has(f.lid)){const q=predictFt(fit,f.aid,f.hid);if(q.ok){const lh=(pr.lambdaHome+q.lambdaAway)/2,la=(pr.lambdaAway+q.lambdaHome)/2;pr=Object.assign({},pr,{lambdaHome:lh,lambdaAway:la,lambdaTotal:lh+la})}}
             if(!pr.ok)a.reason=/no tiene partidos previos/.test(pr.reason)?'Un equipo no tiene partidos previos en esta liga.':'Todavía hay pocos partidos de estos equipos.';
             else{
               const o=getOdds(d,f.id);
               a.lam={home:pr.lambdaHome,away:pr.lambdaAway,rho:cfg.rho};a.xg=!!cfg.xg&&!fit.market;a.mkt=!!fit.market;
               a.n={home:pr.nHome,away:pr.nAway};a.ls=ls;
-              const nc=NC&&NC[lid]&&String(NC[lid].season)===String(fxs[0].season)?NC[lid].cls:{};a.nc={home:nc[f.hid]||null,away:nc[f.aid]||null};
+              const nc=NC&&NC[lid]&&String(NC[lid].season)===String(season)?NC[lid].cls:{};a.nc={home:nc[f.hid]||null,away:nc[f.aid]||null};
               a.form={home:lastN(games,f.hid,f.ts),away:lastN(games,f.aid,f.ts)};a.hadv=fit.muH/fit.muA;
               a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
               if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
@@ -1029,7 +1079,7 @@ async function updateAll(){
                 const m1x2=F.market1x2(o);
                 if(m1x2&&f.ts*1000>Date.now()&&!(reg[f.id]&&Number.isFinite(reg[f.id].hg))){
                   const s=F.summarize(F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho));
-                  reg[f.id]={lid:f.lid,ts:f.ts,p1x2:[s.home,s.draw,s.away].map(x=>+x.toFixed(4)),m1x2:m1x2.map(x=>+x.toFixed(4))};
+                  reg[f.id]={lid,ts:f.ts,p1x2:[s.home,s.draw,s.away].map(x=>+x.toFixed(4)),m1x2:m1x2.map(x=>+x.toFixed(4))};
                 }
               }
             }
@@ -1103,7 +1153,7 @@ async function knownLeagues(loaded){
   for(const k of keys){const [,lid,season]=String(k).split(':');const L=Number(lid),S=Number(season);if(!bySeason.has(L)||bySeason.get(L)<S)bySeason.set(L,S)}
   for(const [lid,season] of bySeason){
     if(out.has(lid))continue;
-    const cur=await DB.get('lg:'+lid+':'+season),prev=await DB.get('lg:'+lid+':'+(season-1));
+    const cur=await DB.get('lg:'+lid+':'+season),prev=lid===NAT_LID?null:await DB.get('lg:'+lid+':'+(season-1));
     const raw=[...(prev&&prev.g||[]),...(cur&&cur.g||[])];
     if(raw.length)out.set(lid,{lid,season,raw,names:Object.assign({},prev&&prev.t||{},cur&&cur.t||{})});
   }
@@ -1243,6 +1293,7 @@ async function computePrecision(leagues,reg,status){
   const fd=await loadFd();
   const names=LS.get('tg:lnames',{})||{};
   for(const d of Object.values(state.days))for(const f of (d&&d.fx)||[])names[f.lid]=[f.ln,f.lc];
+  names[NAT_LID]=['Selecciones','World'];
   LS.set('tg:lnames',names);
   // Se parte de la precisión anterior (por ejemplo, la que vino de otro dispositivo con más ligas):
   // solo se reemplazan las ligas que este dispositivo pudo recalcular.
@@ -1255,7 +1306,7 @@ async function computePrecision(leagues,reg,status){
     if(games.length<60)continue;
     // Variantes: con o sin xG (si la liga tiene xG en al menos la mitad de los partidos), con o sin corrección.
     const withXg=games.filter(g=>g.xh!=null).length>=games.length*0.5;
-    const bo={priorMatches:F.FT_PRIOR.shape,totalPriorMatches:F.FT_PRIOR.total,priorMean:s=>ncMean(L.lid,s)};
+    const bo={priorMatches:F.FT_PRIOR.shape,totalPriorMatches:F.FT_PRIOR.total,priorMean:s=>ncMean(L.lid,s),halfLifeDays:games.hl||240};
     const variants=[{xg:false,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0},bo))}];
     if(withXg)variants.push({xg:true,rows:F.backtestLeague(games,T,Object.assign({xgWeight:0.5},bo))});
     // Modelo de mercado: cada partido se predice solo con las cuotas de cierre y los goles de los anteriores.
@@ -1385,7 +1436,7 @@ function linesTable(a,lines,withAdd){
   let h=`<div class="xs"><table class="mk"><thead><tr><th>Mercado</th><th>Modelo</th><th>Pinnacle</th><th>Dif. <button class="info" data-tip="dif">i</button></th><th>Mínima <button class="info" data-tip="minodd">i</button></th>${withAdd?'<th></th>':''}</tr></thead><tbody>`;
   for(const x of lines){
     const d=x.p>0&&x.pm>0?x.p-x.pm:null;
-    h+=`<tr><td>${esc(x.s||x.l)}</td><td class="num">${x.p>0?dec(1/x.p)+'<span class="bk">'+pct(x.p,0)+'</span>':'—'}</td><td class="num">${x.pm>0?(x.est?'<span title="Pinnacle no cotiza esta línea: precio estimado, no confiable">≈</span>':'')+dec(1/x.pm)+'<span class="bk">'+pct(x.pm,0)+(x.est?' estimado':'')+'</span>':'—'}</td><td class="dp">${diffHtml(d,leagueStatus(a.lid)[stKey(x.k)])}</td><td class="num"><b>${dec(minOdd(x.p,x.pm))}</b></td>${withAdd?`<td><button class="addb" data-add="${a.id}|${esc(x.k)}" title="Anotar apuesta">＋</button></td>`:''}</tr>`;
+    h+=`<tr><td>${esc(x.s||x.l)}</td><td class="num">${x.p>0?dec(1/x.p)+'<span class="bk">'+pct(x.p,0)+'</span>':'—'}</td><td class="num">${x.pm>0?(x.est?'<span title="Pinnacle no cotiza esta línea: precio estimado, no confiable">≈</span>':'')+dec(1/x.pm)+'<span class="bk">'+pct(x.pm,0)+(x.est?' estimado':'')+'</span>':'—'}</td><td class="dp">${diffHtml(d,leagueStatus(a.ml??a.lid)[stKey(x.k)])}</td><td class="num"><b>${dec(minOdd(x.p,x.pm))}</b></td>${withAdd?`<td><button class="addb" data-add="${a.id}|${esc(x.k)}" title="Anotar apuesta">＋</button></td>`:''}</tr>`;
   }
   return h+'</tbody></table></div>';
 }
@@ -1437,7 +1488,7 @@ async function renderMk(){
     if(q&&!(a.hn+' '+a.an).toLowerCase().includes(q))continue;
     if(lgSel&&String(a.lid)!==lgSel)continue;
     if(!inSlotOf(a,f.slot))continue;
-    const st=leagueStatus(a.lid)[T0.st];if(f.green&&st!=='g')continue;
+    const st=leagueStatus(a.ml??a.lid)[T0.st];if(f.green&&st!=='g')continue;
     const lines=marketLines(a,tab).filter(x=>x.p>0||x.pm>0);if(!lines.length)continue;
     total++;
     const best=pickLine(lines,f);if(!best)continue;
@@ -1524,7 +1575,7 @@ function aScore(ev,p){
 // Filas del partido como en Alpha: cuota de tus casas, cuota justa del modelo, EV y score.
 const onlyOk=()=>LS.get('tg:aok',true)!==false;
 function aRows(a){
-  const st=leagueStatus(a.lid);
+  const st=leagueStatus(a.ml??a.lid);
   return (a.rows||[]).filter(r=>r.p>0&&okCornerRow(r)).map(r=>{const m=myPrice(r),ev=m?r.p*m.pr-1:null;return Object.assign({},r,{mp:m,fair:1/r.p,aev:ev,asc:aScore(ev,r.p),ok:st[stKey(r.k)]==='g'})});
 }
 // Match score (0-100) como Alpha: la mejor línea + 40% de lo que le falta para 100, multiplicado por la segunda
@@ -1565,7 +1616,7 @@ async function renderDash(){
   const mkSel=mktSel();
   $$('#mktOk [data-mkt]').forEach(b=>b.classList.toggle('on',b.dataset.mkt?mkSel.includes(b.dataset.mkt):!mkSel.length));
   // Ligas con ✓ (como en Precisión) en ALGUNO de los mercados elegidos.
-  const mktOk=a=>{if(!mkSel.length)return true;const st=leagueStatus(a.lid);return mkSel.some(k=>st[k]==='g')};
+  const mktOk=a=>{if(!mkSel.length)return true;const st=leagueStatus(a.ml??a.lid);return mkSel.some(k=>st[k]==='g')};
   const lgs=new Map();for(const a of fx)lgs.set(String(a.lid),a.lc+' · '+a.ln);
   $('#lg').innerHTML='<option value="">Todas las ligas</option>'+[...lgs].sort((x,y)=>x[1].localeCompare(y[1])).map(([id,n])=>`<option value="${id}"${id===lgSel?' selected':''}>${esc(n)}</option>`).join('');
   const inSlot=a=>{if(slot==='all')return true;const h=Number(fmtTime(a.iso).slice(0,2));return slot==='m'?h<12:slot==='t'?h>=12&&h<19:h>=19};
@@ -1643,7 +1694,7 @@ async function renderMatch(id){
   const a=await findFixture(id), body=$('#mBody');
   if(!a){body.innerHTML='<div class="empty" style="margin-top:16px">No encuentro este partido. Volvé a <a href="#/hoy">Partidos</a> y tocá Actualizar todo.</div>';return}
   state.prec=state.prec||await DB.get('prec');
-  const s=leagueStatus(a.lid), fv=favs();
+  const s=leagueStatus(a.ml??a.lid), fv=favs();
   let h=`<div class="row" style="margin-top:10px"><span>${flag(a.lc)}</span><span class="small">${esc(a.lc)} · ${esc(a.ln)} · ${fmtTime(a.iso)}</span><button class="star${fv[a.id]?' on':''}" data-star="${a.id}" style="margin-left:auto">${fv[a.id]?'★':'☆'}</button></div>`;
   h+=`<div class="mh">${esc(a.hn)} <span>vs</span> ${esc(a.an)}</div><div class="small">Última lectura ${ago(a.readAt)}</div>`;
   const upcoming=a.ts*1000>Date.now();
@@ -1915,7 +1966,7 @@ $('#btnXg').addEventListener('click',async()=>{
   try{
     await loadXg();await loadFd();await loadNc();state.prec=state.prec||await DB.get('prec');
     const all=await knownLeagues(new Map());
-    const up=new Set();for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)for(const f of x.fx)up.add(String(f.lid))}
+    const up=new Set();for(const d of [dayStr(0),dayStr(1)]){const x=await getDay(d);if(x)for(const f of x.fx)up.add(String(f.ml??f.lid))}
     const first=[...all.values()].filter(L=>up.has(String(L.lid))),rest=[...all.values()].filter(L=>!up.has(String(L.lid)));
     pg.querySelector('i').style.width='10%';
     let got=await fetchXg(first,n,say2);
