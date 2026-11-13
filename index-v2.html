@@ -3698,14 +3698,14 @@ function startAlertHistory(isOwner) {
   let selectedMonth = monthInput?.value || currentMonth;
   if (monthInput) monthInput.onchange = () => {
     selectedMonth = monthInput.value || currentMonth;
-    renderHistory();
+    listenMonth();
   };
   let latestDocs = [];
   let olderPages = [];
   let cursor = null;
   let firstOlderPage = true;
   let loadingMore = false;
-  let hasMore = true;
+  let hasMore = false;
 
   unitSave.onclick = () => {
     const value = Number(unitInput.value);
@@ -3944,21 +3944,33 @@ function startAlertHistory(isOwner) {
     }
   };
 
-  list.innerHTML = '<div class="empty">Cargando historial…</div>';
-  moreButton.classList.add('hidden');
-  unsubAlerts = onSnapshot(query(alertsRef, orderBy('created_at', 'desc'), limit(100)), snap => {
-    latestDocs = snap.docs;
-    if (!olderPages.length) {
-      cursor = latestDocs.length ? latestDocs[latestDocs.length - 1] : null;
-      firstOlderPage = true;
-    }
-    hasMore = latestDocs.length === 100;
-    renderHistory();
-  }, e => {
+  // Se trae el mes elegido COMPLETO (todas las estrategias). Antes se traían solo las últimas 100 alertas
+  // de todos los grupos juntos: al entrar alertas nuevas, las más viejas del mes salían de esa ventana
+  // y el resumen (ganadas, perdidas, balance) bajaba de un día para el otro sin que cambiara ningún dato.
+  function listenMonth() {
+    if (unsubAlerts) { unsubAlerts(); unsubAlerts = null; }
+    latestDocs = []; olderPages = []; cursor = null; hasMore = false;
     summary.innerHTML = '';
-    list.innerHTML = '<div class="empty">No se pudo leer el historial: ' + esc(friendly(e)) + ' Revisá que Firestore permita leer tanoapp_telegram_alerts.</div>';
+    list.innerHTML = '<div class="empty">Cargando historial…</div>';
     moreButton.classList.add('hidden');
-  });
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const pad = n => String(n).padStart(2, '0');
+    // Mes calendario de Argentina (UTC-3, sin horario de verano); monthKey hace el corte fino al dibujar.
+    const from = new Date(y + '-' + pad(m) + '-01T00:00:00-03:00');
+    const to = new Date((m === 12 ? y + 1 : y) + '-' + pad(m === 12 ? 1 : m + 1) + '-01T00:00:00-03:00');
+    if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) { list.innerHTML = '<div class="empty">Elegí un mes válido.</div>'; return; }
+    const month = selectedMonth;
+    unsubAlerts = onSnapshot(query(alertsRef, where('created_at', '>=', from), where('created_at', '<', to), orderBy('created_at', 'desc')), snap => {
+      if (month !== selectedMonth) return;
+      latestDocs = snap.docs;
+      renderHistory();
+    }, e => {
+      summary.innerHTML = '';
+      list.innerHTML = '<div class="empty">No se pudo leer el historial: ' + esc(friendly(e)) + ' Revisá que Firestore permita leer tanoapp_telegram_alerts.</div>';
+      moreButton.classList.add('hidden');
+    });
+  }
+  listenMonth();
 }
 
 let unsubApiUse = null;
