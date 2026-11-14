@@ -30,6 +30,9 @@ h2{font-size:12px;color:var(--muted);margin:0 0 8px;font-weight:700;text-transfo
 .btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:600}
 .btn.pri{background:var(--acc);border-color:var(--acc);color:#04211e}
 .btn:disabled{opacity:.5;cursor:default}
+a.btn{text-decoration:none;color:var(--text);display:inline-block}
+textarea{width:100%;height:160px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:12px/1.4 var(--mono);margin-top:8px}
+.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
 input[type=text],input[type=password],input[type=search],input[type=date]{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:0;flex:1}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
 .small{font-size:12.5px;color:var(--muted)}
@@ -116,8 +119,14 @@ label.ck{display:flex;gap:8px;align-items:center;font-size:14px}
     <div id="pDatos"></div>
     <div class="card hidden" id="pIA">
       <h2>Análisis con IA</h2>
+      <p class="small">Con tu plan de Claude, sin costo extra: copiá el partido, pegalo en un chat nuevo de Claude y te devuelve el análisis con búsqueda de bajas y noticias.</p>
+      <div class="row"><button class="btn pri" id="btnCopiar">Copiar para Claude</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener noreferrer">Abrir Claude</a></div>
+      <div class="status" id="copiaMsg"></div>
+      <textarea id="copiaTxt" class="hidden" readonly aria-label="Texto para pegar en Claude"></textarea>
+      <hr class="sep">
+      <p class="small">Automático, dentro de esta app: necesita una clave de API de Claude cargada en Render y se paga por uso.</p>
       <label class="ck"><input type="checkbox" id="conWeb" checked> Buscar bajas y noticias en la web (más lento y más caro)</label>
-      <div class="row" style="margin-top:10px"><button class="btn pri" id="btnIA">Analizar con IA</button><span class="small" id="iaInfo"></span></div>
+      <div class="row" style="margin-top:10px"><button class="btn" id="btnIA">Analizar automático</button><span class="small" id="iaInfo"></span></div>
       <div class="steps" id="pasos"></div>
     </div>
     <div id="pAnalisis"></div>
@@ -335,7 +344,7 @@ async function abrir(id){
   state.actual={f,datos:null,analisis:null};
   ver('partido');
   $('#pCab').innerHTML=`<div class="small">${esc(f.pais)} · ${esc(f.liga)}${f.ronda?' · '+esc(f.ronda):''}</div><div class="teams">${esc(f.local)}<span>vs</span>${esc(f.visitante)}</div><div class="small">${esc(fechaLarga(f.ts))}</div>`;
-  $('#pDatos').innerHTML='';$('#pAnalisis').innerHTML='';$('#pasos').innerHTML='';$('#pIA').classList.add('hidden');
+  $('#pDatos').innerHTML='';$('#pAnalisis').innerHTML='';$('#pasos').innerHTML='';$('#pIA').classList.add('hidden');$('#copiaMsg').textContent='';$('#copiaTxt').classList.add('hidden');
   const msg=$('#pMsg');msg.className='status';msg.textContent='Bajando historial, cuotas, tabla y bajas…';
   try{
     const [act,ant,odds,inj,lin,std]=await Promise.all([
@@ -407,6 +416,51 @@ function paquete(){
     bajas_informadas_por_la_api:d.bajas||'sin dato',
     alineaciones_confirmadas:d.once||'todavía no confirmadas'
   };
+}
+// Texto para pegar en un chat de Claude (usa el plan del usuario, sin API). Mismas reglas que las prompts del servicio.
+function textoParaClaude(){
+  const f=state.actual.f;
+  return `Analizá este partido de fútbol: ${f.local} (local) vs ${f.visitante} (visitante), ${f.liga} (${f.pais}), ${fechaLarga(f.ts)} hora de Argentina.
+
+Abajo va un paquete de datos calculado por mi app: mi modelo Poisson, el precio de las casas sin margen ("mercado"), rendimiento por sede, tabla y bajas.
+
+Paso 1 — Buscá en la web:
+- Bajas confirmadas de cada equipo (lesiones, suspensiones) y si son titulares habituales.
+- Alineaciones probables o confirmadas y rotaciones anunciadas.
+- Contexto que cambie el partido: cambio de entrenador, partido entre semana, equipo ya clasificado o descendido.
+Usá solo información de ESTE partido y fijate en la fecha de cada fuente. Si no encontrás nada confirmado, decilo: es una respuesta válida.
+
+Paso 2 — Escribí el análisis con estas reglas:
+- Las probabilidades son las del paquete. No las recalcules ni las reemplaces por estimaciones tuyas.
+- El mercado suele ser más preciso que cualquier modelo. Si mi modelo y el mercado difieren más de 8 puntos, lo más probable es que a mi modelo le falte información: tratalo como advertencia, no como oportunidad.
+- Mirá los tamaños de muestra ("n"). Con menos de 6 partidos un promedio no dice casi nada.
+- Si un dato es imposible o incoherente, no lo uses y avisame.
+- Podés proponer UN ajuste a UNA probabilidad de mi modelo, de entre -5 y +5 puntos, solo si encontraste un hecho concreto y confirmado que el modelo no puede conocer (por ejemplo, la baja de un titular clave). Si no lo hay, decí "sin ajuste": es lo normal.
+- Sin jerga de tipster ni promesas. Ninguna apuesta es segura.
+
+Formato de la respuesta, breve y en español:
+1. Lo que encontraste en la web (con las fuentes).
+2. Síntesis: 3 a 5 oraciones.
+3. Factores clave: entre 3 y 5, cada uno con el dato que lo respalda.
+4. Ajuste propuesto: mercado, puntos y motivo, o "sin ajuste".
+5. Advertencias.
+
+Paquete de datos:
+${JSON.stringify(paquete(),null,1)}`;
+}
+async function copiarParaClaude(){
+  if(!state.actual||!state.actual.datos)return;
+  const txt=textoParaClaude(),m=$('#copiaMsg'),ta=$('#copiaTxt');
+  ta.value=txt;
+  let ok=false;
+  try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+  if(!ok){ // navegadores que no dejan copiar así: se selecciona el texto y se prueba el método viejo
+    ta.classList.remove('hidden');ta.focus();ta.select();ta.setSelectionRange(0,txt.length);
+    try{ok=document.execCommand('copy')}catch(e){}
+  }
+  m.className='status';
+  if(ok){ta.classList.add('hidden');m.textContent='Copiado ✓ Tocá «Abrir Claude» y pegalo en un chat nuevo.'}
+  else m.textContent='No se pudo copiar solo: mantené apretado el texto de abajo, elegí «Copiar» y pegalo en Claude.';
 }
 async function servicio(ruta,cuerpo){
   const u=auth.currentUser;if(!u)throw new Error('Entrá con tu cuenta de Google.');
@@ -595,6 +649,7 @@ $('#filtro').addEventListener('input',pintarLista);
 $('#lista').addEventListener('click',e=>{const b=e.target.closest('.fx');if(b)abrir(b.dataset.id)});
 $('#btnVolver').addEventListener('click',()=>{state.actual=null;ver('partidos')});
 $('#btnIA').addEventListener('click',analizarIA);
+$('#btnCopiar').addEventListener('click',copiarParaClaude);
 $('#btnLiquidar').addEventListener('click',liquidar);
 $('#key').value=state.key;
 $('#btnKey').addEventListener('click',()=>{state.key=$('#key').value.trim();LS.set('o05:key',state.key);$('#btnKey').textContent='Guardada ✓';setTimeout(()=>$('#btnKey').textContent='Guardar',1500)});
