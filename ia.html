@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d10">
+<title>TanoApp IA</title>
+<style>
+:root{
+  --bg:#0b0d10; --panel:#12161b; --panel2:#181d24; --line:#252c35; --text:#e8edf2; --muted:#8a96a3; --dim:#5b6672;
+  --acc:#14b8a6; --good:#22c55e; --mid:#eab308; --bad:#ef4444; --info:#60a5fa;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+a{color:var(--info)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 70px}
+header{position:sticky;top:0;z-index:20;background:rgba(11,13,16,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:10px;padding-top:10px;padding-bottom:10px}
+.brand{font-weight:800;letter-spacing:.12em;font-size:14px;white-space:nowrap}
+.brand b{color:var(--acc)}
+nav{margin-left:auto;display:flex;gap:2px}
+nav button{background:none;border:0;padding:7px 10px;border-radius:8px;color:var(--muted);font-size:14px}
+nav button.on{color:var(--text);background:var(--panel2)}
+h1{font-size:22px;margin:18px 0 8px}
+h2{font-size:12px;color:var(--muted);margin:0 0 8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:600}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#04211e}
+.btn:disabled{opacity:.5;cursor:default}
+a.btn{text-decoration:none;color:var(--text);display:inline-block}
+textarea{width:100%;height:160px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:12px/1.4 var(--mono);margin-top:8px}
+.sep{border:0;border-top:1px solid var(--line);margin:14px 0}
+input[type=text],input[type=password],input[type=search],input[type=date]{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:0;flex:1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+.small{font-size:12.5px;color:var(--muted)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.hidden{display:none!important}
+.status{font-size:13px;color:var(--muted);margin:10px 0;min-height:18px}
+.status.err{color:var(--bad)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.g{color:var(--good);border-color:rgba(34,197,94,.35)}
+.chip.w{color:var(--mid);border-color:rgba(234,179,8,.35)}
+.chip.b{color:var(--bad);border-color:rgba(239,68,68,.35)}
+.lg{margin:16px 0 4px;font-size:13px;font-weight:700;color:var(--muted)}
+.fx{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:6px 0}
+.fx .t{font-family:var(--mono);font-size:12.5px;color:var(--muted);flex:none}
+.fx .n{flex:1;min-width:0;overflow-wrap:anywhere}
+.fx .go{color:var(--dim);flex:none}
+.head{text-align:center}
+.head .teams{font-size:19px;font-weight:700;margin:4px 0;overflow-wrap:anywhere}
+.head .teams span{color:var(--dim);font-weight:400;font-size:14px;margin:0 6px}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11px;color:var(--muted);font-weight:600;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kv>div{background:var(--panel2);border-radius:10px;padding:10px 12px;min-width:0}
+.kv b{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-bottom:2px}
+.fact{border-top:1px solid var(--line);padding:10px 0}
+.fact:first-of-type{border-top:0;padding-top:0}
+.fact .ti{font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pre{white-space:pre-wrap;overflow-wrap:anywhere}
+ul{margin:6px 0;padding-left:20px}
+li{margin:3px 0}
+.steps{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.steps div{font-size:13.5px;color:var(--dim)}
+.steps div.on{color:var(--text)}
+.steps div.ok{color:var(--good)}
+.steps div.ko{color:var(--bad)}
+label.ck{display:flex;gap:8px;align-items:center;font-size:14px}
+@media (max-width:480px){.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand">TANO<b>·IA</b></div>
+  <nav>
+    <button data-v="partidos" class="on">Partidos</button>
+    <button data-v="registro">Registro</button>
+    <button data-v="ajustes">Ajustes</button>
+  </nav>
+</div></header>
+
+<div class="wrap">
+  <!-- Entrada -->
+  <section id="vLogin" class="hidden">
+    <h1>Análisis con IA</h1>
+    <div class="card">
+      <p>Entrá con tu cuenta de Google para usar el análisis. Solo las cuentas autorizadas pueden pedir análisis a la IA.</p>
+      <button class="btn pri" id="btnLogin">Entrar con Google</button>
+      <div class="status" id="loginMsg"></div>
+    </div>
+  </section>
+
+  <!-- Lista de partidos -->
+  <section id="vPartidos" class="hidden">
+    <h1>Partidos</h1>
+    <div class="row">
+      <input type="date" id="dia" aria-label="Fecha">
+      <button class="btn pri" id="btnBuscar">Buscar partidos</button>
+    </div>
+    <div class="row" style="margin-top:8px"><input type="search" id="filtro" placeholder="Filtrar por equipo, liga o país" aria-label="Filtrar partidos"></div>
+    <div class="status" id="listaMsg">Elegí la fecha y tocá «Buscar partidos».</div>
+    <div id="lista"></div>
+  </section>
+
+  <!-- Un partido -->
+  <section id="vPartido" class="hidden">
+    <div class="row" style="margin-top:14px"><button class="btn" id="btnVolver">← Partidos</button></div>
+    <div class="card head" id="pCab"></div>
+    <div class="status" id="pMsg"></div>
+    <div id="pDatos"></div>
+    <div class="card hidden" id="pIA">
+      <h2>Análisis con IA</h2>
+      <p class="small">Con tu plan de Claude, sin costo extra: copiá el partido, pegalo en un chat nuevo de Claude y te devuelve el análisis con búsqueda de bajas y noticias.</p>
+      <div class="row"><button class="btn pri" id="btnCopiar">Copiar para Claude</button><a class="btn" href="https://claude.ai/new" target="_blank" rel="noopener noreferrer">Abrir Claude</a></div>
+      <div class="status" id="copiaMsg"></div>
+      <textarea id="copiaTxt" class="hidden" readonly aria-label="Texto para pegar en Claude"></textarea>
+      <hr class="sep">
+      <p class="small">Automático, dentro de esta app: necesita una clave de API de Claude cargada en Render y se paga por uso.</p>
+      <label class="ck"><input type="checkbox" id="conWeb" checked> Buscar bajas y noticias en la web (más lento y más caro)</label>
+      <div class="row" style="margin-top:10px"><button class="btn" id="btnIA">Analizar automático</button><span class="small" id="iaInfo"></span></div>
+      <div class="steps" id="pasos"></div>
+    </div>
+    <div id="pAnalisis"></div>
+  </section>
+
+  <!-- Registro -->
+  <section id="vRegistro" class="hidden">
+    <h1>Registro</h1>
+    <p class="small">Cada análisis queda guardado antes del partido. Al liquidar se bajan los resultados y se mide si el modelo, el mercado y el ajuste de la IA acertaron.</p>
+    <div class="row"><button class="btn pri" id="btnLiquidar">Liquidar resultados</button><span class="small" id="regMsg"></span></div>
+    <div id="regResumen"></div>
+    <div id="regLista"></div>
+  </section>
+
+  <!-- Ajustes -->
+  <section id="vAjustes" class="hidden">
+    <h1>Ajustes</h1>
+    <div class="card">
+      <h2>Clave de API-Football</h2>
+      <div class="row"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Pegá tu clave (x-apisports-key)"><button class="btn" id="btnKey">Guardar</button></div>
+      <p class="small">Es la misma clave que usan tus otras apps; si ya la cargaste ahí, aparece sola.</p>
+    </div>
+    <div class="card">
+      <h2>Servicio de IA</h2>
+      <div class="row"><input id="backend" type="text" autocomplete="off" spellcheck="false" placeholder="https://…onrender.com"><button class="btn" id="btnBackend">Guardar y probar</button></div>
+      <div class="status" id="backendMsg"></div>
+    </div>
+    <div class="card">
+      <h2>Cuenta</h2>
+      <div class="row"><span id="quien" class="small"></span><button class="btn" id="btnSalir">Salir</button></div>
+    </div>
+  </section>
+</div>
+
+<script src="./modelo-poisson.js"></script>
+<script src="./modelo-ft.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { startApiUsage } from "./uso-api.js";
+
+/* ---------------- base ---------------- */
+const T=window.TanoPoissonModel, F=window.TanoFT;
+const API='https://v3.football.api-sports.io';
+const TZ='America/Argentina/Buenos_Aires';
+const BACKEND_DEFAULT='https://tanoapp-ia.onrender.com';
+const RHO=-0.06;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const LS={
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+};
+const pct=(p,d=0)=>Number.isFinite(p)?(p*100).toFixed(d)+'%':'—';
+const num=(n,d=2)=>Number.isFinite(n)?n.toFixed(d):'—';
+const hoyISO=()=>new Date().toLocaleDateString('en-CA',{timeZone:TZ});
+const hora=ts=>new Date(ts*1000).toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit'});
+const fechaLarga=ts=>new Date(ts*1000).toLocaleString('es-AR',{timeZone:TZ,weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+
+const cfg={apiKey:"AIzaSyDL0LkEW3IAdBZcOARMjzAewgB_lh1edjI",authDomain:"appuestasclaude.firebaseapp.com",projectId:"appuestasclaude",storageBucket:"appuestasclaude.firebasestorage.app",messagingSenderId:"1020425173076",appId:"1:1020425173076:web:4ca5edab0f72c92a7ad5c1"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
+provider.setCustomParameters({prompt:'select_account'});
+startApiUsage(db,auth,'ia');
+
+const state={key:LS.get('o05:key',''),backend:LS.get('ia:backend','')||BACKEND_DEFAULT,fixtures:[],dia:hoyISO(),actual:null,reg:LS.get('ia:reg',[]),ligas:new Map()};
+
+/* ---------------- API-Football ---------------- */
+async function api(path,params){
+  if(!state.key)throw new Error('Falta tu clave de API-Football. Cargala en Ajustes.');
+  const url=new URL(API+path);
+  for(const [k,v] of Object.entries(params||{}))url.searchParams.set(k,v);
+  for(let intento=0;intento<5;intento++){
+    let res;
+    try{res=await fetch(url,{headers:{'x-apisports-key':state.key}})}
+    catch(e){if(intento<2){await sleep(4000);continue}throw new Error('No se pudo conectar con API-Football. Revisá la conexión.')}
+    try{window.tanoCountApi&&window.tanoCountApi(state.key)}catch(e){}
+    if(res.status===429||res.status>=500){await sleep(6000);continue}
+    let j;try{j=await res.json()}catch(e){throw new Error('Respuesta inválida de API-Football (HTTP '+res.status+').')}
+    const errs=j.errors,has=errs&&(Array.isArray(errs)?errs.length>0:Object.keys(errs).length>0);
+    if(has){
+      const keys=Array.isArray(errs)?'':Object.keys(errs).join(' '),msg=Array.isArray(errs)?errs.join(', '):Object.values(errs).join(', ');
+      if(/rateLimit/i.test(keys)){await sleep(8000);continue}
+      throw new Error('API-Football: '+msg);
+    }
+    return j.response||[];
+  }
+  throw new Error('API-Football limitó las consultas. Esperá un minuto y probá de nuevo.');
+}
+
+/* ---------------- lista del día ---------------- */
+const TOP=[2,3,848,13,11,39,140,135,78,61,94,88,128,71,253,262,40,141,136,79,62,203,144,179,218,119,113,103,239,265,268,281];
+async function buscar(){
+  const dia=$('#dia').value||hoyISO();
+  state.dia=dia;
+  $('#listaMsg').className='status';$('#listaMsg').textContent='Buscando partidos…';$('#lista').innerHTML='';
+  $('#btnBuscar').disabled=true;
+  try{
+    const r=await api('/fixtures',{date:dia,timezone:TZ});
+    state.fixtures=r.filter(f=>f&&f.fixture&&f.teams&&f.league).map(f=>({
+      id:f.fixture.id,ts:Math.floor(new Date(f.fixture.date).getTime()/1000),st:f.fixture.status&&f.fixture.status.short,
+      lid:f.league.id,liga:f.league.name,pais:f.league.country,season:f.league.season,ronda:f.league.round||'',
+      hid:f.teams.home.id,aid:f.teams.away.id,local:f.teams.home.name,visitante:f.teams.away.name
+    }));
+    pintarLista();
+  }catch(e){$('#listaMsg').className='status err';$('#listaMsg').textContent=e.message}
+  $('#btnBuscar').disabled=false;
+}
+function pintarLista(){
+  const q=$('#filtro').value.trim().toLowerCase();
+  const pend=state.fixtures.filter(f=>['NS','TBD'].includes(f.st));
+  const lista=pend.filter(f=>!q||(f.local+' '+f.visitante+' '+f.liga+' '+f.pais).toLowerCase().includes(q));
+  const orden=f=>{const i=TOP.indexOf(f.lid);return i<0?999:i};
+  lista.sort((a,b)=>orden(a)-orden(b)||a.pais.localeCompare(b.pais)||a.liga.localeCompare(b.liga)||a.ts-b.ts);
+  const MAX=120,ver=lista.slice(0,MAX);
+  let html='',ult='';
+  for(const f of ver){
+    const g=f.pais+' · '+f.liga;
+    if(g!==ult){html+=`<div class="lg">${esc(g)}</div>`;ult=g}
+    html+=`<button class="fx" data-id="${f.id}"><span class="t">${esc(hora(f.ts))}</span><span class="n">${esc(f.local)} <span class="muted">vs</span> ${esc(f.visitante)}</span><span class="go">›</span></button>`;
+  }
+  $('#lista').innerHTML=html;
+  $('#listaMsg').className='status';
+  $('#listaMsg').textContent=!state.fixtures.length?'No hay partidos para esa fecha.':!pend.length?'Los partidos de esa fecha ya empezaron o terminaron.'
+    :lista.length>MAX?`${lista.length} partidos por jugar. Se muestran ${MAX}: usá el filtro para encontrar el tuyo.`:`${lista.length} partido${lista.length===1?'':'s'} por jugar.`;
+}
+
+/* ---------------- datos de un partido ---------------- */
+const DONE=['FT','AET','PEN'];
+async function temporada(lid,season){
+  const k=lid+':'+season;
+  if(state.ligas.has(k))return state.ligas.get(k);
+  const r=await api('/fixtures',{league:lid,season,status:'FT-AET-PEN',timezone:TZ});
+  const g=[];
+  for(const f of r){
+    const ft=f.score&&f.score.fulltime||{},gl=f.goals||{};
+    const hg=Number.isInteger(ft.home)?ft.home:gl.home, ag=Number.isInteger(ft.away)?ft.away:gl.away;
+    if(!DONE.includes(f.fixture.status.short)||!Number.isInteger(hg)||!Number.isInteger(ag))continue;
+    g.push({id:f.fixture.id,ts:Math.floor(new Date(f.fixture.date).getTime()/1000),h:f.teams.home.id,a:f.teams.away.id,hg,ag,season});
+  }
+  state.ligas.set(k,g);
+  return g;
+}
+// Modelo: mismas piezas que Alpha (dos ajustes con dos temporadas, uno para quién es mejor y otro para el total de goles).
+function modelo(games,f){
+  const fm=T.buildFitMatches(games,{cutoffTs:f.ts,currentSeason:f.season,goals:'ft',halfLifeDays:240,xgWeight:0});
+  const fit=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.shape});
+  if(!fit.ok)return {ok:false,motivo:fit.reason};
+  const pr=T.predictMatch(fit,f.hid,f.aid,{});
+  if(!pr.ok)return {ok:false,motivo:pr.reason};
+  let lh=pr.lambdaHome,la=pr.lambdaAway;
+  const tot=T.fitLeague(fm,{priorMatches:F.FT_PRIOR.total});
+  const pt=tot.ok?T.predictMatch(tot,f.hid,f.aid,{}):null;
+  if(pt&&pt.ok){const r=F.rescaleTotal(lh,la,pt.lambdaTotal);lh=r.lh;la=r.la}
+  const s=F.summarize(F.scoreMatrix(lh,la,RHO));
+  return {ok:true,lh,la,partidosLiga:fit.matches,nLocal:pr.nHome,nVisitante:pr.nAway,
+    p:{local:s.home,empate:s.draw,visitante:s.away,mas25:s.totals.slice(3).reduce((a,b)=>a+b,0),ambos_marcan:s.btts}};
+}
+const CLAVES={local:'1x2:home',empate:'1x2:draw',visitante:'1x2:away',mas25:'total:over:2.5',ambos_marcan:'btts:yes'};
+const NOMBRES={local:'Gana local',empate:'Empate',visitante:'Gana visitante',mas25:'Más de 2,5 goles',ambos_marcan:'Ambos marcan'};
+function mercado(resp){
+  const o=F.parseOdds(resp);
+  if(!o||!o.size)return {ok:false};
+  const p={},cuota={};let casas=0,pin=true;
+  for(const [k,key] of Object.entries(CLAVES)){
+    const x=o.get(key);
+    if(!x){p[k]=null;cuota[k]=null;continue}
+    p[k]=x.mkt;cuota[k]={precio:x.best.price,casa:x.best.bookmaker};casas=Math.max(casas,x.books);if(!x.sharp)pin=false;
+  }
+  if(p.local==null||p.empate==null||p.visitante==null)return {ok:false};
+  const t=p.local+p.empate+p.visitante;p.local/=t;p.empate/=t;p.visitante/=t;
+  return {ok:true,p,cuota,casas,referencia:pin?'Pinnacle':'mediana de casas'};
+}
+function sede(games,team,season,enCasa){
+  const gs=games.filter(g=>String(g.season)===String(season)&&String(enCasa?g.h:g.a)===String(team));
+  let g=0,e=0,p=0,gf=0,gc=0;
+  for(const x of gs){const a=enCasa?x.hg:x.ag,b=enCasa?x.ag:x.hg;gf+=a;gc+=b;if(a>b)g++;else if(a===b)e++;else p++}
+  const n=gs.length;
+  return {n,ganados:g,empatados:e,perdidos:p,goles_favor_prom:n?+(gf/n).toFixed(2):null,goles_contra_prom:n?+(gc/n).toFixed(2):null};
+}
+function ultimos(games,team,ts,n=5){
+  const out=[];
+  for(const g of games.slice().sort((a,b)=>b.ts-a.ts)){
+    if(g.ts>=ts||out.length>=n)continue;
+    if(String(g.h)===String(team))out.push(g.hg+'-'+g.ag+' (L)');else if(String(g.a)===String(team))out.push(g.ag+'-'+g.hg+' (V)');
+  }
+  return out;
+}
+function tabla(resp,f){
+  const grupos=resp[0]&&resp[0].league&&resp[0].league.standings;
+  if(!Array.isArray(grupos))return null;
+  const buscarEq=id=>{for(const g of grupos){if(!Array.isArray(g))continue;const r=g.find(x=>x.team&&String(x.team.id)===String(id));
+    // Control de datos: una posición mayor que la cantidad de equipos del grupo no se usa.
+    if(r&&Number.isInteger(r.rank)&&r.rank>=1&&r.rank<=g.length)return {posicion:r.rank,de:g.length,puntos:r.points,jugados:r.all&&r.all.played}}return null};
+  const l=buscarEq(f.hid),v=buscarEq(f.aid);
+  return l||v?{local:l,visitante:v}:null;
+}
+function bajas(resp,f){
+  const lado=id=>{const vistos=new Set(),out=[];for(const x of resp){if(!x.team||String(x.team.id)!==String(id)||!x.player)continue;
+    if(vistos.has(x.player.name))continue;vistos.add(x.player.name);out.push({jugador:x.player.name,motivo:[x.player.type,x.player.reason].filter(Boolean).join(': ')})}return out.slice(0,12)};
+  return {local:lado(f.hid),visitante:lado(f.aid)};
+}
+function once(resp,f){
+  const lado=id=>{const x=resp.find(r=>r.team&&String(r.team.id)===String(id));
+    return x&&Array.isArray(x.startXI)&&x.startXI.length?{esquema:x.formation||'',titulares:x.startXI.map(p=>p.player&&p.player.name).filter(Boolean)}:null};
+  const l=lado(f.hid),v=lado(f.aid);
+  return l||v?{local:l,visitante:v}:null;
+}
+const opcional=async p=>{try{return await p}catch(e){return null}};
+
+async function abrir(id){
+  const f=state.fixtures.find(x=>String(x.id)===String(id));
+  if(!f)return;
+  state.actual={f,datos:null,analisis:null};
+  ver('partido');
+  $('#pCab').innerHTML=`<div class="small">${esc(f.pais)} · ${esc(f.liga)}${f.ronda?' · '+esc(f.ronda):''}</div><div class="teams">${esc(f.local)}<span>vs</span>${esc(f.visitante)}</div><div class="small">${esc(fechaLarga(f.ts))}</div>`;
+  $('#pDatos').innerHTML='';$('#pAnalisis').innerHTML='';$('#pasos').innerHTML='';$('#pIA').classList.add('hidden');$('#copiaMsg').textContent='';$('#copiaTxt').classList.add('hidden');
+  const msg=$('#pMsg');msg.className='status';msg.textContent='Bajando historial, cuotas, tabla y bajas…';
+  try{
+    const [act,ant,odds,inj,lin,std]=await Promise.all([
+      temporada(f.lid,f.season),opcional(temporada(f.lid,f.season-1)),
+      opcional(api('/odds',{fixture:f.id})),opcional(api('/injuries',{fixture:f.id})),
+      opcional(api('/fixtures/lineups',{fixture:f.id})),opcional(api('/standings',{league:f.lid,season:f.season}))
+    ]);
+    if(!state.actual||state.actual.f.id!==f.id)return;
+    const games=[...(ant||[]),...act];
+    const d={modelo:modelo(games,f),mercado:odds?mercado(odds):{ok:false},
+      sedes:{local:sede(games,f.hid,f.season,true),visitante:sede(games,f.aid,f.season,false)},
+      forma:{local:ultimos(games,f.hid,f.ts),visitante:ultimos(games,f.aid,f.ts)},
+      tabla:std?tabla(std,f):null,bajas:inj?bajas(inj,f):null,once:lin?once(lin,f):null};
+    state.actual.datos=d;
+    msg.textContent='';
+    pintarDatos();
+    $('#pIA').classList.remove('hidden');
+    estadoIA();
+  }catch(e){msg.className='status err';msg.textContent=e.message}
+}
+function pintarDatos(){
+  const {f,datos:d}=state.actual,m=d.modelo,k=d.mercado;
+  let h='<div class="card"><h2>Números del partido</h2>';
+  if(m.ok)h+=`<p class="small">Goles esperados por tu modelo: <b class="mono">${num(m.lh)}</b> ${esc(f.local)} · <b class="mono">${num(m.la)}</b> ${esc(f.visitante)}</p>`;
+  else h+=`<p class="small"><span class="chip w">Sin modelo</span> ${esc(m.motivo||'No hay historial suficiente.')}</p>`;
+  if(!k.ok)h+='<p class="small"><span class="chip w">Sin cuotas</span> API-Football todavía no tiene cuotas de este partido.</p>';
+  if(m.ok||k.ok){
+    h+='<div class="tblwrap"><table><thead><tr><th>Resultado</th><th>Modelo</th><th>Mercado</th><th>Dif.</th><th>Mejor cuota</th><th>EV modelo</th></tr></thead><tbody>';
+    for(const key of Object.keys(CLAVES)){
+      const pm=m.ok?m.p[key]:null,pk=k.ok?k.p[key]:null,c=k.ok?k.cuota[key]:null;
+      const dif=pm!=null&&pk!=null?(pm-pk)*100:null, ev=pm!=null&&c?pm*c.precio-1:null;
+      h+=`<tr><td>${NOMBRES[key]}</td><td>${pm!=null?pct(pm):'—'}</td><td>${pk!=null?pct(pk):'—'}</td>`
+        +`<td class="${dif==null?'':dif>0?'pos':'neg'}">${dif==null?'—':(dif>0?'+':'')+dif.toFixed(0)}</td>`
+        +`<td>${c?num(c.precio)+'<br><span class="small">'+esc(c.casa)+'</span>':'—'}</td>`
+        +`<td class="${ev==null?'':ev>0?'pos':'neg'}">${ev==null?'—':(ev>0?'+':'')+(ev*100).toFixed(0)+'%'}</td></tr>`;
+    }
+    h+='</tbody></table></div>';
+    h+=`<p class="small">Mercado = precio de las casas sin margen${k.ok?' ('+esc(k.referencia)+', '+k.casas+' casas)':''}. Una diferencia grande contra el mercado suele indicar que al modelo le falta información, no una oportunidad.</p>`;
+  }
+  h+='</div>';
+  const sd=(s,donde)=>s.n?`${s.n} partidos ${donde}: ${s.ganados}G ${s.empatados}E ${s.perdidos}P · ${num(s.goles_favor_prom,1)} a favor, ${num(s.goles_contra_prom,1)} en contra`:`Sin partidos ${donde} esta temporada`;
+  const tb=t=>t?`${t.posicion}º de ${t.de} · ${t.puntos} pts en ${t.jugados} PJ`:'Sin dato';
+  const bj=l=>l&&l.length?l.map(x=>esc(x.jugador)+(x.motivo?' <span class="small">('+esc(x.motivo)+')</span>':'')).join(', '):'Ninguna informada';
+  h+=`<div class="card"><h2>Contexto</h2><div class="kv">`
+    +`<div><b>${esc(f.local)} (local)</b>${esc(sd(d.sedes.local,'en casa'))}<br><span class="small">Tabla: ${esc(tb(d.tabla&&d.tabla.local))}</span><br><span class="small">Últimos: ${esc(d.forma.local.join(', ')||'—')}</span></div>`
+    +`<div><b>${esc(f.visitante)} (visitante)</b>${esc(sd(d.sedes.visitante,'de visitante'))}<br><span class="small">Tabla: ${esc(tb(d.tabla&&d.tabla.visitante))}</span><br><span class="small">Últimos: ${esc(d.forma.visitante.join(', ')||'—')}</span></div>`
+    +`<div><b>Bajas ${esc(f.local)}</b>${d.bajas?bj(d.bajas.local):'Sin dato'}</div>`
+    +`<div><b>Bajas ${esc(f.visitante)}</b>${d.bajas?bj(d.bajas.visitante):'Sin dato'}</div>`
+    +`</div><p class="small">${d.once?'Alineaciones confirmadas disponibles: se envían a la IA.':'Alineaciones todavía no confirmadas (suelen salir una hora antes).'}</p></div>`;
+  $('#pDatos').innerHTML=h;
+}
+
+/* ---------------- IA ---------------- */
+const r3=p=>p==null?null:+(p*100).toFixed(1);
+function paquete(){
+  const {f,datos:d}=state.actual,m=d.modelo,k=d.mercado;
+  const prob=o=>Object.fromEntries(Object.keys(CLAVES).map(x=>[x,r3(o[x])]));
+  return {
+    partido:{local:f.local,visitante:f.visitante,competicion:f.liga,pais:f.pais,ronda:f.ronda,fecha:fechaLarga(f.ts)+' (hora de Argentina)'},
+    modelo:m.ok?{disponible:true,descripcion:'Poisson con corrección Dixon-Coles ajustado con la temporada actual y la anterior',
+      goles_esperados:{local:+m.lh.toFixed(2),visitante:+m.la.toFixed(2)},probabilidades_pct:prob(m.p),
+      muestra:{partidos_de_la_liga:m.partidosLiga,partidos_local:m.nLocal,partidos_visitante:m.nVisitante}}:{disponible:false,motivo:m.motivo||'sin historial suficiente'},
+    mercado:k.ok?{disponible:true,referencia:k.referencia,casas:k.casas,probabilidades_sin_margen_pct:prob(k.p),
+      mejor_cuota:Object.fromEntries(Object.keys(CLAVES).map(x=>[x,k.cuota[x]?k.cuota[x].precio:null]))}:{disponible:false},
+    diferencia_modelo_menos_mercado_pts:m.ok&&k.ok?Object.fromEntries(Object.keys(CLAVES).map(x=>[x,k.p[x]==null?null:+((m.p[x]-k.p[x])*100).toFixed(1)])):null,
+    rendimiento_por_sede_temporada_actual:{local_en_casa:d.sedes.local,visitante_fuera:d.sedes.visitante},
+    ultimos_resultados:{nota:'marcador propio-rival, (L) jugó de local, (V) de visitante, del más reciente al más viejo',local:d.forma.local,visitante:d.forma.visitante},
+    tabla:d.tabla||'sin dato',
+    bajas_informadas_por_la_api:d.bajas||'sin dato',
+    alineaciones_confirmadas:d.once||'todavía no confirmadas'
+  };
+}
+// Texto para pegar en un chat de Claude (usa el plan del usuario, sin API). Mismas reglas que las prompts del servicio.
+function textoParaClaude(){
+  const f=state.actual.f;
+  return `Analizá este partido de fútbol: ${f.local} (local) vs ${f.visitante} (visitante), ${f.liga} (${f.pais}), ${fechaLarga(f.ts)} hora de Argentina.
+
+Abajo va un paquete de datos calculado por mi app: mi modelo Poisson, el precio de las casas sin margen ("mercado"), rendimiento por sede, tabla y bajas.
+
+Paso 1 — Buscá en la web:
+- Bajas confirmadas de cada equipo (lesiones, suspensiones) y si son titulares habituales.
+- Alineaciones probables o confirmadas y rotaciones anunciadas.
+- Contexto que cambie el partido: cambio de entrenador, partido entre semana, equipo ya clasificado o descendido.
+Usá solo información de ESTE partido y fijate en la fecha de cada fuente. Si no encontrás nada confirmado, decilo: es una respuesta válida.
+
+Paso 2 — Escribí el análisis con estas reglas:
+- Las probabilidades son las del paquete. No las recalcules ni las reemplaces por estimaciones tuyas.
+- El mercado suele ser más preciso que cualquier modelo. Si mi modelo y el mercado difieren más de 8 puntos, lo más probable es que a mi modelo le falte información: tratalo como advertencia, no como oportunidad.
+- Mirá los tamaños de muestra ("n"). Con menos de 6 partidos un promedio no dice casi nada.
+- Si un dato es imposible o incoherente, no lo uses y avisame.
+- Podés proponer UN ajuste a UNA probabilidad de mi modelo, de entre -5 y +5 puntos, solo si encontraste un hecho concreto y confirmado que el modelo no puede conocer (por ejemplo, la baja de un titular clave). Si no lo hay, decí "sin ajuste": es lo normal.
+- Sin jerga de tipster ni promesas. Ninguna apuesta es segura.
+
+Formato de la respuesta, breve y en español:
+1. Lo que encontraste en la web (con las fuentes).
+2. Síntesis: 3 a 5 oraciones.
+3. Factores clave: entre 3 y 5, cada uno con el dato que lo respalda.
+4. Ajuste propuesto: mercado, puntos y motivo, o "sin ajuste".
+5. Advertencias.
+
+Paquete de datos:
+${JSON.stringify(paquete(),null,1)}`;
+}
+async function copiarParaClaude(){
+  if(!state.actual||!state.actual.datos)return;
+  const txt=textoParaClaude(),m=$('#copiaMsg'),ta=$('#copiaTxt');
+  ta.value=txt;
+  let ok=false;
+  try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+  if(!ok){ // navegadores que no dejan copiar así: se selecciona el texto y se prueba el método viejo
+    ta.classList.remove('hidden');ta.focus();ta.select();ta.setSelectionRange(0,txt.length);
+    try{ok=document.execCommand('copy')}catch(e){}
+  }
+  m.className='status';
+  if(ok){ta.classList.add('hidden');m.textContent='Copiado ✓ Tocá «Abrir Claude» y pegalo en un chat nuevo.'}
+  else m.textContent='No se pudo copiar solo: mantené apretado el texto de abajo, elegí «Copiar» y pegalo en Claude.';
+}
+async function servicio(ruta,cuerpo){
+  const u=auth.currentUser;if(!u)throw new Error('Entrá con tu cuenta de Google.');
+  const token=await u.getIdToken();
+  let res;
+  try{res=await fetch(state.backend.replace(/\/+$/,'')+ruta,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(cuerpo)})}
+  catch(e){throw new Error('No se pudo conectar con el servicio de IA. Revisá la dirección en Ajustes.')}
+  let j=null;try{j=await res.json()}catch(e){}
+  if(!res.ok||!j||!j.ok)throw new Error((j&&j.error)||'El servicio de IA respondió con un error ('+res.status+').');
+  return j;
+}
+// El plan gratuito de Render se duerme: la primera llamada puede tardar cerca de un minuto en despertarlo.
+async function despertar(){
+  const base=state.backend.replace(/\/+$/,'');
+  for(let i=0;i<8;i++){
+    try{const r=await fetch(base+'/salud',{cache:'no-store'});if(r.ok){const j=await r.json();if(j&&j.ok)return j}}catch(e){}
+    await sleep(8000);
+  }
+  throw new Error('El servicio de IA no responde. Revisá la dirección en Ajustes o probá en un minuto.');
+}
+async function estadoIA(){
+  const el=$('#iaInfo');el.textContent='';
+  try{const r=await fetch(state.backend.replace(/\/+$/,'')+'/salud',{cache:'no-store'});const j=await r.json();
+    if(j&&j.ok)el.textContent=j.prueba?'Servicio en modo de prueba (sin IA real).':!j.ia?'Falta cargar la clave de Anthropic en Render.':'Modelo: '+j.modelo}
+  catch(e){el.textContent='El servicio puede tardar hasta un minuto en despertar.'}
+}
+async function analizarIA(){
+  const act=state.actual;if(!act||!act.datos)return;
+  const web=$('#conWeb').checked,btn=$('#btnIA'),pasos=$('#pasos');
+  const lista=[['wake','Despertando el servicio'],...(web?[['inv','Buscando bajas y noticias en la web']]:[]),['ana','Redactando el análisis']];
+  pasos.innerHTML=lista.map(([id,t])=>`<div id="st-${id}">○ ${esc(t)}…</div>`).join('');
+  const marca=(id,cls,txt)=>{const e=$('#st-'+id);if(!e)return;e.className=cls;const t=lista.find(x=>x[0]===id)[1];e.textContent=(cls==='ok'?'✓ ':cls==='ko'?'✕ ':'● ')+t+(txt?' — '+txt:cls==='on'?'…':'')};
+  btn.disabled=true;$('#pAnalisis').innerHTML='';
+  let paso='wake';
+  try{
+    marca('wake','on');await despertar();marca('wake','ok');
+    let inv=null;
+    if(web){
+      paso='inv';marca('inv','on');
+      const f=act.f;
+      inv=await servicio('/investigar',{partido:{local:f.local,visitante:f.visitante,liga:f.liga,pais:f.pais,fecha:fechaLarga(f.ts)+' (hora de Argentina)'}});
+      marca('inv','ok',inv.uso.busquedas+' búsqueda'+(inv.uso.busquedas===1?'':'s'));
+    }
+    paso='ana';marca('ana','on');
+    const ana=await servicio('/analizar',{paquete:paquete(),investigacion:inv?inv.resumen:''});
+    marca('ana','ok');
+    if(state.actual!==act)return;
+    act.analisis={inv,ana};
+    pintarAnalisis();
+    guardarRegistro(act);
+  }catch(e){marca(paso,'ko',e.message)}
+  btn.disabled=false;
+}
+const EFECTO={favorece_local:['Favorece al local','g'],favorece_visitante:['Favorece al visitante','g'],mas_goles:['Más goles','g'],menos_goles:['Menos goles','w'],neutro:['Neutro','']};
+function ajustar(p,aj){
+  if(!p||!aj||!aj.aplica)return null;
+  const d=aj.puntos/100,k=aj.mercado,cl=x=>Math.min(0.99,Math.max(0.01,x));
+  const out=Object.assign({},p);
+  if(['local','empate','visitante'].includes(k)){
+    const nuevo=cl(p[k]+d),resto=1-p[k],esc2=resto>0?(1-nuevo)/resto:1;
+    for(const x of ['local','empate','visitante'])out[x]=x===k?nuevo:p[x]*esc2;
+  }else out[k]=cl(p[k]+d);
+  return out;
+}
+function pintarAnalisis(){
+  const {f,datos:d,analisis:{inv,ana}}=state.actual,a=ana.analisis;
+  let h='';
+  if(inv){
+    h+=`<div class="card"><h2>Lo que encontró la búsqueda web</h2><div class="pre">${esc(inv.resumen)}</div>`;
+    if(inv.fuentes.length)h+='<ul class="small">'+inv.fuentes.map(s=>/^https?:\/\//i.test(s.url)?`<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.titulo)}</a></li>`:'').join('')+'</ul>';
+    h+='</div>';
+  }
+  const cal={alta:['Datos: calidad alta','g'],media:['Datos: calidad media','w'],baja:['Datos: calidad baja','b']}[a.calidad_datos];
+  h+=`<div class="card"><h2>Síntesis</h2><p>${esc(a.sintesis)}</p><span class="chip ${cal[1]}">${cal[0]}</span></div>`;
+  if(a.factores.length){
+    h+='<div class="card"><h2>Factores clave</h2>';
+    for(const x of a.factores){const e=EFECTO[x.efecto]||EFECTO.neutro;h+=`<div class="fact"><div class="ti">${esc(x.titulo)} <span class="chip ${e[1]}">${e[0]}</span></div><div class="small" style="color:var(--text)">${esc(x.detalle)}</div></div>`}
+    h+='</div>';
+  }
+  h+='<div class="card"><h2>Ajuste propuesto por la IA</h2>';
+  if(a.ajuste.aplica&&d.modelo.ok){
+    const antes=d.modelo.p[a.ajuste.mercado],desp=ajustar(d.modelo.p,a.ajuste)[a.ajuste.mercado];
+    h+=`<p><b>${NOMBRES[a.ajuste.mercado]}</b>: ${pct(antes)} → <b>${pct(desp)}</b> <span class="chip">${a.ajuste.puntos>0?'+':''}${a.ajuste.puntos} pts</span></p><p class="small" style="color:var(--text)">${esc(a.ajuste.motivo)}</p>`
+      +'<p class="small">El ajuste no cambia los números de arriba: queda guardado en el Registro para medir después si mejora o empeora a tu modelo.</p>';
+  }else h+=`<p>Sin ajuste: la IA no encontró un hecho confirmado que tu modelo no conozca.${a.ajuste.aplica&&!d.modelo.ok?' (Propuso uno, pero no hay modelo para aplicarlo.)':''}</p>`;
+  h+='</div>';
+  if(a.advertencias.length)h+='<div class="card"><h2>Advertencias</h2><ul>'+a.advertencias.map(x=>`<li>${esc(x)}</li>`).join('')+'</ul></div>';
+  const uso={entrada:ana.uso.entrada+(inv?inv.uso.entrada:0),salida:ana.uso.salida+(inv?inv.uso.salida:0)};
+  h+=`<p class="small">Generado por ${esc(ana.modelo)} · ${uso.entrada.toLocaleString('es-AR')} tokens de entrada y ${uso.salida.toLocaleString('es-AR')} de salida${inv?' · '+inv.uso.busquedas+' búsquedas web':''}. Es un análisis, no una garantía: apostá solo lo que puedas perder.</p>`;
+  $('#pAnalisis').innerHTML=h;
+}
+
+/* ---------------- registro ---------------- */
+const REG_DOC=()=>doc(db,'tanoapp_v2_datos',auth.currentUser.uid,'goles','ia-registro');
+function guardarRegistro(act){
+  const {f,datos:d,analisis:{ana}}=act,a=ana.analisis;
+  const corto=o=>o?Object.fromEntries(Object.keys(CLAVES).map(k=>[k,o[k]==null?null:+o[k].toFixed(4)])):null;
+  const rec={id:f.id,ts:f.ts,guardado:Math.floor(Date.now()/1000),local:f.local,visitante:f.visitante,liga:f.liga,
+    pm:d.modelo.ok?corto(d.modelo.p):null,pk:d.mercado.ok?corto(d.mercado.p):null,
+    aj:a.ajuste.aplica?{mercado:a.ajuste.mercado,puntos:a.ajuste.puntos}:null,ia:ana.modelo,res:null};
+  // Solo vale lo guardado antes del partido; un análisis repetido reemplaza al anterior.
+  if(rec.guardado>=rec.ts)return;
+  state.reg=state.reg.filter(x=>x.id!==rec.id);state.reg.push(rec);
+  persistir();
+}
+async function persistir(){
+  state.reg.sort((a,b)=>b.ts-a.ts);
+  LS.set('ia:reg',state.reg);
+  try{await setDoc(REG_DOC(),{json:JSON.stringify(state.reg),updated:Date.now()})}catch(e){console.warn('No se pudo guardar el registro en la nube',e)}
+}
+async function cargarRegistro(){
+  try{
+    const s=await getDoc(REG_DOC());
+    if(s.exists()){
+      const remoto=JSON.parse(s.data().json||'[]'),porId=new Map();
+      for(const r of [...remoto,...state.reg]){const o=porId.get(r.id);if(!o||(r.res&&!o.res)||(!!r.res===!!o.res&&r.guardado>o.guardado))porId.set(r.id,r)}
+      state.reg=[...porId.values()].sort((a,b)=>b.ts-a.ts);
+      LS.set('ia:reg',state.reg);
+    }
+  }catch(e){console.warn('No se pudo leer el registro de la nube',e)}
+}
+async function liquidar(){
+  const ahora=Date.now()/1000,pend=state.reg.filter(r=>!r.res&&r.ts<ahora-2*3600);
+  const msg=$('#regMsg');
+  if(!pend.length){msg.textContent='No hay partidos terminados por liquidar.';return}
+  $('#btnLiquidar').disabled=true;msg.textContent='Bajando resultados…';
+  try{
+    let n=0;
+    for(let i=0;i<pend.length;i+=20){
+      const r=await api('/fixtures',{ids:pend.slice(i,i+20).map(x=>x.id).join('-'),timezone:TZ});
+      for(const f of r){
+        if(!DONE.includes(f.fixture.status.short))continue;
+        const ft=f.score&&f.score.fulltime||{},hg=Number.isInteger(ft.home)?ft.home:f.goals.home,ag=Number.isInteger(ft.away)?ft.away:f.goals.away;
+        if(!Number.isInteger(hg)||!Number.isInteger(ag))continue;
+        const rec=state.reg.find(x=>x.id===f.fixture.id);if(rec){rec.res={hg,ag};n++}
+      }
+    }
+    await persistir();
+    msg.textContent=n?`${n} partido${n===1?'':'s'} liquidado${n===1?'':'s'}.`:'Todavía no hay resultados finales.';
+  }catch(e){msg.textContent=e.message}
+  $('#btnLiquidar').disabled=false;
+  pintarRegistro();
+}
+const salio=(res,k)=>k==='local'?res.hg>res.ag:k==='empate'?res.hg===res.ag:k==='visitante'?res.hg<res.ag:k==='mas25'?res.hg+res.ag>=3:res.hg>0&&res.ag>0;
+const brier1x2=(p,res)=>['local','empate','visitante'].reduce((s,k)=>s+(p[k]-(salio(res,k)?1:0))**2,0);
+function pintarRegistro(){
+  const liq=state.reg.filter(r=>r.res);
+  // Modelo contra mercado: solo partidos que tienen los dos, para comparar sobre lo mismo.
+  const ambos=liq.filter(r=>r.pm&&r.pk);
+  const prom=(xs,fn)=>xs.length?xs.reduce((s,x)=>s+fn(x),0)/xs.length:null;
+  const bm=prom(ambos,r=>brier1x2(r.pm,r.res)),bk=prom(ambos,r=>brier1x2(r.pk,r.res));
+  // Ajuste de la IA: error de esa probabilidad antes y después del ajuste.
+  const conAj=liq.filter(r=>r.aj&&r.pm);
+  const antes=prom(conAj,r=>(r.pm[r.aj.mercado]-(salio(r.res,r.aj.mercado)?1:0))**2);
+  const desp=prom(conAj,r=>(ajustar(r.pm,{aplica:true,...r.aj})[r.aj.mercado]-(salio(r.res,r.aj.mercado)?1:0))**2);
+  let h=`<div class="card"><h2>Medición</h2><div class="kv">`
+    +`<div><b>Modelo contra mercado (1X2)</b>${ambos.length?`Error del modelo <span class="mono">${num(bm,3)}</span> · del mercado <span class="mono">${num(bk,3)}</span><br><span class="small">${ambos.length} partido${ambos.length===1?'':'s'} · menor es mejor</span>`:'Todavía sin partidos liquidados.'}</div>`
+    +`<div><b>Ajuste de la IA</b>${conAj.length?`Error sin ajuste <span class="mono">${num(antes,3)}</span> · con ajuste <span class="mono">${num(desp,3)}</span><br><span class="small">${conAj.length} ajuste${conAj.length===1?'':'s'} · menor es mejor</span>`:'Todavía sin ajustes liquidados.'}</div>`
+    +`</div><p class="small">Con pocas decenas de partidos estos números son ruido. Hacen falta cientos para sacar conclusiones.</p></div>`;
+  $('#regResumen').innerHTML=h;
+  if(!state.reg.length){$('#regLista').innerHTML='<p class="small">Todavía no guardaste ningún análisis.</p>';return}
+  let t='<div class="card"><div class="tblwrap"><table><thead><tr><th>Partido</th><th>Modelo 1-X-2</th><th>Mercado 1-X-2</th><th>Ajuste IA</th><th>Resultado</th></tr></thead><tbody>';
+  const tri=p=>p?[p.local,p.empate,p.visitante].map(x=>Math.round(x*100)).join('-'):'—';
+  for(const r of state.reg.slice(0,200)){
+    t+=`<tr><td style="white-space:normal">${esc(r.local)} vs ${esc(r.visitante)}<br><span class="small">${esc(new Date(r.ts*1000).toLocaleDateString('es-AR',{timeZone:TZ,day:'numeric',month:'short'}))} · ${esc(r.liga)}</span></td>`
+      +`<td>${tri(r.pm)}</td><td>${tri(r.pk)}</td><td>${r.aj?esc(NOMBRES[r.aj.mercado])+' '+(r.aj.puntos>0?'+':'')+r.aj.puntos:'—'}</td><td>${r.res?r.res.hg+'-'+r.res.ag:'<span class="small">pendiente</span>'}</td></tr>`;
+  }
+  $('#regLista').innerHTML=t+'</tbody></table></div></div>';
+}
+
+/* ---------------- pantallas ---------------- */
+let vista='partidos';
+function ver(v){
+  vista=v;
+  const logged=!!auth.currentUser;
+  for(const [id,nombre] of [['vLogin','login'],['vPartidos','partidos'],['vPartido','partido'],['vRegistro','registro'],['vAjustes','ajustes']])
+    $('#'+id).classList.toggle('hidden',logged?nombre!==v:nombre!=='login');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===(v==='partido'?'partidos':v)));
+  if(v==='registro')pintarRegistro();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{if(auth.currentUser)ver(b.dataset.v)}));
+$('#dia').value=state.dia;
+$('#btnBuscar').addEventListener('click',buscar);
+$('#filtro').addEventListener('input',pintarLista);
+$('#lista').addEventListener('click',e=>{const b=e.target.closest('.fx');if(b)abrir(b.dataset.id)});
+$('#btnVolver').addEventListener('click',()=>{state.actual=null;ver('partidos')});
+$('#btnIA').addEventListener('click',analizarIA);
+$('#btnCopiar').addEventListener('click',copiarParaClaude);
+$('#btnLiquidar').addEventListener('click',liquidar);
+$('#key').value=state.key;
+$('#btnKey').addEventListener('click',()=>{state.key=$('#key').value.trim();LS.set('o05:key',state.key);$('#btnKey').textContent='Guardada ✓';setTimeout(()=>$('#btnKey').textContent='Guardar',1500)});
+$('#backend').value=state.backend;
+$('#btnBackend').addEventListener('click',async()=>{
+  const v=$('#backend').value.trim().replace(/\/+$/,''),m=$('#backendMsg');
+  if(!/^https:\/\/[^\s/]+/i.test(v)&&!/^http:\/\/(localhost|127\.0\.0\.1)/i.test(v)){m.className='status err';m.textContent='La dirección tiene que empezar con https://';return}
+  state.backend=v;LS.set('ia:backend',v);m.className='status';m.textContent='Probando (puede tardar hasta un minuto)…';
+  try{const j=await despertar();m.textContent=j.prueba?'Conectado, en modo de prueba (sin IA real).':j.ia?'Conectado. Modelo: '+j.modelo:'Conectado, pero falta cargar la clave de Anthropic en Render.'}
+  catch(e){m.className='status err';m.textContent=e.message}
+});
+$('#btnSalir').addEventListener('click',()=>signOut(auth));
+$('#btnLogin').addEventListener('click',async()=>{
+  const m=$('#loginMsg');m.className='status';m.textContent='';
+  try{await signInWithPopup(auth,provider)}
+  catch(e){
+    const c=(e&&e.code)||'';
+    if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'||c==='auth/web-storage-unsupported'){try{await signInWithRedirect(auth,provider);return}catch(e2){e=e2}}
+    if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request')return;
+    m.className='status err';m.textContent=c==='auth/unauthorized-domain'?'Este dominio no está autorizado en Firebase.':(e&&e.message)||'No se pudo entrar.';
+  }
+});
+getRedirectResult(auth).catch(()=>{});
+onAuthStateChanged(auth,async u=>{
+  if(!u){ver('login');return}
+  $('#quien').textContent=u.email||'';
+  await cargarRegistro();
+  ver(vista==='login'?'partidos':vista);
+  if(!state.key)ver('ajustes');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "tanoapp-ia-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Servicio que llama a Claude para analizar partidos (TanoApp IA). Guarda la clave fuera de la página.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "jose": "^6.2.17"
+  }
+}
