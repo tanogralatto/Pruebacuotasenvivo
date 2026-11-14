@@ -253,6 +253,7 @@ details.guide th{color:var(--muted);font-weight:600}
 .cmpr .r{text-align:right;flex:none;font-family:var(--mono);font-size:15px}
 .cmpr .r .bkn{display:block;font-family:inherit;font-size:12px;color:var(--muted);font-weight:400}
 .cmpr .cmo{font-size:12.5px;color:var(--muted);margin-top:6px}
+.cmpodd{width:80px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--text);font:inherit;font-family:var(--mono)}
 .cmpbooks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .cmpbooks button{background:none;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:13px;padding:4px 10px}
 .cmpbooks button.on{color:#04211e;background:var(--acc);border-color:var(--acc)}
@@ -386,6 +387,7 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
   <div class="prog hidden" id="cmpProg"><i></i></div>
   <div class="tools"><input type="search" id="cmpq" placeholder="Buscar equipo"><select id="cmpmk"><option value="">Todos los mercados</option><option value="res">Resultado (1X2 y doble oportunidad)</option><option value="goles">Goles del partido</option><option value="ambos">Ambos marcan</option><option value="equipo">Goles por equipo</option><option value="hand">Hándicap asiático</option><option value="corners">Córners</option></select></div>
   <details class="filters box" id="cmpf"><summary><b>Filtros y mis casas</b> <span class="small" id="cmpfSum"></span></summary>
+    <div class="fl"><div class="fl-h"><b>Cuota</b> <span class="small">(dejá vacío para no limitar)</span></div><div class="row"><label class="small row" style="gap:6px">desde <input id="cmplo" type="text" inputmode="decimal" placeholder="1,50" class="cmpodd"></label><label class="small row" style="gap:6px">hasta <input id="cmphi" type="text" inputmode="decimal" placeholder="2,00" class="cmpodd"></label><button type="button" class="btn" id="cmpOddClear" style="padding:6px 10px;font-size:13px">Borrar</button></div></div>
     <div class="fl"><div class="fl-h"><b>Ventaja mínima</b></div><div class="seg" id="cmpmin"><button data-cmin="0">Todas</button><button data-cmin="2">+2%</button><button data-cmin="5">+5%</button><button data-cmin="10">+10%</button></div></div>
     <div class="row" style="margin-top:10px;gap:14px">
       <label class="small row" style="gap:6px"><input type="checkbox" id="cmpMine" style="accent-color:var(--acc)"> Solo mis casas</label>
@@ -1606,7 +1608,7 @@ function cmpLines(a,f){
     for(const [bk,pr] of r.of||[])add(bk,pr);
     add(r.bk,r.pr);
     if(Array.isArray(r.my))add(r.my[1],r.my[0]);
-    let list=[...by].map(([bk,pr])=>({bk,pr,adv:pr*r.m-1})).filter(x=>x.adv>0);
+    let list=[...by].map(([bk,pr])=>({bk,pr,adv:pr*r.m-1})).filter(x=>x.adv>0&&(!f.lo||x.pr>=f.lo-1e-9)&&(!f.hi||x.pr<=f.hi+1e-9));
     if(f.mine)list=list.filter(x=>isMine(x.bk));
     list.sort((x,y)=>y.pr-x.pr);
     if(!list.length||list[0].adv*100<f.min)continue;
@@ -1614,7 +1616,10 @@ function cmpLines(a,f){
   }
   return out;
 }
-const cmpFilters=()=>({min:Number(LS.get('tg:cmin',2)),mine:LS.get('tg:cmine',false)===true,pin:LS.get('tg:cpin',true)!==false,sort:LS.get('tg:csort','adv'),mk:$('#cmpmk').value});
+// Cuota escrita a mano: acepta coma o punto; vacío o inválido = sin límite.
+const oddIn=v=>{const n=Number(String(v==null?'':v).trim().replace(',','.'));return n>1&&n<1000?n:0};
+const cmpRange=()=>{let lo=oddIn(LS.get('tg:clo','')),hi=oddIn(LS.get('tg:chi',''));if(lo&&hi&&lo>hi)[lo,hi]=[hi,lo];return {lo,hi}};
+const cmpFilters=()=>({...cmpRange(),min:Number(LS.get('tg:cmin',2)),mine:LS.get('tg:cmine',false)===true,pin:LS.get('tg:cpin',true)!==false,sort:LS.get('tg:csort','adv'),mk:$('#cmpmk').value});
 function renderCmpBooks(d){
   const names=new Set(BOOKS);
   if(d)for(const a of d.fx)for(const r of a.rows||[]){if(r.bk)names.add(r.bk);for(const [bk] of r.of||[])names.add(bk)}
@@ -1629,9 +1634,13 @@ async function renderCmp(){
   $$('#cmpday [data-cmpday]').forEach(b=>b.classList.toggle('on',b.dataset.cmpday===day));
   $$('#cmpmin [data-cmin]').forEach(b=>b.classList.toggle('on',Number(b.dataset.cmin)===f.min));
   $('#cmpMine').checked=f.mine;$('#cmpPin').checked=f.pin;$('#cmpsort').value=f.sort;
+  const oddTxt=v=>v?v.toFixed(2).replace('.',','):'';
+  if(document.activeElement!==$('#cmplo'))$('#cmplo').value=oddTxt(f.lo);
+  if(document.activeElement!==$('#cmphi'))$('#cmphi').value=oddTxt(f.hi);
   $('#btnCmpOdds').disabled=!!state.running;
   const mine=bookTokens();
-  $('#cmpfSum').textContent='· '+[f.min?'+'+f.min+'%':'todas',f.mine?'solo mis casas':'',f.pin?'solo Pinnacle':'con mediana',f.sort==='time'?'por hora':'por ventaja'].filter(Boolean).join(' · ');
+  const range=f.lo&&f.hi?'cuota '+oddTxt(f.lo)+' a '+oddTxt(f.hi):f.lo?'cuota desde '+oddTxt(f.lo):f.hi?'cuota hasta '+oddTxt(f.hi):'';
+  $('#cmpfSum').textContent='· '+[range,f.min?'+'+f.min+'%':'todas',f.mine?'solo mis casas':'',f.pin?'solo Pinnacle':'con mediana',f.sort==='time'?'por hora':'por ventaja'].filter(Boolean).join(' · ');
   const d=await getDay(dayStr(Number(day)));
   renderCmpBooks(d);
   if(!d){list.innerHTML=state.key?'<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para traer los partidos y las cuotas del día.</div>':'<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>, o entrá con tu cuenta (☁︎ arriba).</div>';$('#cmpOddsWhen').textContent='';return}
@@ -1648,7 +1657,7 @@ async function renderCmp(){
   const rk=x=>x.best.adv>0.15?-1+x.best.adv/100:x.best.adv; // los ⚠︎ van al final
   items.sort(f.sort==='time'?(x,y)=>x.a.ts-y.a.ts||rk(y)-rk(x):(x,y)=>rk(y)-rk(x)||x.a.ts-y.a.ts);
   if(!state.running)$('#cmpStatus').textContent=items.length?`${items.length} apuestas pagan más que el mercado${f.pin&&hiddenMed?` (y ${hiddenMed} más contra la mediana: desmarcá «Solo contra Pinnacle»)`:''}.`:'';
-  if(!items.length){list.innerHTML=`<div class="empty">Ninguna casa paga más que el mercado con esos filtros.${f.min?' Probá con «Ventaja mínima: Todas».':''}${f.pin&&hiddenMed?' Hay '+hiddenMed+' contra la mediana de las casas.':''}</div>`;return}
+  if(!items.length){list.innerHTML=`<div class="empty">Ninguna casa paga más que el mercado con esos filtros.${f.lo||f.hi?' Probá con un rango de cuotas más amplio.':''}${f.min?' Probá con «Ventaja mínima: Todas».':''}${f.pin&&hiddenMed?' Hay '+hiddenMed+' contra la mediana de las casas.':''}</div>`;return}
   const fmtAdv=v=>(v>=0?'+':'')+(v*100).toLocaleString('es-AR',{maximumFractionDigits:1})+'%';
   list.innerHTML=items.slice(0,300).map(({a,r,best,others})=>{
     const warn=best.adv>0.15,ref=r.sh?(r.es?'≈ Pinnacle':'Pinnacle'):'Mediana';
@@ -2213,6 +2222,12 @@ $('#cmpMine').addEventListener('change',e=>{LS.set('tg:cmine',e.target.checked);
 $('#cmpPin').addEventListener('change',e=>{LS.set('tg:cpin',e.target.checked);renderCmp()});
 $('#cmpsort').addEventListener('change',e=>{LS.set('tg:csort',e.target.value);renderCmp()});
 $('#cmpmk').addEventListener('change',renderCmp);
+// Rango de cuotas: se aplica al terminar de escribir (al salir del campo o con Enter).
+for(const [id,key] of [['#cmplo','tg:clo'],['#cmphi','tg:chi']]){
+  $(id).addEventListener('change',e=>{LS.set(key,String(e.target.value||'').trim());renderCmp()});
+  $(id).addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur()});
+}
+$('#cmpOddClear').addEventListener('click',()=>{LS.set('tg:clo','');LS.set('tg:chi','');renderCmp()});
 $('#cmpq').addEventListener('input',renderCmp);
 $('#cmpBooks').addEventListener('click',e=>{
   const b=e.target.closest('[data-cbook]');if(!b||isGuest())return;const n=b.dataset.cbook;
