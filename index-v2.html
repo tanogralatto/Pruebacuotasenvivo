@@ -2105,7 +2105,7 @@ function favoriteForView(id,origin){
   }
   const result=state.results.find(x=>String(x.fx.id)===key);
   const fx=result?.fx||state.fixtures.find(x=>String(x.id)===key);
-  return fx?{fx,result,analysis:result?{avg:result.avg,n:result.n,tr:result.tr}:null}:null;
+  return fx?{fx,result,analysis:result?{avg:result.avg,n:result.n,tr:result.tr,...(result.streak?{streak:result.streak}:{})}:null}:null;
 }
 function refreshFavoriteViews(){
   renderFavorites();renderVipFavorites();renderResults();renderLive();
@@ -2122,6 +2122,8 @@ function renderSavedFavoriteCard(f,group){
   const dateTime=dateIso?`${fmtDate(Math.floor(new Date(dateIso).getTime()/1000))} · ${fmtTime(dateIso)}`:(f.dateText||'Fecha no disponible');
   const currentResult=(state.results||[]).find(x=>String(x.fx.id)===String(f.id));
   const a=f.analysis||(currentResult?{avg:currentResult.avg,n:currentResult.n,tr:currentResult.tr}:null);
+  // Racha de gol en el 1T: la guardada con el favorito; los guardados antes de esta función la toman del análisis actual del Escáner.
+  const streak=(a&&a.streak)||(currentResult&&currentResult.streak)||null;
   const cardFx=currentResult?.fx?{...fx,...currentResult.fx}:fx;
   const dests=favDests(f), fid=esc(f.id), here=group==='common'?'common':group;
   const add=k=>`<button type="button" class="vip-only-btn" data-add-dest="${k}" data-fav="${fid}">＋ ${esc(DEST_NAME[k])}</button>`;
@@ -2142,7 +2144,7 @@ function renderSavedFavoriteCard(f,group){
   // Modelo propio: el guardado con el favorito; si no tiene, el del análisis actual (si es el mismo mercado).
   const savedPoisson=f.poisson||(currentResult&&currentResult.poisson&&(!f.market||f.market===marketDefs[state.market].short)?currentResult.poisson:undefined);
   if(a&&Array.isArray(a.tr)){
-    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson};
+    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson,streak};
     // La tarjeta se dibuja con el mercado con el que se guardó el favorito, no con el que está elegido ahora en el Escáner
     // (si no, con «Hándicap asiático» elegido todos los favoritos salían vacíos, con «—»).
     let html,prevMarket=state.market;
