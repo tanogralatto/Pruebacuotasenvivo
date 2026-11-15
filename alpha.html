@@ -375,14 +375,40 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
 <section id="v-cmp" class="hidden">
   <h1>Comparador de casas</h1>
   <p class="small" style="margin-top:-4px">Cuotas de las casas que pagan <b>más que el mercado</b>. El precio del mercado es el de <b>Pinnacle sin margen</b> (o la mediana de las casas si Pinnacle no lo cotiza). No usa el modelo: es casa contra mercado.</p>
-  <details class="guide"><summary><b>Cómo leerlo</b></summary>
+  <details class="guide" id="cmpGuide">
+    <summary>📘 Cómo usar el Comparador</summary>
+    <h3>¿Para qué sirve?</h3>
+    <p>Muestra las apuestas en las que una casa paga más que el precio justo del mercado. El precio justo sale de <b>Pinnacle</b> (la casa más precisa) sin su margen. No depende del modelo: es casa contra mercado.</p>
+    <h3>Paso a paso (vista Ahora)</h3>
+    <ol>
+      <li>Tocá <b>↻ Actualizar todo</b> en Partidos, o <b>↻ Actualizar cuotas</b> acá si ya actualizaste hoy.</li>
+      <li>En <b>Filtros y mis casas</b>, marcá las casas donde tenés cuenta y activá <b>Solo mis casas</b>.</li>
+      <li>Si querés, poné un rango de cuota (por ejemplo, de 1,50 a 2,00) y una ventaja mínima.</li>
+      <li>Elegí una apuesta, entrá a tu casa y confirmá que la cuota siga igual o más alta. Si bajó de la <b>Justa</b>, ya no tiene ventaja.</li>
+      <li>Si apostás, tocá <b>＋</b> para anotarla en Mis apuestas.</li>
+    </ol>
+    <h3>Cómo leer cada apuesta</h3>
     <ul>
       <li><b>Paga</b>: la cuota de esa casa. <b>Justa</b>: la cuota que corresponde al precio del mercado.</li>
-      <li><b>Ventaja</b>: cuánto paga de más. +5% = en promedio ganarías $5 cada $100 apostados.</li>
-      <li>Las cuotas son de la última actualización: <b>confirmá siempre la cuota en tu casa</b> antes de apostar. Si bajó de la Justa, ya no hay ventaja.</li>
-      <li>⚠︎ = ventaja de más de 15%: casi siempre es una cuota vieja o un error de la casa.</li>
-      <li>«Mediana» = Pinnacle no cotiza esa apuesta y se compara contra el resto de las casas: es menos confiable. «≈» = precio estimado a partir de los mercados principales de Pinnacle.</li>
-      <li>Las casas suelen limitar las cuentas de quien apuesta seguido donde pagan de más.</li>
+      <li><b>Ventaja</b>: cuánto paga de más. +5% = en promedio ganarías $5 cada $100.</li>
+      <li><b>⚠︎</b>: más de 15% de ventaja. Casi siempre es una cuota vieja o un error de la casa.</li>
+      <li><b>Pinnacle / ≈ / Mediana</b>: contra qué se compara. Pinnacle es lo más confiable; Mediana (el resto de las casas) lo menos.</li>
+    </ul>
+    <h3>Registro</h3>
+    <ul>
+      <li>Cada vez que traés cuotas, se guarda sola cada apuesta con ventaja, con la cuota de ese momento.</li>
+      <li>Cuando terminan los partidos, <b>↻ Actualizar todo</b> las liquida a 1 unidad cada una.</li>
+      <li>Los filtros de arriba también se aplican al registro: así ves, por ejemplo, cómo te habría ido apostando solo en tus casas a cuotas de 1,50 a 2.</li>
+      <li><b>Le ganó al cierre</b> es lo primero que hay que mirar: si tu cuota fue mejor que el precio justo justo antes del partido. Si pasa seguido, la ventaja es real.</li>
+      <li>Las <b>unidades</b> necesitan cientos de apuestas para dejar de ser suerte. Con pocas, no saques conclusiones.</li>
+      <li>Se guarda en este dispositivo: actualizá siempre desde el mismo, y lo más cerca posible del partido.</li>
+    </ul>
+    <h3>Cuidados</h3>
+    <ul>
+      <li>Las cuotas cambian: confirmá siempre en tu casa antes de apostar.</li>
+      <li>Solo funciona antes del partido, no en vivo.</li>
+      <li>Las casas suelen limitar a quien apuesta seguido donde pagan de más.</li>
+      <li>Apostá montos chicos y parejos: las rachas malas son normales.</li>
     </ul>
   </details>
   <div class="row"><div class="seg" id="cmpmode"><button data-cmpmode="now">Ahora</button><button data-cmpmode="log">Registro</button></div><div class="seg cmp-now" id="cmpday"><button data-cmpday="0">Hoy</button><button data-cmpday="1">Mañana</button></div></div>
