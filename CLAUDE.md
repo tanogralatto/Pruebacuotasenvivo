@@ -24,3 +24,9 @@ y a esta lista.
 
 Después de encender/apagar: commit, push y avisar que hay que pasarlo a `main`
 para que se vea en GitHub Pages.
+
+## Estrategia AEG oculta
+
+La pestaña **Estrategia AEG** está oculta siempre (no solo en modo video), a pedido del usuario:
+regla CSS `#tabStrategy,#ghStrategyView{display:none!important}` (comentario "ESTRATEGIA AEG OCULTA")
+y `if(which==='strategy')which='scanner'` en `showTab`. Para volver a mostrarla, borrar las dos cosas.
