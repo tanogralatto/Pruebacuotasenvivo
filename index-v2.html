@@ -1652,7 +1652,8 @@ async function analizar(){
   }
   try{logPredictions(out,bm());if(bm()==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
   // Goles esperados del partido completo de cada equipo (los del mercado +2,5): los usa el hándicap asiático.
-  const ftLam=new Map(), ftWhy=new Map();
+  const ftLam=new Map(), ftWhy=new Map(), htLam=new Map();
+  if(bm()==='ht05')for(const r of out){if(r.poisson&&r.poisson.ok)htLam.set(String(r.fx.id),r.poisson.lambdas)}
   if(bm()==='over25')for(const r of out){if(r.poisson&&r.poisson.ok)ftLam.set(String(r.fx.id),r.poisson.lambdas);else ftWhy.set(String(r.fx.id),r.poisson&&r.poisson.reason||'');}
   // Los otros dos mercados: mismo historial y mismas cuotas, solo para el registro (y el λ del 1T para En Vivo).
   for(const mk of Object.keys(oddsByMarket)){
@@ -1665,9 +1666,14 @@ async function analizar(){
         return {fx:f,poisson};
       });
       logPredictions(extra,mk);
-      if(mk==='ht05')saveLambdas(extra);
+      if(mk==='ht05'){saveLambdas(extra);for(const x of extra)if(x.poisson&&x.poisson.ok)htLam.set(String(x.fx.id),x.poisson.lambdas)}
       if(mk==='over25')for(const x of extra){if(x.poisson&&x.poisson.ok)ftLam.set(String(x.fx.id),x.poisson.lambdas);else ftWhy.set(String(x.fx.id),x.poisson&&x.poisson.reason||'');}
     }catch(e){state.errors.push('Registro de '+mk+': '+e.message);}
+  }
+  // Goles esperados del Poisson (1T y partido completo) para mostrar en la tarjeta, sea cual sea el mercado elegido.
+  for(const r of out){
+    const lam=l=>l&&Number.isFinite(l.home)&&Number.isFinite(l.away)?{home:l.home,away:l.away}:null;
+    r.lams={ht:lam(htLam.get(String(r.fx.id))),ft:lam(ftLam.get(String(r.fx.id)))};
   }
   // Hándicap asiático (etapa 1: solo se muestra; todavía no se registra ni se valida).
   if(window.TanoAsian)for(const r of out){
@@ -1870,6 +1876,8 @@ function realHtml(r){
     metric('Cuota real',x.fair?fmtNum(x.fair):'—','','1 ÷ % real. Temporada actual + anterior de cada equipo, como BetPractice.')+
     metric(o?'Mejor cuota · '+esc(o.bookmaker||'casa no informada'):'Cuota prepartido '+M.name,o?Number(o.price).toFixed(2):'No disponible')+
     metric('EV',ev==null?'—':(ev>0?'+':'')+fmtNum(ev*100,1)+'%',ev==null?'':'color:'+(ev>=0?'var(--c4)':'var(--c1)'),'Cuota de la casa ÷ cuota real − 1. Verde = la casa paga más que la cuota real.')+
+    (r.lams?metric('Goles esperados 1T',r.lams.ht?fmtNum(r.lams.ht.home+r.lams.ht.away)+'<small class="real-frac">Poisson · '+fmtNum(r.lams.ht.home)+' + '+fmtNum(r.lams.ht.away)+'</small>':'—','','Goles que el modelo Poisson espera en el primer tiempo (local + visita).')+
+      metric('Goles esperados partido',r.lams.ft?fmtNum(r.lams.ft.home+r.lams.ft.away)+'<small class="real-frac">Poisson · '+fmtNum(r.lams.ft.home)+' + '+fmtNum(r.lams.ft.away)+'</small>':'—','','Goles que el modelo Poisson espera en los 90 minutos (local + visita).'):'')+
     '</div>'+poissonLine+'</section>';
 }
 // Bloque por equipo (dos columnas): racha de gol en el 1T, últimos 10, % real del mercado y promedio de goles.
@@ -2174,7 +2182,7 @@ function favoriteForView(id,origin){
   }
   const result=state.results.find(x=>String(x.fx.id)===key);
   const fx=result?.fx||state.fixtures.find(x=>String(x.id)===key);
-  return fx?{fx,result,analysis:result?{avg:result.avg,n:result.n,tr:result.tr,...(result.streak?{streak:result.streak}:{}),...(result.real!==undefined?{real:result.real,odds:result.odds||null}:{})}:null}:null;
+  return fx?{fx,result,analysis:result?{avg:result.avg,n:result.n,tr:result.tr,...(result.streak?{streak:result.streak}:{}),...(result.real!==undefined?{real:result.real,odds:result.odds||null}:{}),...(result.lams?{lams:result.lams}:{})}:null}:null;
 }
 function refreshFavoriteViews(){
   renderFavorites();renderVipFavorites();renderResults();renderLive();
@@ -2214,7 +2222,7 @@ function renderSavedFavoriteCard(f,group){
   const savedPoisson=f.poisson||(currentResult&&currentResult.poisson&&(!f.market||f.market===marketDefs[state.market].short)?currentResult.poisson:undefined);
   if(a&&Array.isArray(a.tr)){
     const realSrc=a.real!==undefined?a:(currentResult&&currentResult.real!==undefined?currentResult:null);
-    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson,streak,...(realSrc?{real:realSrc.real,odds:realSrc.odds||null}:{})};
+    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson,streak,...(realSrc?{real:realSrc.real,odds:realSrc.odds||null}:{}),lams:a.lams||(currentResult&&currentResult.lams)||null};
     // La tarjeta se dibuja con el mercado con el que se guardó el favorito, no con el que está elegido ahora en el Escáner
     // (si no, con «Hándicap asiático» elegido todos los favoritos salían vacíos, con «—»).
     let html,prevMarket=state.market;
