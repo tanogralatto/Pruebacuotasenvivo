@@ -253,6 +253,9 @@ details.guide th{color:var(--muted);font-weight:600}
 .cmpr .r{text-align:right;flex:none;font-family:var(--mono);font-size:15px}
 .cmpr .r .bkn{display:block;font-family:inherit;font-size:12px;color:var(--muted);font-weight:400}
 .cmpr .cmo{font-size:12.5px;color:var(--muted);margin-top:6px}
+.xs table.cmplg td:first-child{min-width:92px}
+table.cmplg th,table.cmplg td{padding:8px 6px}
+#v-cmp.log .cmp-now,#v-cmp:not(.log) .cmp-log{display:none!important}
 .cmpodd{width:80px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--text);font:inherit;font-family:var(--mono)}
 .cmpbooks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .cmpbooks button{background:none;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:13px;padding:4px 10px}
@@ -372,19 +375,46 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
 <section id="v-cmp" class="hidden">
   <h1>Comparador de casas</h1>
   <p class="small" style="margin-top:-4px">Cuotas de las casas que pagan <b>más que el mercado</b>. El precio del mercado es el de <b>Pinnacle sin margen</b> (o la mediana de las casas si Pinnacle no lo cotiza). No usa el modelo: es casa contra mercado.</p>
-  <details class="guide"><summary><b>Cómo leerlo</b></summary>
+  <details class="guide" id="cmpGuide">
+    <summary>📘 Cómo usar el Comparador</summary>
+    <h3>¿Para qué sirve?</h3>
+    <p>Muestra las apuestas en las que una casa paga más que el precio justo del mercado. El precio justo sale de <b>Pinnacle</b> (la casa más precisa) sin su margen. No depende del modelo: es casa contra mercado.</p>
+    <h3>Paso a paso (vista Ahora)</h3>
+    <ol>
+      <li>Tocá <b>↻ Actualizar todo</b> en Partidos, o <b>↻ Actualizar cuotas</b> acá si ya actualizaste hoy.</li>
+      <li>En <b>Filtros y mis casas</b>, marcá las casas donde tenés cuenta y activá <b>Solo mis casas</b>.</li>
+      <li>Si querés, poné un rango de cuota (por ejemplo, de 1,50 a 2,00) y una ventaja mínima.</li>
+      <li>Elegí una apuesta, entrá a tu casa y confirmá que la cuota siga igual o más alta. Si bajó de la <b>Justa</b>, ya no tiene ventaja.</li>
+      <li>Si apostás, tocá <b>＋</b> para anotarla en Mis apuestas.</li>
+    </ol>
+    <h3>Cómo leer cada apuesta</h3>
     <ul>
       <li><b>Paga</b>: la cuota de esa casa. <b>Justa</b>: la cuota que corresponde al precio del mercado.</li>
-      <li><b>Ventaja</b>: cuánto paga de más. +5% = en promedio ganarías $5 cada $100 apostados.</li>
-      <li>Las cuotas son de la última actualización: <b>confirmá siempre la cuota en tu casa</b> antes de apostar. Si bajó de la Justa, ya no hay ventaja.</li>
-      <li>⚠︎ = ventaja de más de 15%: casi siempre es una cuota vieja o un error de la casa.</li>
-      <li>«Mediana» = Pinnacle no cotiza esa apuesta y se compara contra el resto de las casas: es menos confiable. «≈» = precio estimado a partir de los mercados principales de Pinnacle.</li>
-      <li>Las casas suelen limitar las cuentas de quien apuesta seguido donde pagan de más.</li>
+      <li><b>Ventaja</b>: cuánto paga de más. +5% = en promedio ganarías $5 cada $100.</li>
+      <li><b>⚠︎</b>: más de 15% de ventaja. Casi siempre es una cuota vieja o un error de la casa.</li>
+      <li><b>Pinnacle / ≈ / Mediana</b>: contra qué se compara. Pinnacle es lo más confiable; Mediana (el resto de las casas) lo menos.</li>
+    </ul>
+    <h3>Registro</h3>
+    <ul>
+      <li>Cada vez que traés cuotas, se guarda sola cada apuesta con ventaja, con la cuota de ese momento.</li>
+      <li>Cuando terminan los partidos, <b>↻ Actualizar todo</b> las liquida a 1 unidad cada una.</li>
+      <li>Los filtros de arriba también se aplican al registro: así ves, por ejemplo, cómo te habría ido apostando solo en tus casas a cuotas de 1,50 a 2.</li>
+      <li><b>Le ganó al cierre</b> es lo primero que hay que mirar: si tu cuota fue mejor que el precio justo justo antes del partido. Si pasa seguido, la ventaja es real.</li>
+      <li>Las <b>unidades</b> necesitan cientos de apuestas para dejar de ser suerte. Con pocas, no saques conclusiones.</li>
+      <li>Se guarda en este dispositivo: actualizá siempre desde el mismo, y lo más cerca posible del partido.</li>
+    </ul>
+    <h3>Cuidados</h3>
+    <ul>
+      <li>Las cuotas cambian: confirmá siempre en tu casa antes de apostar.</li>
+      <li>Solo funciona antes del partido, no en vivo.</li>
+      <li>Las casas suelen limitar a quien apuesta seguido donde pagan de más.</li>
+      <li>Apostá montos chicos y parejos: las rachas malas son normales.</li>
     </ul>
   </details>
-  <div class="row"><div class="seg" id="cmpday"><button data-cmpday="0">Hoy</button><button data-cmpday="1">Mañana</button></div></div>
-  <div class="oddsbar"><button class="btn pri owner-only" id="btnCmpOdds">↻ Actualizar cuotas</button><span class="small" id="cmpOddsWhen"></span></div>
+  <div class="row"><div class="seg" id="cmpmode"><button data-cmpmode="now">Ahora</button><button data-cmpmode="log">Registro</button></div><div class="seg cmp-now" id="cmpday"><button data-cmpday="0">Hoy</button><button data-cmpday="1">Mañana</button></div></div>
+  <div class="oddsbar cmp-now"><button class="btn pri owner-only" id="btnCmpOdds">↻ Actualizar cuotas</button><span class="small" id="cmpOddsWhen"></span></div>
   <div class="prog hidden" id="cmpProg"><i></i></div>
+  <p class="small cmp-log" style="margin:10px 0 0">Cada vez que traés cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guarda, antes del partido, cada apuesta en la que alguna casa paga más que el mercado, con la cuota de ese momento. Después del partido se liquida a <b>1 unidad</b> por apuesta. Se aplican los mismos filtros de arriba (mercado, cuotas, ventaja mínima, mis casas, Pinnacle).</p>
   <div class="tools"><input type="search" id="cmpq" placeholder="Buscar equipo"><select id="cmpmk"><option value="">Todos los mercados</option><option value="res">Resultado (1X2 y doble oportunidad)</option><option value="goles">Goles del partido</option><option value="ambos">Ambos marcan</option><option value="equipo">Goles por equipo</option><option value="hand">Hándicap asiático</option><option value="corners">Córners</option></select></div>
   <details class="filters box" id="cmpf"><summary><b>Filtros y mis casas</b> <span class="small" id="cmpfSum"></span></summary>
     <div class="fl"><div class="fl-h"><b>Cuota</b> <span class="small">(dejá vacío para no limitar)</span></div><div class="row"><label class="small row" style="gap:6px">desde <input id="cmplo" type="text" inputmode="decimal" placeholder="1,50" class="cmpodd"></label><label class="small row" style="gap:6px">hasta <input id="cmphi" type="text" inputmode="decimal" placeholder="2,00" class="cmpodd"></label><button type="button" class="btn" id="cmpOddClear" style="padding:6px 10px;font-size:13px">Borrar</button></div></div>
@@ -1096,6 +1126,7 @@ async function updateAll(){
     try{localStorage.removeItem('tg:first')}catch(e){}
     const esp=state.esp=(await DB.get('esp'))||{};
     const areg=state.areg=(await DB.get('areg'))||{};
+    const creg=await loadCreg();
     for(const d of dates){
       const day={date:d,ts:Date.now(),fx:[]};
       const byL=new Map();for(const f of fixtures[d])if(odds[d].has(String(f.id))){const k=modelLid(f.lid);if(!byL.has(k))byL.set(k,[]);byL.get(k).push(f)}
@@ -1126,7 +1157,7 @@ async function updateAll(){
               a.rt={ah:topPct(fit,f.hid,'attack','high'),dh:topPct(fit,f.hid,'defence','low'),aa:topPct(fit,f.aid,'attack','high'),da:topPct(fit,f.aid,'defence','low')};
               if(!o.size)a.reason='La API no trae cuotas legibles para este partido.';
               else{
-                buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);
+                buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);recordCmp(a,creg);
                 const m1x2=F.market1x2(o);
                 if(m1x2&&f.ts*1000>Date.now()&&!(reg[f.id]&&Number.isFinite(reg[f.id].hg))){
                   const s=F.summarize(F.scoreMatrix(a.lam.home,a.lam.away,a.lam.rho));
@@ -1136,7 +1167,7 @@ async function updateAll(){
             }
           }
           // Sin modelo, igual se muestran los mercados con el precio de las casas.
-          if(!a.lam){const o=getOdds(d,f.id);if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg)}}
+          if(!a.lam){const o=getOdds(d,f.id);if(o.size){a.noModel=a.reason;buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);recordCmp(a,creg)}}
           day.fx.push(a);
         }
         await sleep(0);
@@ -1183,9 +1214,9 @@ async function updateAll(){
     const ids=Object.keys(reg);if(ids.length>40000)ids.sort((a,b)=>reg[a].ts-reg[b].ts).slice(0,ids.length-40000).forEach(k=>delete reg[k]);
     await DB.set('reg',reg);
     settleEsp(esp,gameById);await DB.set('esp',esp);
-    settleAlpha(areg,gameById);
-    try{const n=await settleAlphaFetch(areg,t=>say(t));if(n)say(`Lecturas selladas: ${n} liquidadas`)}catch(e){if(e.fatal)throw e;warn.push('Lecturas: '+e.message)}
-    await DB.set('areg',areg);
+    settleAlpha(areg,gameById);settleAlpha(creg,gameById);
+    try{const n=await settleAlphaFetch(withCreg(areg,creg),t=>say(t));if(n)say(`Lecturas selladas y registro: ${n} liquidadas`)}catch(e){if(e.fatal)throw e;warn.push('Lecturas: '+e.message)}
+    await DB.set('areg',areg);trimCreg(creg);await DB.set('creg',creg);
     prog(7,8);
     // 7) Precisión de todas las ligas con historial.
     await computePrecision(allLeagues,reg,t=>say(t));
@@ -1564,7 +1595,7 @@ async function refreshAllOdds(ui){
   state.running=true;state.calls=0;$(ui.btn).disabled=true;st.classList.remove('err');
   try{
     await loadBets();
-    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{},areg=state.areg=state.areg||(await DB.get('areg'))||{};
+    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{},areg=state.areg=state.areg||(await DB.get('areg'))||{},creg=await loadCreg();
     let n=0;const days=[dayStr(0),dayStr(1)];
     for(const [i,d] of days.entries()){
       const day=await getDay(d);if(!day)continue;
@@ -1574,11 +1605,11 @@ async function refreshAllOdds(ui){
       for(const a of day.fx){
         const its=m.get(String(a.id));if(!its||a.ts*1000<=Date.now())continue;
         const o=F.parseOdds(its);if(!o.size)continue;
-        buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);a.readAt=Date.now();n++;
+        buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);recordCmp(a,creg);a.readAt=Date.now();n++;
       }
       day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
     }
-    await DB.set('first',first);await DB.set('esp',esp);await DB.set('areg',areg);if(betsDirty)await saveBets();
+    await DB.set('first',first);await DB.set('esp',esp);await DB.set('areg',areg);trimCreg(creg);await DB.set('creg',creg);if(betsDirty)await saveBets();
     st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`;state.lastCalls=state.calls;scheduleQuota();
   }catch(e){st.textContent=e.message;st.classList.add('err')}
   pg.classList.add('hidden');state.running=false;$(ui.btn).disabled=false;
@@ -1596,22 +1627,49 @@ function setBookTokens(list){
   if(window.tgCloud&&window.tgCloud.user)cloudPush().catch(()=>{});
 }
 const isMine=bk=>bookTokens().some(t=>{try{return new RegExp(t,'i').test(bk)}catch(e){return false}});
+// Casas que pagan más que el precio sin margen de una línea: las ofertas, la mejor cuota y la de tus casas
+// (sin Pinnacle, que es la referencia). Devuelve [[casa, cuota]] de mayor a menor cuota.
+function cmpOffers(r){
+  const by=new Map();
+  const add=(bk,pr)=>{if(!bk||!(pr>1)||/pinnacle/i.test(bk))return;if(!(by.get(bk)>=pr))by.set(bk,Number(pr))};
+  for(const [bk,pr] of r.of||[])add(bk,pr);
+  add(r.bk,r.pr);
+  if(Array.isArray(r.my))add(r.my[1],r.my[0]);
+  return [...by].filter(([,pr])=>pr*r.m>1).sort((x,y)=>y[1]-x[1]);
+}
+// Aplica los filtros de cuota, mis casas y ventaja mínima a [{bk,pr,adv}]; deja la mejor primero.
+function cmpPick(list,f){
+  list=list.filter(x=>x.adv>0&&(!f.lo||x.pr>=f.lo-1e-9)&&(!f.hi||x.pr<=f.hi+1e-9)&&(!f.mine||isMine(x.bk))).sort((x,y)=>y.pr-x.pr);
+  return list.length&&list[0].adv*100>=f.min?list:[];
+}
+/* ---------------- registro del comparador ---------------- */
+// Se guarda (una sola vez) cada línea en la que alguna casa paga más que el mercado, con las casas y cuotas de
+// ese momento. Mientras el partido no empieza se actualiza solo el precio justo de cierre (para el CLV).
+// Queda en este dispositivo (no se sube a la cuenta: puede ser muy grande).
+const CREG_MAX=20000; // como las lecturas selladas
+async function loadCreg(){return state.creg||(state.creg=(await DB.get('creg'))||{})}
+function recordCmp(a,creg){
+  if(!creg||!a.rows||a.ts*1000<=Date.now())return;
+  for(const r of a.rows){
+    if(!(r.m>0&&r.m<1)||!okCornerRow(r))continue;
+    const g=CMP_MK[String(r.k).split(':')[0]];if(!g)continue;
+    const id=a.id+'|'+r.k,e=creg[id];
+    if(e){e.mC=r3(r.m);e.cAt=Date.now();continue}
+    const of=cmpOffers(r).slice(0,8);if(!of.length)continue;
+    creg[id]={fid:a.id,k:r.k,l:r.l,g,lid:a.lid,ln:a.ln,lc:a.lc,hn:a.hn,an:a.an,ts:a.ts,m:r3(r.m),sh:r.sh?1:0,es:r.es?1:0,of,pr:of[0][1],at:Date.now()};
+  }
+}
+function trimCreg(creg){const ids=Object.keys(creg);if(ids.length>CREG_MAX)ids.sort((x,y)=>creg[x].ts-creg[y].ts).slice(0,ids.length-CREG_MAX).forEach(k=>delete creg[k])}
+// Liquida con el historial de las ligas y, lo que falte, junto con las lecturas selladas (mismas consultas).
+const withCreg=(areg,creg)=>{const o={};for(const [k,v] of Object.entries(areg||{}))o['a:'+k]=v;for(const [k,v] of Object.entries(creg||{}))o['c:'+k]=v;return o};
 function cmpLines(a,f){
   const out=[];
   for(const r of a.rows||[]){
     if(!(r.m>0&&r.m<1)||!okCornerRow(r))continue;
     const g=CMP_MK[String(r.k).split(':')[0]];if(!g||(f.mk&&g!==f.mk))continue;
     if(f.pin&&!r.sh)continue;
-    // Candidatas: las que pagan de más, la mejor cuota y la de tus casas (sin Pinnacle, que es la referencia).
-    const by=new Map();
-    const add=(bk,pr)=>{if(!bk||!(pr>1)||/pinnacle/i.test(bk))return;if(!(by.get(bk)>=pr))by.set(bk,Number(pr))};
-    for(const [bk,pr] of r.of||[])add(bk,pr);
-    add(r.bk,r.pr);
-    if(Array.isArray(r.my))add(r.my[1],r.my[0]);
-    let list=[...by].map(([bk,pr])=>({bk,pr,adv:pr*r.m-1})).filter(x=>x.adv>0&&(!f.lo||x.pr>=f.lo-1e-9)&&(!f.hi||x.pr<=f.hi+1e-9));
-    if(f.mine)list=list.filter(x=>isMine(x.bk));
-    list.sort((x,y)=>y.pr-x.pr);
-    if(!list.length||list[0].adv*100<f.min)continue;
+    const list=cmpPick(cmpOffers(r).map(([bk,pr])=>({bk,pr,adv:pr*r.m-1})),f);
+    if(!list.length)continue;
     out.push({a,r,g,best:list[0],others:list.slice(1,4)});
   }
   return out;
@@ -1628,8 +1686,60 @@ function renderCmpBooks(d){
   box.innerHTML=list.length?list.map(n=>`<button type="button" data-cbook="${esc(n)}" class="${isMine(n)?'on':''}">${esc(n)}</button>`).join(''):'<span class="small">Las casas aparecen después de traer las cuotas.</span>';
   box.classList.toggle('owner-only',true);
 }
+// Registro: cada línea guardada con la mejor casa que pasa los filtros de ahora, liquidada a 1 unidad.
+async function cmpLogRows(f){
+  const creg=await loadCreg(),q=$('#cmpq').value.trim().toLowerCase(),out=[],now=Date.now();
+  for(const e of Object.values(creg)){
+    if(f.mk&&e.g!==f.mk)continue;
+    if(f.pin&&!e.sh)continue;
+    if(q&&!(e.hn+' '+e.an).toLowerCase().includes(q))continue;
+    const list=cmpPick((e.of||[]).map(([bk,pr])=>({bk,pr,adv:pr*e.m-1})),f);if(!list.length)continue;
+    const b=list[0],r=e.res?e.res.r:null;
+    // CLV solo cuando el partido ya empezó (antes, el «cierre» todavía puede cambiar).
+    out.push({e,bk:b.bk,pr:b.pr,adv:b.adv,clv:e.mC>0&&e.ts*1000<=now?b.pr*e.mC-1:null,r,u:r==null?null:r>0?r*(b.pr-1):r});
+  }
+  return out.sort((x,y)=>y.e.ts-x.e.ts||y.adv-x.adv);
+}
+async function renderCmpLog(f){
+  const list=$('#cmpList'),rows=await cmpLogRows(f),done=rows.filter(x=>x.u!=null),pend=rows.length-done.length;
+  $('#cmpStatus').textContent='';
+  const creg=await loadCreg(),total=Object.keys(creg).length;
+  if(!rows.length){list.innerHTML=total?`<div class="empty">Hay ${total} apuestas registradas, pero ninguna pasa los filtros de arriba. Probá con «Ventaja mínima: Todas», sin rango de cuotas o desmarcando «Solo mis casas» / «Solo contra Pinnacle».</div>`:'<div class="empty">Todavía no hay nada registrado. Desde ahora, cada vez que traigas cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guardan las apuestas que pagan más que el mercado, y se liquidan solas cuando terminan los partidos.</div>';return}
+  const sgn=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
+  const sum=l=>{const d=l.filter(x=>x.u!=null),n=d.length,u=d.reduce((t,x)=>t+x.u,0),w=d.filter(x=>x.r>0).length,c=l.filter(x=>x.clv!=null);return {all:l.length,n,u,w,roi:n?u/n:null,cn:c.length,cw:c.filter(x=>x.clv>0).length,cm:c.length?c.reduce((t,x)=>t+x.clv,0)/c.length:null}};
+  const T=sum(rows),cls=v=>v>0?'c-g':v<0?'c-b':'';
+  let h=`<div class="tiles"><div class="tile"><div class="l">Resultado</div><div class="v ${cls(T.u)}">${T.n?sgn(T.u)+' u':'—'}</div><div class="small">${T.n} liquidadas · ${pend} pendientes</div></div>
+    <div class="tile"><div class="l">ROI</div><div class="v ${cls(T.roi)}">${T.n?spct(T.roi):'—'}</div><div class="small">1 u por apuesta</div></div>
+    <div class="tile"><div class="l">Le ganó al cierre</div><div class="v ${T.cn?cls(T.cm):''}">${T.cn?pct(T.cw/T.cn,0):'—'}</div><div class="small">${T.cn?'CLV promedio '+spct(T.cm):'sin precio de cierre todavía'}</div></div></div>`;
+  const row=(name,l)=>{const x=sum(l);return `<tr><td>${name}</td><td>${x.n}/${x.all}</td><td>${x.n?pct(x.w/x.n,0):'—'}</td><td class="${cls(x.u)}">${x.n?sgn(x.u):'—'}</td><td class="${cls(x.roi)}">${x.n?spct(x.roi):'—'}</td><td class="${cls(x.cm)}">${x.cn?spct(x.cm):'—'}</td></tr>`};
+  const table=(title,groups)=>{let t=`<div class="xs" style="margin-top:10px"><table class="lg cmplg"><thead><tr><th>${title}</th><th title="Liquidadas / registradas">Liq.</th><th>Acert.</th><th>Unid.</th><th>ROI</th><th>CLV</th></tr></thead><tbody>`;for(const [n,l] of groups)if(l.length)t+=row(n,l);return t+'</tbody></table></div>'};
+  const band=(lo,hi)=>rows.filter(x=>x.adv>=lo&&x.adv<hi);
+  h+=table('Ventaja',[['0 a 2%',band(0,0.02)],['2 a 5%',band(0.02,0.05)],['5 a 10%',band(0.05,0.10)],['10 a 15%',band(0.10,0.15)],['⚠︎ más de 15%',band(0.15,99)]]);
+  const MKN={res:'Resultado',goles:'Goles del partido',ambos:'Ambos marcan',equipo:'Goles por equipo',hand:'Hándicap asiático',corners:'Córners'};
+  h+=table('Mercado',Object.entries(MKN).map(([k,n])=>[n,rows.filter(x=>x.e.g===k)]));
+  h+=table('Cuota',[['hasta 1,50',rows.filter(x=>x.pr<1.5)],['1,50 a 2,00',rows.filter(x=>x.pr>=1.5&&x.pr<2)],['2,00 a 3,00',rows.filter(x=>x.pr>=2&&x.pr<3)],['3,00 o más',rows.filter(x=>x.pr>=3)]]);
+  h+=table('Referencia',[['Pinnacle',rows.filter(x=>x.e.sh&&!x.e.es)],['≈ Pinnacle',rows.filter(x=>x.e.sh&&x.e.es)],['Mediana',rows.filter(x=>!x.e.sh)]]);
+  const byBk=new Map();for(const x of rows){if(!byBk.has(x.bk))byBk.set(x.bk,[]);byBk.get(x.bk).push(x)}
+  h+=table('Casa',[...byBk].sort((a,b)=>b[1].length-a[1].length).slice(0,12));
+  const last=done.slice(0,25);
+  if(last.length)h+=`<details class="guide" style="margin-top:10px"><summary>Últimas ${last.length} liquidadas</summary><div class="xs" style="margin-top:8px"><table class="lg"><thead><tr><th>Apuesta</th><th>Casa</th><th>Ventaja</th><th>Resultado</th></tr></thead><tbody>${last.map(x=>`<tr><td>${esc(x.e.l)}<span class="cn">${esc(x.e.hn)} vs ${esc(x.e.an)} · ${new Date(x.e.ts*1000).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}${x.e.res&&Number.isInteger(x.e.res.hg)?' · '+x.e.res.hg+'-'+x.e.res.ag:''}</span></td><td>${esc(x.bk)} ${dec(x.pr)}</td><td>${spct(x.adv)}</td><td class="${cls(x.u)}">${sgn(x.u)}</td></tr>`).join('')}</tbody></table></div></details>`;
+  h+=`<div class="row" style="margin-top:10px"><button class="btn" id="cmpCsv">Descargar registro (CSV)</button></div>
+    <p class="small"><b>Liq.</b>: liquidadas / registradas. <b>CLV</b>: cuánto mejor fue esa cuota que el precio justo del mercado justo antes del partido (la última vez que trajiste cuotas). Si es positivo seguido, la ventaja es real aunque los resultados todavía no acompañen. Con menos de unas 300 liquidadas, las unidades son casi todo suerte: mirá primero el CLV. El registro queda en este dispositivo.</p>`;
+  list.innerHTML=h;
+}
+async function cmpCsv(){
+  const rows=await cmpLogRows(cmpFilters()),q=v=>{const t=String(v==null?'':v);return /[";\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t},n=(v,d)=>v==null?'':Number(v).toFixed(d).replace('.',',');
+  const head=['Fecha','Hora','País','Liga','Local','Visitante','Apuesta','Casa','Cuota','Cuota justa','Ventaja %','Referencia','Cuota justa al cierre','CLV %','Marcador','Resultado','Unidades'];
+  const lines=rows.map(x=>{const e=x.e,dt=new Date(e.ts*1000);return [dt.toLocaleDateString('es-AR',{timeZone:TZ}),dt.toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit',hour12:false}),e.lc,e.ln,e.hn,e.an,e.l,x.bk,n(x.pr,2),n(1/e.m,2),n(x.adv*100,1),e.sh?(e.es?'≈ Pinnacle':'Pinnacle'):'Mediana',e.mC>0&&x.clv!=null?n(1/e.mC,2):'',x.clv==null?'':n(x.clv*100,1),e.res&&Number.isInteger(e.res.hg)?e.res.hg+'-'+e.res.ag:'',x.r==null?'pendiente':x.r>0?(x.r<1?'media ganada':'ganada'):x.r<0?(x.r>-1?'media perdida':'perdida'):'devuelta',n(x.u,2)].map(q).join(';')});
+  const blob=new Blob(['﻿'+[head.join(';'),...lines].join('\n')],{type:'text/csv;charset=utf-8'});
+  const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download='registro-comparador-'+dayStr(0)+'.csv';document.body.appendChild(link);link.click();
+  setTimeout(()=>{URL.revokeObjectURL(link.href);document.body.removeChild(link)},1000);
+}
 async function renderCmp(){
   if(route().v!=='cmp')return;
+  const mode=LS.get('tg:cmpmode','now')==='log'?'log':'now';
+  $('#v-cmp').classList.toggle('log',mode==='log');
+  $$('#cmpmode [data-cmpmode]').forEach(b=>b.classList.toggle('on',b.dataset.cmpmode===mode));
   const day=String(LS.get('tg:cmpday','0')),f=cmpFilters(),list=$('#cmpList');
   $$('#cmpday [data-cmpday]').forEach(b=>b.classList.toggle('on',b.dataset.cmpday===day));
   $$('#cmpmin [data-cmin]').forEach(b=>b.classList.toggle('on',Number(b.dataset.cmin)===f.min));
@@ -1643,6 +1753,7 @@ async function renderCmp(){
   $('#cmpfSum').textContent='· '+[range,f.min?'+'+f.min+'%':'todas',f.mine?'solo mis casas':'',f.pin?'solo Pinnacle':'con mediana',f.sort==='time'?'por hora':'por ventaja'].filter(Boolean).join(' · ');
   const d=await getDay(dayStr(Number(day)));
   renderCmpBooks(d);
+  if(mode==='log'){await renderCmpLog(f);return}
   if(!d){list.innerHTML=state.key?'<div class="empty">Tocá <b>↻ Actualizar todo</b> en Partidos para traer los partidos y las cuotas del día.</div>':'<div class="empty">Primero cargá tu clave de API-Football en <a href="#/ajustes">Ajustes</a>, o entrá con tu cuenta (☁︎ arriba).</div>';$('#cmpOddsWhen').textContent='';return}
   $('#cmpOddsWhen').textContent='Cuotas de '+ago(d.oddsTs||d.ts);
   if(f.mine&&!mine.length){list.innerHTML='<div class="empty">Marcá tus casas en <b>Filtros y mis casas</b>, o desmarcá «Solo mis casas».</div>';$('#cmpStatus').textContent='';return}
@@ -2068,7 +2179,7 @@ $('#btnAOdds').addEventListener('click',async()=>{
   state.running=true;state.calls=0;$('#btnAOdds').disabled=true;$('#btnUpdate').disabled=true;
   try{
     await loadBets();state.prec=state.prec||await DB.get('prec');
-    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{},areg=state.areg=state.areg||(await DB.get('areg'))||{};
+    const first=(await DB.get('first'))||{},esp=state.esp=state.esp||(await DB.get('esp'))||{},areg=state.areg=state.areg||(await DB.get('areg'))||{},creg=await loadCreg();
     let n=0;
     for(const [i,d] of [dayStr(0),dayStr(1)].entries()){
       const day=await getDay(d);if(!day)continue;
@@ -2081,11 +2192,11 @@ $('#btnAOdds').addEventListener('click',async()=>{
       for(const a of day.fx){
         if(a.ts*1000<=Date.now()||!po[String(a.id)])continue;
         const o=deserOdds(po[String(a.id)]);if(!o.size)continue;
-        buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);a.readAt=Date.now();n++;
+        buildRows(a,o,first);recordEsp(a,esp);sealAlpha(a,areg);recordCmp(a,creg);a.readAt=Date.now();n++;
       }
       day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
     }
-    await DB.set('first',first);await DB.set('esp',esp);await DB.set('areg',areg);if(betsDirty)await saveBets();
+    await DB.set('first',first);await DB.set('esp',esp);await DB.set('areg',areg);trimCreg(creg);await DB.set('creg',creg);if(betsDirty)await saveBets();
     try{if(window.tgCloud&&window.tgCloud.user)await cloudPush()}catch(e){}
     state.lastCalls=state.calls;
     say(`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`);
@@ -2216,6 +2327,8 @@ $('#btnUpdate').addEventListener('click',async()=>{
 });
 $('#btnMkOdds').addEventListener('click',()=>refreshAllOdds());
 $('#btnCmpOdds').addEventListener('click',()=>{if(!state.key){$('#cmpStatus').textContent='Primero cargá tu clave de API-Football en Ajustes.';return}refreshAllOdds({st:'#cmpStatus',pg:'#cmpProg',btn:'#btnCmpOdds',render:renderCmp})});
+$('#cmpmode').addEventListener('click',e=>{const b=e.target.closest('[data-cmpmode]');if(!b)return;LS.set('tg:cmpmode',b.dataset.cmpmode);renderCmp()});
+$('#cmpList').addEventListener('click',e=>{if(e.target.closest('#cmpCsv'))cmpCsv()});
 $('#cmpday').addEventListener('click',e=>{const b=e.target.closest('[data-cmpday]');if(!b)return;LS.set('tg:cmpday',b.dataset.cmpday);renderCmp()});
 $('#cmpmin').addEventListener('click',e=>{const b=e.target.closest('[data-cmin]');if(!b)return;LS.set('tg:cmin',Number(b.dataset.cmin));renderCmp()});
 $('#cmpMine').addEventListener('change',e=>{LS.set('tg:cmine',e.target.checked);renderCmp()});
@@ -2269,9 +2382,9 @@ $('#pBody').addEventListener('click',async e=>{
   if(!state.key){msg.textContent='Falta tu clave de API-Football.';return}
   state.running=true;state.calls=0;msg.textContent='Pidiendo resultados…';
   try{
-    const areg=state.areg||(state.areg=(await DB.get('areg'))||{});
-    const n=await settleAlphaFetch(areg,t=>{msg.textContent=t});
-    await DB.set('areg',areg);try{if(window.tgCloud&&window.tgCloud.user)await cloudPush()}catch(err){}
+    const areg=state.areg||(state.areg=(await DB.get('areg'))||{}),creg=await loadCreg();
+    const n=await settleAlphaFetch(withCreg(areg,creg),t=>{msg.textContent=t});
+    await DB.set('areg',areg);await DB.set('creg',creg);try{if(window.tgCloud&&window.tgCloud.user)await cloudPush()}catch(err){}
     state.running=false;await renderPrec();
     const m2=$('#sealMsg');if(m2)m2.textContent=`${n} liquidadas · ${state.calls} consultas.`;else say(`Lecturas selladas: ${n} liquidadas · ${state.calls} consultas.`);
   }catch(err){msg.textContent='No se pudo: '+err.message}
