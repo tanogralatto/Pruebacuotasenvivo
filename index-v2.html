@@ -120,6 +120,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .fav-card .fav-info b{display:block}
 .fav-card .fav-info span{font-size:13px;color:var(--muted)}
 .league{margin:0;font-size:13px;color:var(--muted)}
+.streak-box{display:grid;gap:6px;margin:0 0 10px;padding:9px 10px;border:1px solid var(--line,#ddd);border-radius:10px}
+.streak-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.streak-tag{font-size:12px;font-weight:700;padding:2px 7px;border-radius:999px}
+.streak-tag.ok{color:var(--c4);border:1px solid var(--c4)}.streak-tag.no{color:var(--c1);border:1px solid var(--c1)}
 .cells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .cell{border:1px solid var(--line);border-radius:6px;padding:10px;background:var(--bg);display:flex;flex-direction:column;gap:3px;min-width:0}
 .cell .lab{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.2}
@@ -1103,6 +1107,19 @@ function tramos(fx,L,V,H,market){
   ];
   return defs.map(([k,lab,full,games,target])=>({k,lab,full,target,games,...stat(games,market)}));
 }
+// Rachas de gol en el 1T de un equipo (cualquiera de los dos marcó al descanso), con todos sus partidos
+// terminados antes del encuentro analizado. cur: racha actual (goal=true con gol, false sin gol);
+// maxNo: la racha sin gol en el 1T más larga del historial bajado; n: partidos con resultado al descanso.
+function htStreak(fx,games){
+  const cutoff=Math.floor(new Date(fx.iso).getTime()/1000);
+  const ht=(games||[]).filter(g=>g.i!==fx.id&&Number.isFinite(g.d)&&g.d<cutoff&&Number.isInteger(g.fh)).sort((x,y)=>y.d-x.d);
+  if(!ht.length)return null;
+  const goal=ht[0].fh>=1;let cur=0;
+  for(const g of ht){if((g.fh>=1)===goal)cur++;else break}
+  let maxNo=0,run=0;
+  for(const g of ht){if(g.fh>=1)run=0;else{run++;if(run>maxNo)maxNo=run}}
+  return {goal,cur,maxNo,n:ht.length,since:ht[ht.length-1].d};
+}
 function resumen(tr){
   const p=tr.filter(t=>t.pct!==null).map(t=>t.pct);
   const n=p.length;
@@ -1589,7 +1606,7 @@ async function analizar(){
     const leagueKey=String(f.lid)+':'+String(f.season);
     const poisson=poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null,bm());
     if(poisson)poisson.market=bm();
-    out.push({fx:f,tr,poisson,...resumen(tr)});
+    out.push({fx:f,tr,poisson,streak:{home:htStreak(f,tg.get(f.hid)),away:htStreak(f,tg.get(f.aid))},...resumen(tr)});
   }
   try{logPredictions(out,bm());if(bm()==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
   // Goles esperados del partido completo de cada equipo (los del mercado +2,5): los usa el hándicap asiático.
@@ -1795,6 +1812,16 @@ function cellHtml(t){
   const short=t.games.length<t.target||t.valid<t.games.length;
   return `<div class="cell ${band(t.pct)}${short?' short':''}" title="${esc(t.full)}: ${t.hits}/${t.valid} válidos; objetivo ${t.target}"><span class="lab">${esc(t.lab)}</span><span class="pct">${Math.round(t.pct)}%</span><span class="cnt">${t.hits}/${t.valid}</span><span class="bar"><i style="--w:${t.pct}%"></i></span></div>`;
 }
+function streakHtml(r){
+  const s=r.streak;if(!s||(!s.home&&!s.away))return '';
+  const row=(name,x)=>{
+    if(!x)return '<div class="streak-row"><b>'+esc(name)+'</b><span class="small">sin datos del 1T</span></div>';
+    const now=x.goal?'<span class="streak-tag ok">'+x.cur+' seguido'+(x.cur===1?'':'s')+' CON gol 1T</span>':'<span class="streak-tag no">'+x.cur+' seguido'+(x.cur===1?'':'s')+' SIN gol 1T</span>';
+    const rec=x.maxNo?'Récord sin gol 1T: <b>'+x.maxNo+'</b> partido'+(x.maxNo===1?'':'s'):'Nunca estuvo sin gol en el 1T';
+    return '<div class="streak-row"><b>'+esc(name)+'</b>'+now+'<span class="small">'+rec+' · en sus últimos '+x.n+' partidos (desde '+esc(fmtDate(x.since))+')</span></div>';
+  };
+  return '<div class="streak-box"><div class="small" style="font-weight:700">Racha de gol en el 1T (todos sus partidos)</div>'+row(r.fx.hn,s.home)+row(r.fx.an,s.away)+'</div>';
+}
 function cardHtml(r,i){
   const f=r.fx;
   const dateTime=`${fmtDate(Math.floor(new Date(f.iso).getTime()/1000))} · ${fmtTime(f.iso)}`;
@@ -1807,6 +1834,7 @@ function cardHtml(r,i){
       <div class="result-expanded">
         <p class="league">${esc(f.lc)} · ${esc(f.ln)} · ${esc(marketDefs[state.market].short)}</p>
         <div class="result-actions"><span class="small">${state.market==='ah'?'Hándicap asiático · línea principal y mejor precio':`Promedio descriptivo · ${r.n} de 7 indicadores`}</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
+        ${streakHtml(r)}
         ${state.market==='ah'?(r.ah?ahHtml(r.ah,r.fx):''):`<div class="cells">${r.tr.map(cellHtml).join('')}</div>
         ${r.poisson!==undefined?poissonHtml(r.poisson):''}`}
         <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
