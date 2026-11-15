@@ -13,6 +13,7 @@
  * mejor reproduce los picks:
  *   scope   'all'    todas las competiciones del equipo · 'league' solo la liga del partido
  *   seasons 'cp'     temporada actual + anterior          · 'c' solo la actual
+ *            ('p' solo la anterior: no entra en la calibración, la usa la app si el usuario lo elige)
  *   venue   'both'   local y visitante (Home as Both)      · 'split' local en casa, visitante fuera
  *   pool    'pooled' suma de los dos equipos (Versus)      · 'avg' promedio de los dos % · 'min' el peor de los dos
  *
@@ -58,7 +59,7 @@
   function variantById(id) { return VARIANTS.find(v => v.id === id) || VARIANTS.find(v => v.id === DEFAULT_VARIANT); }
   function variantLabel(v) {
     v = typeof v === 'string' ? variantById(v) : v;
-    return POOLS[v.pool] + ' · ' + SCOPES[v.scope] + ' · ' + SEASONS[v.seasons] + ' · ' + VENUES[v.venue];
+    return POOLS[v.pool] + ' · ' + SCOPES[v.scope] + ' · ' + (SEASONS[v.seasons] || 'Solo temporada anterior') + ' · ' + VENUES[v.venue];
   }
 
   const hasHt = g => Number.isInteger(g.fh) && g.fh >= 0;
@@ -69,7 +70,7 @@
     const teamId = side === 'home' ? fx.hid : fx.aid;
     const cutoff = Math.floor(new Date(fx.iso).getTime() / 1000);
     const cur = Number(fx.season);
-    const allowed = variant.seasons === 'c' ? [cur] : [cur, cur - 1];
+    const allowed = variant.seasons === 'c' ? [cur] : variant.seasons === 'p' ? [cur - 1] : [cur, cur - 1];
     return (games || []).filter(g => {
       if (g.i === fx.id || !(g.d < cutoff)) return false;
       if (!allowed.includes(Number(g.s))) return false;

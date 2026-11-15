@@ -178,3 +178,15 @@ test('reglas de la clase: temporadas, rango de cuota, Under que se corta y prome
   const lowSmall = A.matchStats(seq(1, Array(16).fill([1, 2])), seq(2, Array(16).fill([1, 2])), fx, v);
   assert.deepEqual(A.evaluate(lowSmall, 'video', { maxFair: 1.25 }).fails, ['promedios']);
 });
+
+test('temporadas: actual + anterior, solo actual o solo anterior de cada equipo', () => {
+  const fx = { id: 99, iso: '2026-11-15T20:00:00Z', lid: 1, season: 2026, hid: 10, aid: 20 };
+  const g = (i, s, fh) => ({ i, d: 1700000000 + i, h: 10, a: 30 + i, fh, fs: [fh, 0], s, l: 1 });
+  const games = [g(1, 2026, 1), g(2, 2026, 0), g(3, 2025, 1), g(4, 2025, 1), g(5, 2024, 1)];
+  const base = A.variantById(A.DEFAULT_VARIANT);
+  const ids = seasons => A.teamSample(games, fx, 'home', { ...base, seasons }).map(x => x.i).sort();
+  assert.deepEqual(ids('cp'), [1, 2, 3, 4]); // la 2024 nunca entra
+  assert.deepEqual(ids('c'), [1, 2]);
+  assert.deepEqual(ids('p'), [3, 4]);
+  assert.match(A.variantLabel({ ...base, seasons: 'p' }), /Solo temporada anterior/);
+});
