@@ -120,6 +120,17 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .fav-card .fav-info b{display:block}
 .fav-card .fav-info span{font-size:13px;color:var(--muted)}
 .league{margin:0;font-size:13px;color:var(--muted)}
+/* Bloque por equipo de la tarjeta del Escáner (dos columnas) */
+.tc-wrap{margin:0 0 10px}.tc-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tc-col{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0}
+.tc-name{font-weight:800;font-size:15px;overflow-wrap:anywhere}.tc-role{font-size:12px;color:var(--muted);margin-bottom:6px}
+.tc-streak{display:flex;align-items:center;gap:8px;margin-bottom:6px}.tc-big{font-size:28px;font-weight:800;line-height:1}
+.tc-big.ok{color:var(--c4)}.tc-big.no{color:var(--c1)}
+.tc-dots{display:flex;flex-wrap:wrap;gap:2px;margin-bottom:8px}.tc-dots i{width:9px;height:9px;border-radius:50%;box-sizing:border-box}
+.tc-dots i.on{background:var(--c4)}.tc-dots i.off{border:1.5px solid var(--muted);opacity:.7}
+.tc-kv{display:flex;justify-content:space-between;gap:6px;font-size:13px;padding:4px 0;border-top:1px solid var(--line)}
+.tc-kv span{color:var(--muted)}.tc-kv b{text-align:right;white-space:nowrap}
+.tc-note{margin-top:6px}.real-frac{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:3px;font-family:inherit}
 .streak-box{display:grid;gap:6px;margin:0 0 10px;padding:9px 10px;border:1px solid var(--line,#ddd);border-radius:10px}
 .streak-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
 .streak-tag{font-size:12px;font-weight:700;padding:2px 7px;border-radius:999px}
@@ -1118,7 +1129,7 @@ function htStreak(fx,games){
   for(const g of ht){if((g.fh>=1)===goal)cur++;else break}
   let maxNo=0,run=0;
   for(const g of ht){if(g.fh>=1)run=0;else{run++;if(run>maxNo)maxNo=run}}
-  return {goal,cur,maxNo,n:ht.length,since:ht[ht.length-1].d};
+  return {goal,cur,maxNo,n:ht.length,since:ht[ht.length-1].d,last:ht.slice(0,10).map(g=>g.fh>=1?1:0)};
 }
 // Cuota real estilo BetPractice: veces que se dio el mercado ÷ partidos jugados, sumando los dos equipos.
 // Muestra de cada equipo: temporada actual + anterior completas (las del partido analizado), todas las
@@ -1853,23 +1864,31 @@ function realHtml(r){
   if(!x)return '<section class="poisson-panel"><div class="small">Cuota real: sin datos (no se pudieron bajar las temporadas de los equipos). Volvé a analizar.</div>'+poissonLine+'</section>';
   const warn=x.n<REAL_MIN_N?' ⚠️ muestra chica':'';
   const team=(name,t)=>'<b>'+esc(name)+'</b> '+t.hits+'/'+t.n;
-  const goals=(name,t)=>'<div class="streak-row"><b>'+esc(name)+'</b><span class="small">'+(t.total==null?'sin datos':fmtNum(t.total)+' goles por partido (a favor '+fmtNum(t.gf)+' · en contra '+fmtNum(t.ga)+')'+(t.ht!=null?' · 1T: '+fmtNum(t.ht):'')+' · '+t.games+' partidos')+'</span></div>';
   return '<section class="poisson-panel"><div class="poisson-grid">'+
-    metric('% real '+M.name,x.rate==null?'—':fmtPct(x.rate,1),'',x.hits+'/'+x.n+' partidos · '+team(r.fx.hn,x.home)+' · '+team(r.fx.an,x.away)+warn)+
+    metric('% real '+M.name,(x.rate==null?'—':fmtPct(x.rate,1))+'<small class="real-frac">'+x.hits+'/'+x.n+' partidos'+warn+'</small>','','Suma de los dos equipos: '+team(r.fx.hn,x.home)+' · '+team(r.fx.an,x.away)+'.')+
     metric('Cuota real',x.fair?fmtNum(x.fair):'—','','1 ÷ % real. Temporada actual + anterior de cada equipo, como BetPractice.')+
     metric(o?'Mejor cuota · '+esc(o.bookmaker||'casa no informada'):'Cuota prepartido '+M.name,o?Number(o.price).toFixed(2):'No disponible')+
     metric('EV',ev==null?'—':(ev>0?'+':'')+fmtNum(ev*100,1)+'%',ev==null?'':'color:'+(ev>=0?'var(--c4)':'var(--c1)'),'Cuota de la casa ÷ cuota real − 1. Verde = la casa paga más que la cuota real.')+
-    '</div><div class="streak-box" style="margin:10px 0 0"><div class="small" style="font-weight:700">Promedio de goles (temporada actual + anterior)</div>'+goals(r.fx.hn,x.home)+goals(r.fx.an,x.away)+'</div>'+poissonLine+'</section>';
+    '</div>'+poissonLine+'</section>';
 }
+// Bloque por equipo (dos columnas): racha de gol en el 1T, últimos 10, % real del mercado y promedio de goles.
 function streakHtml(r){
-  const s=r.streak;if(!s||(!s.home&&!s.away))return '';
-  const row=(name,x)=>{
-    if(!x)return '<div class="streak-row"><b>'+esc(name)+'</b><span class="small">sin datos del 1T</span></div>';
-    const now=x.goal?'<span class="streak-tag ok">'+x.cur+' seguido'+(x.cur===1?'':'s')+' CON gol 1T</span>':'<span class="streak-tag no">'+x.cur+' seguido'+(x.cur===1?'':'s')+' SIN gol 1T</span>';
-    const rec=x.maxNo?'Récord sin gol 1T: <b>'+x.maxNo+'</b> partido'+(x.maxNo===1?'':'s'):'Nunca estuvo sin gol en el 1T';
-    return '<div class="streak-row"><b>'+esc(name)+'</b>'+now+'<span class="small">'+rec+' · en sus últimos '+x.n+' partidos (desde '+esc(fmtDate(x.since))+')</span></div>';
+  const s=r.streak||{},x=r.real||null,M=MKT_TXT[state.market]||MKT_TXT.ht05;
+  if(!s.home&&!s.away&&!x)return '';
+  const kv=(k,v)=>'<div class="tc-kv"><span>'+k+'</span><b>'+v+'</b></div>';
+  const col=(name,role,st,t)=>{
+    let h='<div class="tc-col"><div class="tc-name">'+esc(name)+'</div><div class="tc-role">'+role+'</div>';
+    if(st){
+      h+='<div class="tc-streak"><span class="tc-big '+(st.goal?'ok':'no')+'">'+st.cur+'</span><span class="streak-tag '+(st.goal?'ok':'no')+'">'+(st.goal?'CON':'SIN')+' gol 1T</span></div>';
+      if(Array.isArray(st.last)&&st.last.length)h+='<div class="tc-dots" title="Últimos '+st.last.length+' partidos, el más nuevo a la izquierda">'+st.last.map(v=>'<i class="'+(v?'on':'off')+'"></i>').join('')+'</div>';
+    }else h+='<div class="small" style="margin:6px 0">Racha: sin datos</div>';
+    if(t)h+=kv(esc(M.name),t.n?t.hits+'/'+t.n+' · '+fmtPct(t.rate,0):'—');
+    if(st)h+=kv('Récord sin gol 1T',st.maxNo);
+    if(t)h+=kv('Goles x partido',fmtNum(t.total))+kv('A favor',fmtNum(t.gf))+kv('En contra',fmtNum(t.ga))+kv('Goles 1T',fmtNum(t.ht));
+    return h+'</div>';
   };
-  return '<div class="streak-box"><div class="small" style="font-weight:700">Racha de gol en el 1T (todos sus partidos)</div>'+row(r.fx.hn,s.home)+row(r.fx.an,s.away)+'</div>';
+  const note=x?' · % y goles: temporada actual + anterior':'';
+  return '<div class="tc-wrap"><div class="tc-cols">'+col(r.fx.hn,'local',s.home,x&&x.home)+col(r.fx.an,'visita',s.away,x&&x.away)+'</div><div class="small tc-note">● con gol en el 1T · ○ sin gol · el más nuevo a la izquierda'+note+'</div></div>';
 }
 function cardHtml(r,i){
   const f=r.fx;
