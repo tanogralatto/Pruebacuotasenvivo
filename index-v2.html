@@ -596,7 +596,7 @@ html.demo-mode .vip-only,html.demo-mode .vip-strategy-badge,html.demo-mode .vip-
     <div class="field" style="width:170px"><label for="minAvg">Promedio descriptivo mínimo</label>
       <select id="minAvg"><option value="0">Todos</option><option value="60">60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
     <label class="check"><input id="applyCriteria" type="checkbox"><span>Aplicar criterios</span></label>
-    <label class="check"><input id="onlyEv" type="checkbox"><span>Solo EV+ (Poisson)</span></label>
+    <label class="check"><input id="onlyEv" type="checkbox"><span>Solo EV+ (cuota real)</span></label>
     <label class="check hidden"><input id="onlyBeatMkt" type="checkbox"><span>Solo ligas donde le gana a las casas</span></label>
     <label class="check"><input id="showHints" type="checkbox" checked><span>Mostrar explicaciones</span></label>
     <button id="btnCopy" type="button">Copiar lista</button>
@@ -1120,6 +1120,26 @@ function htStreak(fx,games){
   for(const g of ht){if(g.fh>=1)run=0;else{run++;if(run>maxNo)maxNo=run}}
   return {goal,cur,maxNo,n:ht.length,since:ht[ht.length-1].d};
 }
+// Cuota real estilo BetPractice: veces que se dio el mercado ÷ partidos jugados, sumando los dos equipos.
+// Muestra de cada equipo: temporada actual + anterior completas (las del partido analizado), todas las
+// competiciones, local y visitante, solo partidos terminados antes del encuentro. También los promedios de goles.
+function realOdds(fx,homeGames,awayGames,market){
+  const cutoff=Math.floor(new Date(fx.iso).getTime()/1000),cur=Number(fx.season);
+  const team=(games,id)=>{
+    const seen=new Set();
+    const xs=(games||[]).filter(g=>g.i!==fx.id&&Number.isFinite(g.d)&&g.d<cutoff&&(Number(g.s)===cur||Number(g.s)===cur-1)&&!seen.has(g.i)&&seen.add(g.i));
+    const ok=xs.filter(g=>market==='ht05'?Number.isInteger(g.fh):Array.isArray(g.fs));
+    const hits=ok.filter(g=>hitFor(g,market)).length;
+    const ft=xs.filter(g=>Array.isArray(g.fs)&&g.fs.every(Number.isInteger)),ht=xs.filter(g=>Number.isInteger(g.fh));
+    const sum=(a,f)=>a.reduce((t,g)=>t+f(g),0),avg=(a,f)=>a.length?sum(a,f)/a.length:null;
+    const mine=g=>g.h===id?g.fs[0]:g.fs[1],theirs=g=>g.h===id?g.fs[1]:g.fs[0];
+    return {n:ok.length,hits,rate:ok.length?hits/ok.length:null,games:ft.length,
+      total:avg(ft,g=>g.fs[0]+g.fs[1]),gf:avg(ft,mine),ga:avg(ft,theirs),ht:avg(ht,g=>g.fh)};
+  };
+  const home=team(homeGames,fx.hid),away=team(awayGames,fx.aid);
+  const n=home.n+away.n,hits=home.hits+away.hits,rate=n?hits/n:null;
+  return {home,away,n,hits,rate,fair:rate?1/rate:null};
+}
 function resumen(tr){
   const p=tr.filter(t=>t.pct!==null).map(t=>t.pct);
   const n=p.length;
@@ -1530,6 +1550,13 @@ async function analizar(){
   const tasks=[];
   for(const id of teams.keys()) tasks.push(async()=>{tg.set(id,await teamGames(id))});
   for(const [k,[a,b]] of pairs) tasks.push(async()=>{hg.set(k,await h2hGames(a,b))});
+  // Cuota real: temporada actual y anterior completas de cada equipo (la anterior queda 7 días en caché).
+  const sg=new Map();
+  for(const f of fxs)for(const id of [f.hid,f.aid])for(const s of [Number(f.season),Number(f.season)-1]){
+    const k=id+':s'+s;if(!Number.isFinite(s)||sg.has(k))continue;sg.set(k,null);
+    tasks.push(async()=>{sg.set(k,await teamSeasonGames(id,s,s===Number(f.season)))});
+  }
+  const seasonsOf=(id,f)=>{const a=sg.get(id+':s'+Number(f.season)),b=sg.get(id+':s'+(Number(f.season)-1));return a&&b?a.concat(b):null};
   const total=tasks.length;let done=0,idx=0;
   prog(0,total);
   const worker=async()=>{
@@ -1606,7 +1633,10 @@ async function analizar(){
     const leagueKey=String(f.lid)+':'+String(f.season);
     const poisson=poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null,bm());
     if(poisson)poisson.market=bm();
-    out.push({fx:f,tr,poisson,streak:{home:htStreak(f,tg.get(f.hid)),away:htStreak(f,tg.get(f.aid))},...resumen(tr)});
+    const sh=seasonsOf(f.hid,f),sa=seasonsOf(f.aid,f),oi=prematchOddsByFixture.get(String(f.id));
+    const real=sh&&sa?realOdds(f,sh,sa,bm()):null;
+    const odds=oi?((bm()==='ht05'?oi.over05:oi.best)||null):null;
+    out.push({fx:f,tr,poisson,real,odds:odds?{price:Number(odds.price),bookmaker:odds.bookmaker||''}:null,streak:{home:htStreak(f,tg.get(f.hid)),away:htStreak(f,tg.get(f.aid))},...resumen(tr)});
   }
   try{logPredictions(out,bm());if(bm()==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
   // Goles esperados del partido completo de cada equipo (los del mercado +2,5): los usa el hándicap asiático.
@@ -1812,6 +1842,25 @@ function cellHtml(t){
   const short=t.games.length<t.target||t.valid<t.games.length;
   return `<div class="cell ${band(t.pct)}${short?' short':''}" title="${esc(t.full)}: ${t.hits}/${t.valid} válidos; objetivo ${t.target}"><span class="lab">${esc(t.lab)}</span><span class="pct">${Math.round(t.pct)}%</span><span class="cnt">${t.hits}/${t.valid}</span><span class="bar"><i style="--w:${t.pct}%"></i></span></div>`;
 }
+const REAL_MIN_N=20; // con menos partidos la cuota real es poco confiable: se avisa y no cuenta para «Solo EV+»
+function realEv(r){const x=r&&r.real,o=r&&(r.odds||(r.poisson&&r.poisson.marketOdds));return x&&x.fair&&o&&Number(o.price)>1?Number(o.price)/x.fair-1:null}
+function realHtml(r){
+  const x=r.real,M=MKT_TXT[state.market];if(!M)return '';
+  const metric=(label,value,style,hint)=>'<div class="poisson-metric"><span class="label">'+label+'</span><span class="value"'+(style?' style="'+style+'"':'')+'>'+value+'</span>'+(hint?'<span class="hint">'+hint+'</span>':'')+'</div>';
+  const o=r.odds||(r.poisson&&r.poisson.marketOdds)||null,ev=realEv(r);
+  const p=r.poisson&&r.poisson.ok?r.poisson:null;
+  const poissonLine=p?'<div class="small" style="margin-top:8px">Modelo Poisson: cuota '+fmtNum(p.fairOdds)+(p.decision&&p.decision.ev!=null?' · EV '+(p.decision.ev>0?'+':'')+fmtNum(p.decision.ev*100,1)+'%':'')+'</div>':'';
+  if(!x)return '<section class="poisson-panel"><div class="small">Cuota real: sin datos (no se pudieron bajar las temporadas de los equipos). Volvé a analizar.</div>'+poissonLine+'</section>';
+  const warn=x.n<REAL_MIN_N?' ⚠️ muestra chica':'';
+  const team=(name,t)=>'<b>'+esc(name)+'</b> '+t.hits+'/'+t.n;
+  const goals=(name,t)=>'<div class="streak-row"><b>'+esc(name)+'</b><span class="small">'+(t.total==null?'sin datos':fmtNum(t.total)+' goles por partido (a favor '+fmtNum(t.gf)+' · en contra '+fmtNum(t.ga)+')'+(t.ht!=null?' · 1T: '+fmtNum(t.ht):'')+' · '+t.games+' partidos')+'</span></div>';
+  return '<section class="poisson-panel"><div class="poisson-grid">'+
+    metric('% real '+M.name,x.rate==null?'—':fmtPct(x.rate,1),'',x.hits+'/'+x.n+' partidos · '+team(r.fx.hn,x.home)+' · '+team(r.fx.an,x.away)+warn)+
+    metric('Cuota real',x.fair?fmtNum(x.fair):'—','','1 ÷ % real. Temporada actual + anterior de cada equipo, como BetPractice.')+
+    metric(o?'Mejor cuota · '+esc(o.bookmaker||'casa no informada'):'Cuota prepartido '+M.name,o?Number(o.price).toFixed(2):'No disponible')+
+    metric('EV',ev==null?'—':(ev>0?'+':'')+fmtNum(ev*100,1)+'%',ev==null?'':'color:'+(ev>=0?'var(--c4)':'var(--c1)'),'Cuota de la casa ÷ cuota real − 1. Verde = la casa paga más que la cuota real.')+
+    '</div><div class="streak-box" style="margin:10px 0 0"><div class="small" style="font-weight:700">Promedio de goles (temporada actual + anterior)</div>'+goals(r.fx.hn,x.home)+goals(r.fx.an,x.away)+'</div>'+poissonLine+'</section>';
+}
 function streakHtml(r){
   const s=r.streak;if(!s||(!s.home&&!s.away))return '';
   const row=(name,x)=>{
@@ -1836,7 +1885,7 @@ function cardHtml(r,i){
         <div class="result-actions"><span class="small">${state.market==='ah'?'Hándicap asiático · línea principal y mejor precio':`Promedio descriptivo · ${r.n} de 7 indicadores`}</span><button class="fav-btn" type="button" data-favorite-id="${f.id}" aria-label="Guardar en favoritos" aria-pressed="false" title="Guardar en favoritos">☆</button></div>
         ${streakHtml(r)}
         ${state.market==='ah'?(r.ah?ahHtml(r.ah,r.fx):''):`<div class="cells">${r.tr.map(cellHtml).join('')}</div>
-        ${r.poisson!==undefined?poissonHtml(r.poisson):''}`}
+        ${r.real!==undefined?realHtml(r):r.poisson!==undefined?poissonHtml(r.poisson):''}`}
         <details><summary>Ver partidos usados</summary><div class="detail"></div></details>
       </div>
     </details>
@@ -1845,8 +1894,8 @@ function cardHtml(r,i){
 // Hándicap: el mejor EV contra el mercado de la línea principal (sin contar lados «muy lejos del mercado»).
 function ahBest(r){const v=r&&r.ah;if(!v||!v.ok||!window.TanoAsian)return null;const src=v.hasModel?ahSrc():'mkt';const xs=window.TanoAsian.betRows(v).filter(s=>Number.isFinite(ahEv(s,src))&&!s.oddOdds).sort((a,b)=>ahEv(b,src)-ahEv(a,src));const x=xs[0];return x?{side:x.side,ev:ahEv(x,src),line:x.line}:null;}
 function ahSummaryBadge(r){const b=ahBest(r),v=r.ah;if(!b)return '<span class="fav-average h0" title="Sin precio de las casas para comparar">—</span>';const cls=b.ev>=0.03?'h4':b.ev>=-0.01?'h2':'h1';const name=b.side==='home'?r.fx.hn:r.fx.an,l=b.side==='home'?b.line:-b.line;return '<span class="fav-average '+cls+'" title="'+esc(name+' '+fmtAhLine(l))+'">'+(b.ev>=0?'+':'')+fmtNum(b.ev*100,1)+'%</span>';}
-function evOf(r){if(state.market==='ah'){const b=ahBest(r);return b?b.ev:null}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return d&&Number.isFinite(d.ev)?d.ev:null}
-function isEvPlus(r){if(state.market==='ah'){const b=ahBest(r);return !!b&&b.ev>=0.03}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return !!d&&(d.signal==='ev_solido'||d.signal==='ev_posible')}
+function evOf(r){if(state.market==='ah'){const b=ahBest(r);return b?b.ev:null}if(r&&r.real!==undefined){const ev=realEv(r);return Number.isFinite(ev)?ev:null}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return d&&Number.isFinite(d.ev)?d.ev:null}
+function isEvPlus(r){if(state.market==='ah'){const b=ahBest(r);return !!b&&b.ev>=0.03}if(r&&r.real!==undefined){const ev=realEv(r);return ev!==null&&ev>0&&r.real.n>=REAL_MIN_N}const d=r&&r.poisson&&r.poisson.ok&&r.poisson.decision;return !!d&&(d.signal==='ev_solido'||d.signal==='ev_posible')}
 function sorted(){
   const m=parseInt($('#minAvg').value,10)||0, s=$('#sort').value;
   const only=$('#onlyNS').checked, apply=$('#applyCriteria').checked, onlyEv=!!($('#onlyEv')&&$('#onlyEv').checked), now=Date.now();
@@ -1867,7 +1916,7 @@ function emptyResultsHtml(){
   const why=[];
   if($('#onlyNS').checked) why.push('«Solo partidos sin empezar»');
   if($('#applyCriteria').checked) why.push('«Aplicar criterios»');
-  if($('#onlyEv')&&$('#onlyEv').checked) why.push('«Solo EV+ (Poisson)»');
+  if($('#onlyEv')&&$('#onlyEv').checked) why.push('«Solo EV+ (cuota real)»');
   if((parseInt($('#minAvg').value,10)||0)>0&&state.market!=='ah') why.push('el promedio mínimo de '+$('#minAvg').value+'%');
   return '<div class="empty">Ningún partido de los '+state.results.length+' analizados pasa los filtros'+(why.length?' activos: '+why.join(', ')+'. Desmarcá alguno para verlos.':'.')+'</div>';
 }
@@ -2105,7 +2154,7 @@ function favoriteForView(id,origin){
   }
   const result=state.results.find(x=>String(x.fx.id)===key);
   const fx=result?.fx||state.fixtures.find(x=>String(x.id)===key);
-  return fx?{fx,result,analysis:result?{avg:result.avg,n:result.n,tr:result.tr,...(result.streak?{streak:result.streak}:{})}:null}:null;
+  return fx?{fx,result,analysis:result?{avg:result.avg,n:result.n,tr:result.tr,...(result.streak?{streak:result.streak}:{}),...(result.real!==undefined?{real:result.real,odds:result.odds||null}:{})}:null}:null;
 }
 function refreshFavoriteViews(){
   renderFavorites();renderVipFavorites();renderResults();renderLive();
@@ -2144,7 +2193,8 @@ function renderSavedFavoriteCard(f,group){
   // Modelo propio: el guardado con el favorito; si no tiene, el del análisis actual (si es el mismo mercado).
   const savedPoisson=f.poisson||(currentResult&&currentResult.poisson&&(!f.market||f.market===marketDefs[state.market].short)?currentResult.poisson:undefined);
   if(a&&Array.isArray(a.tr)){
-    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson,streak};
+    const realSrc=a.real!==undefined?a:(currentResult&&currentResult.real!==undefined?currentResult:null);
+    const r={fx:cardFx,tr:a.tr,avg:a.avg,n:a.n,poisson:savedPoisson,streak,...(realSrc?{real:realSrc.real,odds:realSrc.odds||null}:{})};
     // La tarjeta se dibuja con el mercado con el que se guardó el favorito, no con el que está elegido ahora en el Escáner
     // (si no, con «Hándicap asiático» elegido todos los favoritos salían vacíos, con «—»).
     let html,prevMarket=state.market;
