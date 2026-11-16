@@ -471,6 +471,11 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
   <div class="status" id="xgStatus"></div>
   <div class="field"><label class="small" for="xgBudget" style="align-self:center">Además, consultas dentro de cada Actualizar todo (0 = no bajar estadísticas ahí)</label><input id="xgBudget" type="number" min="0" max="2000" step="10" style="max-width:120px"></div>
   <p class="small">Más consultas = el xG llega antes a todas las ligas. Con 150 por actualización, en pocos días están todas las ligas que se juegan.</p>
+  <h2>Mercados de jugadores</h2>
+  <p class="small">Trae la lista de mercados que API-Football cotiza antes del partido y marca los de jugadores (goleador, tiros, tarjetas…). Gasta <b>1 consulta</b>. Que un mercado esté en la lista no asegura que tus casas lo coticen en todas las ligas.</p>
+  <div class="row"><button class="btn" id="btnPlayerMk">Ver mercados de jugadores</button></div>
+  <div class="status" id="pmStatus"></div>
+  <div id="pmList"></div>
   <h2>Sincronización</h2>
   <div class="small" id="cloudInfo">Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.</div>
   <div class="row" style="margin-top:8px"><button class="btn" id="btnCloudPush">Subir ahora a mi cuenta</button><button class="btn" id="btnCloudPull">Bajar lo último de mi cuenta</button><button class="btn hidden" id="btnLogout">Salir de la cuenta</button></div>
@@ -1380,6 +1385,21 @@ window.tgOnLogin=async()=>{
 };
 function rerender(){const r=route();if(r.v==='mk')renderMk();else if(r.v==='cmp')renderCmp();else if(r.v==='bets')renderBets();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
+// Ajustes → Mercados de jugadores: lista de mercados de /odds/bets, con los de jugadores primero (1 consulta).
+const PLAYER_MK=/player|scorer|booked|assist/i;
+$('#btnPlayerMk').addEventListener('click',async()=>{
+  const st=$('#pmStatus'),box=$('#pmList'),btn=$('#btnPlayerMk');
+  btn.disabled=true;st.textContent='Consultando…';box.innerHTML='';
+  try{
+    const j=await api('/odds/bets'),all=(j.response||[]).filter(b=>b&&b.name).sort((x,y)=>String(x.name).localeCompare(String(y.name)));
+    const pl=all.filter(b=>PLAYER_MK.test(b.name)),rest=all.filter(b=>!PLAYER_MK.test(b.name));
+    const li=b=>`<li>${esc(b.name)} <span class="mono" style="color:var(--muted)">#${esc(b.id)}</span></li>`;
+    st.textContent=all.length?`${all.length} mercados en total · ${pl.length} de jugadores.`:'La API no devolvió mercados.';
+    box.innerHTML=(pl.length?`<ul class="small">${pl.map(li).join('')}</ul>`:all.length?'<p class="small">Ningún mercado de jugadores en la lista.</p>':'')
+      +(rest.length?`<details class="small"><summary>Ver los otros ${rest.length} mercados</summary><ul>${rest.map(li).join('')}</ul></details>`:'');
+  }catch(e){st.textContent='No se pudo consultar: '+e.message}
+  btn.disabled=false;
+});
 $('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);try{LS.set('tg:cregv',{});await cloudMergeCreg()}catch(e){}i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
 
