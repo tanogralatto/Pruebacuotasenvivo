@@ -476,6 +476,10 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
   <div class="row"><button class="btn" id="btnPlayerMk">Ver mercados de jugadores</button></div>
   <div class="status" id="pmStatus"></div>
   <div id="pmList"></div>
+  <p class="small" style="margin-top:14px"><b>Probar en un partido:</b> elegí un partido por jugar (mejor de una liga grande) y mirá qué casas cotizan cada mercado de jugadores y si está Pinnacle. Gasta <b>1 consulta</b>.</p>
+  <div class="field"><input id="pmQ" type="search" placeholder="Buscar equipo o liga" autocomplete="off"><select id="pmFx" style="min-width:0;flex:1 1 220px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:inherit"></select><button class="btn" id="btnPmTest">Probar en este partido</button></div>
+  <div class="status" id="pmtStatus"></div>
+  <div id="pmtList"></div>
   <h2>Sincronización</h2>
   <div class="small" id="cloudInfo">Entrá con tu cuenta de Google (botón ☁︎ arriba) para ver lo mismo en todos tus dispositivos.</div>
   <div class="row" style="margin-top:8px"><button class="btn" id="btnCloudPush">Subir ahora a mi cuenta</button><button class="btn" id="btnCloudPull">Bajar lo último de mi cuenta</button><button class="btn hidden" id="btnLogout">Salir de la cuenta</button></div>
@@ -1400,6 +1404,43 @@ $('#btnPlayerMk').addEventListener('click',async()=>{
   }catch(e){st.textContent='No se pudo consultar: '+e.message}
   btn.disabled=false;
 });
+// Ajustes → Probar en un partido: qué casas cotizan cada mercado de jugadores en un partido (1 consulta).
+const PM_OTHER=/touchdown|player points|player singles|player triples/i; // de otros deportes
+const PM_BIG=[2,3,39,140,135,78,61,13,11,128,71,94,88,848,253];
+async function fillPmFx(){
+  const sel=$('#pmFx');if(!sel)return;
+  const q=$('#pmQ').value.trim().toLowerCase(),now=Date.now(),keep=sel.value,fx=[];
+  for(const off of [0,1]){const d=await getDay(dayStr(off));if(d)fx.push(...d.fx.filter(a=>a.ts*1000>now))}
+  const rk=a=>{const i=PM_BIG.indexOf(Number(a.lid));return i<0?99:i};
+  const list=fx.filter(a=>!q||(a.hn+' '+a.an+' '+(a.ln||'')+' '+(a.lc||'')).toLowerCase().includes(q)).sort((x,y)=>rk(x)-rk(y)||x.ts-y.ts).slice(0,300);
+  sel.innerHTML=list.length?list.map(a=>`<option value="${esc(a.id)}">${esc(a.hn)} – ${esc(a.an)} · ${esc(a.ln||'')}</option>`).join(''):'<option value="">Sin partidos por jugar (tocá Actualizar todo)</option>';
+  if(keep&&list.some(a=>String(a.id)===keep))sel.value=keep;
+}
+$('#pmQ').addEventListener('input',fillPmFx);
+$('#btnPmTest').addEventListener('click',async()=>{
+  const st=$('#pmtStatus'),box=$('#pmtList'),btn=$('#btnPmTest'),id=$('#pmFx').value;
+  if(!id){st.textContent='Elegí un partido.';return}
+  btn.disabled=true;st.textContent='Consultando…';box.innerHTML='';
+  try{
+    const j=await api('/odds',{fixture:id,timezone:TZ}),bks=((j.response||[])[0]||{}).bookmakers||[],by=new Map();
+    for(const bk of bks)for(const b of bk.bets||[]){
+      if(!b||!PLAYER_MK.test(b.name||'')||PM_OTHER.test(b.name))continue;
+      const k=b.id+'|'+b.name;if(!by.has(k))by.set(k,{id:b.id,name:b.name,bks:new Set(),n:0});
+      const e=by.get(k);e.bks.add(bk.name);e.n=Math.max(e.n,(b.values||[]).length);
+    }
+    const rows=[...by.values()].sort((x,y)=>y.bks.size-x.bks.size||String(x.name).localeCompare(String(y.name)));
+    if(!bks.length){st.textContent='La API no tiene cuotas para este partido todavía.'}
+    else if(!rows.length){st.textContent=`${bks.length} casas con cuotas, pero ninguna cotiza mercados de jugadores en este partido.`}
+    else{
+      const pin=rows.filter(r=>[...r.bks].some(b=>/pinnacle/i.test(b))).length,mine=rows.filter(r=>[...r.bks].some(isMine)).length;
+      st.textContent=`${rows.length} mercados de jugadores · ${mine} en tus casas · ${pin} con Pinnacle · ${bks.length} casas con cuotas en el partido.`;
+      box.innerHTML='<table class="mk"><thead><tr><th style="text-align:left">Mercado</th><th>Opciones</th><th>Pinnacle</th><th style="text-align:left">Casas</th></tr></thead><tbody>'+rows.map(r=>{
+        const names=[...r.bks].filter(b=>!/pinnacle/i.test(b)).sort((x,y)=>isMine(y)-isMine(x)||x.localeCompare(y));
+        return `<tr><td style="text-align:left">${esc(r.name)} <span class="mono" style="color:var(--muted)">#${esc(r.id)}</span></td><td class="mono">${r.n}</td><td>${names.length<r.bks.size?'✓':'—'}</td><td style="text-align:left" class="small">${names.map(b=>isMine(b)?'<b>'+esc(b)+'</b>':esc(b)).join(', ')||'—'}</td></tr>`}).join('')+'</tbody></table><p class="small">En negrita, tus casas. «Opciones» es la cantidad de jugadores o líneas que ofrece la casa que más tiene.</p>';
+    }
+  }catch(e){st.textContent='No se pudo consultar: '+e.message}
+  btn.disabled=false;
+});
 $('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
 $('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);try{LS.set('tg:cregv',{});await cloudMergeCreg()}catch(e){}i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
 
@@ -2199,6 +2240,7 @@ async function renderPrec(){
 
 /* ---------------- ajustes ---------------- */
 async function renderCfg(){
+  fillPmFx().catch(()=>{});
   $('#key').value=state.key;$('#xgBudget').value=LS.get('tg:xgBudget',150);$('#bank').value=bankroll()||'';
   const mb=myBooks(),all=[...new Set([...BOOKS,...mb])].sort((a,b)=>a.localeCompare(b));
   if($('#booksList'))$('#booksList').innerHTML=all.length?all.map(b=>`<label><input type="checkbox" data-book="${esc(b)}" ${mb.has(b)?'checked':''}><span>${esc(b)}</span></label>`).join(''):'<div class="small" style="padding:10px">Tocá ↻ Actualizar todo una vez y aparecen las casas.</div>';
