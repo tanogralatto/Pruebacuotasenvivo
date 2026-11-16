@@ -1296,8 +1296,28 @@ async function cloudPush(){
   await loadBets();
   LS.set('tg:pulledTs',Date.now()+5000);LS.set('tg:cfgts',Date.now());
   const areg=state.areg||(await DB.get('areg'))||null;
+  // Antes de subir el registro del comparador se junta con lo que haya subido otro dispositivo (para no pisarlo).
+  let creg=null;try{await cloudMergeCreg();creg=await loadCreg()}catch(e){console.warn(e)}
   const cfg={ts:Date.now(),bank:LS.get('tg:bank',0),aok:LS.get('tg:aok',true),checkbooks:LS.get('tg:checkbooks','bet365|1xbet|betano')};
-  await C.pushAll({bets:BETS,xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{}),areg,cfg});
+  const r=await C.pushAll({bets:BETS,xg:{map:XG,coef:XGCOEF},days,prec:state.prec,reg:state.reg||(await DB.get('reg'))||{},fav:favs(),updated:(await getUpdated())||Date.now(),bf:LS.get('tg:bf',{}),areg,cfg,creg});
+  if(creg&&r&&r.cregDays){const seen={};for(const [d,x] of Object.entries(r.cregDays))seen[d]=x.v;LS.set('tg:cregv',seen)}
+}
+// Registro del comparador: junta lo de la cuenta con lo de este dispositivo. Se queda la cuota anotada acá, el
+// cierre más nuevo y el resultado si alguno de los dos ya lo tiene. Devuelve true si entró algo nuevo.
+async function cloudMergeCreg(){
+  const C=window.tgCloud;if(!C||!C.user)return false;
+  const loc=await loadCreg(),seen=Object.keys(loc).length?LS.get('tg:cregv',{}):{};
+  const got=await C.pullCreg(seen);if(!got)return false;
+  let n=0;
+  for(const [k,e] of Object.entries(got.map)){
+    const l=loc[k];
+    if(!l){loc[k]=e;n++;continue}
+    if((e.cAt||0)>(l.cAt||0)){l.mC=e.mC;l.cAt=e.cAt;n++}
+    if(!l.res&&e.res){l.res=e.res;n++}
+  }
+  if(n)await DB.set('creg',loc);
+  LS.set('tg:cregv',Object.assign(seen,got.seen));
+  return n>0;
 }
 // Baja lo último de la cuenta si es más nuevo que lo de este dispositivo.
 async function cloudPull(force){
@@ -1349,7 +1369,8 @@ window.tgOnLogin=async()=>{
   syncLine('☁︎ Revisando tu cuenta…');
   try{
     const C=window.tgCloud,meta=C&&C.user?await C.peek():null;
-    const changed=await cloudPull();
+    let changed=await cloudPull();
+    try{if(await cloudMergeCreg())changed=true}catch(e){console.warn(e)}
     if(changed)rerender();
     if(!meta&&isGuest())syncLine('👀 Todavía no hay datos compartidos.',true);
     else if(!meta)syncLine('☁︎ Tu cuenta todavía no tiene datos guardados. Actualizá en algún dispositivo con ☁︎ conectado, o usá ⚙︎ → «Subir ahora a mi cuenta».',true);
@@ -1357,10 +1378,10 @@ window.tgOnLogin=async()=>{
     else syncLine('☁︎ Al día con tu cuenta · última actualización guardada '+ago(meta.updated||meta.ts||0)+(changed?' (bajada recién)':''));
   }catch(e){syncLine('☁︎ No se pudo leer tu cuenta: '+(/permission/i.test(e.message)?'Firebase no da permiso (revisá que las reglas estén publicadas).':e.message),true)}
 };
-function rerender(){const r=route();if(r.v==='mk')renderMk();else if(r.v==='bets')renderBets();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
+function rerender(){const r=route();if(r.v==='mk')renderMk();else if(r.v==='cmp')renderCmp();else if(r.v==='bets')renderBets();else if(r.v==='dash')renderDash();else if(r.v==='prec')renderPrec();else if(r.v==='match')renderMatch(r.id);else renderCfg()}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.tgOnLogin()});
 $('#btnCloudPush').addEventListener('click',async()=>{const i=$('#cloudInfo');if(!window.tgCloud||!window.tgCloud.user){i.textContent='Primero entrá con tu cuenta (botón ☁︎ arriba).';return}i.textContent='Subiendo…';try{await cloudPush();i.textContent='Listo: tus datos quedaron guardados en tu cuenta.';syncLine('☁︎ Guardado en tu cuenta recién.')}catch(e){i.textContent='No se pudo guardar: '+e.message+(/permission/i.test(e.message)?' (faltan las reglas de Firebase)':'')}});
-$('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
+$('#btnCloudPull').addEventListener('click',async()=>{const i=$('#cloudInfo');i.textContent='Bajando…';try{const ok=await cloudPull(true);try{LS.set('tg:cregv',{});await cloudMergeCreg()}catch(e){}i.textContent=ok?'Listo: ya tenés lo último de tu cuenta.':'Tu cuenta todavía no tiene datos (actualizá en algún dispositivo con la cuenta abierta).';rerender()}catch(e){i.textContent=e.message}});
 
 /* ---------------- precisión ---------------- */
 // Cuotas de cierre históricas (football-data.co.uk), en data/fd-1x2.json del repo; se renuevan cada semana.
@@ -1645,7 +1666,7 @@ function cmpPick(list,f){
 /* ---------------- registro del comparador ---------------- */
 // Se guarda (una sola vez) cada línea en la que alguna casa paga más que el mercado, con las casas y cuotas de
 // ese momento. Mientras el partido no empieza se actualiza solo el precio justo de cierre (para el CLV).
-// Queda en este dispositivo (no se sube a la cuenta: puede ser muy grande).
+// Se sube a la cuenta, un documento por día de partido (creg_AAAA-MM-DD) para verlo en los demás dispositivos.
 const CREG_MAX=20000; // como las lecturas selladas
 async function loadCreg(){return state.creg||(state.creg=(await DB.get('creg'))||{})}
 function recordCmp(a,creg){
@@ -1724,7 +1745,7 @@ async function renderCmpLog(f){
   const last=done.slice(0,25);
   if(last.length)h+=`<details class="guide" style="margin-top:10px"><summary>Últimas ${last.length} liquidadas</summary><div class="xs" style="margin-top:8px"><table class="lg"><thead><tr><th>Apuesta</th><th>Casa</th><th>Ventaja</th><th>Resultado</th></tr></thead><tbody>${last.map(x=>`<tr><td>${esc(x.e.l)}<span class="cn">${esc(x.e.hn)} vs ${esc(x.e.an)} · ${new Date(x.e.ts*1000).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}${x.e.res&&Number.isInteger(x.e.res.hg)?' · '+x.e.res.hg+'-'+x.e.res.ag:''}</span></td><td>${esc(x.bk)} ${dec(x.pr)}</td><td>${spct(x.adv)}</td><td class="${cls(x.u)}">${sgn(x.u)}</td></tr>`).join('')}</tbody></table></div></details>`;
   h+=`<div class="row" style="margin-top:10px"><button class="btn" id="cmpCsv">Descargar registro (CSV)</button></div>
-    <p class="small"><b>Liq.</b>: liquidadas / registradas. <b>CLV</b>: cuánto mejor fue esa cuota que el precio justo del mercado justo antes del partido (la última vez que trajiste cuotas). Si es positivo seguido, la ventaja es real aunque los resultados todavía no acompañen. Con menos de unas 300 liquidadas, las unidades son casi todo suerte: mirá primero el CLV. El registro queda en este dispositivo.</p>`;
+    <p class="small"><b>Liq.</b>: liquidadas / registradas. <b>CLV</b>: cuánto mejor fue esa cuota que el precio justo del mercado justo antes del partido (la última vez que trajiste cuotas). Si es positivo seguido, la ventaja es real aunque los resultados todavía no acompañen. Con menos de unas 300 liquidadas, las unidades son casi todo suerte: mirá primero el CLV. Con ☁︎ conectado, el registro se guarda en tu cuenta y se ve en tus otros dispositivos.</p>`;
   list.innerHTML=h;
 }
 async function cmpCsv(){
@@ -2460,7 +2481,7 @@ async function dropText(id,info){
   for(let k=0;k<info.n;k+=10){const b=writeBatch(db);for(let j=k;j<Math.min(info.n,k+10);j++)b.delete(ref(partKey(id,info,j)));await b.commit()}
 }
 const C=window.tgCloud={user:null,guest:false,dataUid:null,
-  async pushAll({bets,xg,days,prec,reg,fav,updated,bf,areg,cfg}){
+  async pushAll({bets,xg,days,prec,reg,fav,updated,bf,areg,cfg,creg}){
     if(C.guest)return;
     const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
     const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
@@ -2468,6 +2489,16 @@ const C=window.tgCloud={user:null,guest:false,dataUid:null,
     if(prec)meta.prec=await putText('prec',prec);
     if(areg)meta.areg=await putText('areg',areg);else if(prevMeta.areg)meta.areg=prevMeta.areg;
     if(cfg)await setDoc(ref('cfg'),{v:JSON.stringify(cfg)});
+    // Registro del comparador: un documento por día de partido. Solo se reescriben los últimos días (los que
+    // todavía cambian: cierre y resultado) o los que la nube no tiene. Pasados 90 días se borran de la cuenta.
+    meta.cregDays=Object.assign({},prevMeta.cregDays||{});
+    if(creg){
+      const byDay={},iso=t=>new Date(t).toISOString().slice(0,10);
+      for(const [id,e] of Object.entries(creg)){const d=iso(e.ts*1000);(byDay[d]=byDay[d]||{})[id]=e}
+      const recent=iso(Date.now()-7*864e5),oldest=iso(Date.now()-90*864e5);
+      for(const [d,x] of Object.entries(byDay))if(d>=oldest&&(d>=recent||!meta.cregDays[d]))meta.cregDays[d]=await putText('creg_'+d,x);
+      for(const d of Object.keys(meta.cregDays))if(d<oldest)delete meta.cregDays[d];
+    }
     if(bets)meta.bets=await putText('bets',bets);
     else if(prevMeta.bets)meta.bets=prevMeta.bets;
     // xG compacto: [xg local, xg visitante, fuente, tiros…] por partido (los que no tienen datos van como 0).
@@ -2486,9 +2517,22 @@ const C=window.tgCloud={user:null,guest:false,dataUid:null,
       for(const [d,x] of Object.entries(prevMeta.days||{}))if(!meta.days[d]||JSON.stringify(meta.days[d])!==JSON.stringify(x))olds.push(['day_'+d,x]);
       for(const k of ['prec','bets','xg','areg'])if(prevMeta[k]&&JSON.stringify(prevMeta[k])!==JSON.stringify(meta[k]))olds.push([k,prevMeta[k]]);
       for(const [m,x] of Object.entries(prevMeta.regMonths||{}))if(JSON.stringify(meta.regMonths[m])!==JSON.stringify(x))olds.push(['reg_'+m,x]);
+      for(const [d,x] of Object.entries(prevMeta.cregDays||{}))if(JSON.stringify(meta.cregDays[d])!==JSON.stringify(x))olds.push(['creg_'+d,x]);
       for(const [id,x] of olds)await dropText(id,x);
     }catch(e){console.warn('limpieza',e)}
     status();
+    return {cregDays:meta.cregDays};
+  },
+  // Registro del comparador: baja solo los días que este dispositivo todavía no vio (seen: día → versión).
+  async pullCreg(seen){
+    const m=await getDoc(ref('meta'));if(!m.exists())return null;
+    const days=JSON.parse(m.data().v).cregDays||{},out={map:{},seen:{}};
+    for(const [d,info] of Object.entries(days)){
+      if(seen&&seen[d]===info.v)continue;
+      const x=await getText('creg_'+d,info);
+      if(x){Object.assign(out.map,x);out.seen[d]=info.v}
+    }
+    return out;
   },
   async pullIfNewer(localUpdated,dates,seenTs){
     const m=await getDoc(ref('meta'));if(!m.exists())return null;
