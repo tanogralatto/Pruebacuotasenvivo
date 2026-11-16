@@ -256,6 +256,8 @@ details.guide th{color:var(--muted);font-weight:600}
 .xs table.cmplg td:first-child{min-width:92px}
 table.cmplg th,table.cmplg td{padding:8px 6px}
 #v-cmp.log .cmp-now,#v-cmp:not(.log) .cmp-log{display:none!important}
+#v-cmp:not(.pl) .cmp-pl,#v-cmp.pl .cmp-now,#v-cmp.pl>.tools,#v-cmp.pl #cmpf,#v-cmp.pl #cmpStatus,#v-cmp.pl #cmpList{display:none!important}
+table.pl td.best{color:var(--good);font-weight:700}
 .cmpodd{width:80px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--text);font:inherit;font-family:var(--mono)}
 .cmpbooks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .cmpbooks button{background:none;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:13px;padding:4px 10px}
@@ -411,10 +413,18 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
       <li>Apostá montos chicos y parejos: las rachas malas son normales.</li>
     </ul>
   </details>
-  <div class="row"><div class="seg" id="cmpmode"><button data-cmpmode="now">Ahora</button><button data-cmpmode="log">Registro</button></div><div class="seg cmp-now" id="cmpday"><button data-cmpday="0">Hoy</button><button data-cmpday="1">Mañana</button></div></div>
+  <div class="row"><div class="seg" id="cmpmode"><button data-cmpmode="now">Ahora</button><button data-cmpmode="log">Registro</button><button data-cmpmode="pl" class="owner-only">Jugadores</button></div><div class="seg cmp-now" id="cmpday"><button data-cmpday="0">Hoy</button><button data-cmpday="1">Mañana</button></div></div>
   <div class="oddsbar cmp-now"><button class="btn pri owner-only" id="btnCmpOdds">↻ Actualizar cuotas</button><span class="small" id="cmpOddsWhen"></span></div>
   <div class="prog hidden" id="cmpProg"><i></i></div>
   <p class="small cmp-log" style="margin:10px 0 0">Cada vez que traés cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guarda, antes del partido, cada apuesta en la que alguna casa paga más que el mercado, con la cuota de ese momento. Después del partido se liquida a <b>1 unidad</b> por apuesta. Se aplican los mismos filtros de arriba (mercado, cuotas, ventaja mínima, mis casas, Pinnacle).</p>
+  <div class="cmp-pl">
+    <p class="small" style="margin:10px 0 0">Para un partido, muestra cuánto paga cada una de <b>tus casas</b> por el mismo jugador (goleador, tiros, tarjetas…) y cuál paga más. <b>Es solo comparación de precios: no indica que la apuesta tenga valor.</b> Pinnacle no cotiza jugadores, así que no hay precio de mercado, y estos mercados tienen mucho margen. Cada partido gasta <b>1 consulta</b>.</p>
+    <div class="field"><input id="plQ" type="search" placeholder="Buscar equipo o liga" autocomplete="off"><select id="plFx" style="min-width:0;flex:1 1 220px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:inherit"></select><button class="btn pri" id="btnPl">Traer cuotas de jugadores</button></div>
+    <div class="field"><select id="plMk" style="min-width:0;flex:1 1 200px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:inherit"></select><input id="plP" type="search" placeholder="Buscar jugador" autocomplete="off"></div>
+    <label class="small row" style="gap:6px;margin-top:8px"><input type="checkbox" id="plMulti" style="accent-color:var(--acc)"> Solo donde cotizan 2 o más de mis casas</label>
+    <div class="status" id="plStatus"></div>
+    <div id="plList"></div>
+  </div>
   <div class="tools"><input type="search" id="cmpq" placeholder="Buscar equipo"><select id="cmpmk"><option value="">Todos los mercados</option><option value="res">Resultado (1X2 y doble oportunidad)</option><option value="goles">Goles del partido</option><option value="ambos">Ambos marcan</option><option value="equipo">Goles por equipo</option><option value="hand">Hándicap asiático</option><option value="corners">Córners</option></select></div>
   <details class="filters box" id="cmpf"><summary><b>Filtros y mis casas</b> <span class="small" id="cmpfSum"></span></summary>
     <div class="fl"><div class="fl-h"><b>Cuota</b> <span class="small">(dejá vacío para no limitar)</span></div><div class="row"><label class="small row" style="gap:6px">desde <input id="cmplo" type="text" inputmode="decimal" placeholder="1,50" class="cmpodd"></label><label class="small row" style="gap:6px">hasta <input id="cmphi" type="text" inputmode="decimal" placeholder="2,00" class="cmpodd"></label><button type="button" class="btn" id="cmpOddClear" style="padding:6px 10px;font-size:13px">Borrar</button></div></div>
@@ -1407,9 +1417,10 @@ $('#btnPlayerMk').addEventListener('click',async()=>{
 // Ajustes → Probar en un partido: qué casas cotizan cada mercado de jugadores en un partido (1 consulta).
 const PM_OTHER=/touchdown|player points|player singles|player triples/i; // de otros deportes
 const PM_BIG=[2,3,39,140,135,78,61,13,11,128,71,94,88,848,253];
-async function fillPmFx(){
-  const sel=$('#pmFx');if(!sel)return;
-  const q=$('#pmQ').value.trim().toLowerCase(),now=Date.now(),keep=sel.value,fx=[];
+const fillPmFx=()=>fillFxSel('#pmFx','#pmQ');
+async function fillFxSel(selId,qId){
+  const sel=$(selId);if(!sel)return;
+  const q=$(qId).value.trim().toLowerCase(),now=Date.now(),keep=sel.value,fx=[];
   for(const off of [0,1]){const d=await getDay(dayStr(off));if(d)fx.push(...d.fx.filter(a=>a.ts*1000>now))}
   const rk=a=>{const i=PM_BIG.indexOf(Number(a.lid));return i<0?99:i};
   const list=fx.filter(a=>!q||(a.hn+' '+a.an+' '+(a.ln||'')+' '+(a.lc||'')).toLowerCase().includes(q)).sort((x,y)=>rk(x)-rk(y)||x.ts-y.ts).slice(0,300);
@@ -1417,6 +1428,67 @@ async function fillPmFx(){
   if(keep&&list.some(a=>String(a.id)===keep))sel.value=keep;
 }
 $('#pmQ').addEventListener('input',fillPmFx);
+/* ---------------- Comparador → Jugadores: mejor precio entre mis casas ---------------- */
+// Solo compara precios entre casas para el mismo jugador/línea: no hay precio de mercado (Pinnacle no cotiza jugadores).
+const plNorm=t=>String(t).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[.']/g,'').replace(/\s+/g,' ').trim();
+function parsePlayerOdds(bks){
+  const mk=new Map();
+  for(const bk of bks||[])for(const b of bk.bets||[]){
+    if(!b||!PLAYER_MK.test(b.name||'')||PM_OTHER.test(b.name))continue;
+    if(!mk.has(b.name))mk.set(b.name,new Map());
+    const rows=mk.get(b.name);
+    for(const v of b.values||[]){
+      const odd=Number(v.odd);if(!(odd>1))continue;
+      const label=String(v.value==null?'':v.value)+(v.handicap!=null&&v.handicap!==''?' '+v.handicap:''),k=plNorm(label);if(!k)continue;
+      if(!rows.has(k))rows.set(k,{label,of:new Map()});
+      const of=rows.get(k).of;if(!(of.get(bk.name)>=odd))of.set(bk.name,odd);
+    }
+  }
+  return mk;
+}
+$('#plQ').addEventListener('input',()=>fillFxSel('#plFx','#plQ'));
+$('#plMk').addEventListener('change',renderCmpPl);
+$('#plP').addEventListener('input',renderCmpPl);
+$('#plMulti').addEventListener('change',e=>{LS.set('tg:plmulti',e.target.checked);renderCmpPl()});
+$('#btnPl').addEventListener('click',async()=>{
+  const st=$('#plStatus'),btn=$('#btnPl'),sel=$('#plFx'),id=sel.value;
+  if(!id){st.textContent='Elegí un partido.';return}
+  btn.disabled=true;st.textContent='Consultando…';
+  try{
+    const j=await api('/odds',{fixture:id,timezone:TZ}),bks=((j.response||[])[0]||{}).bookmakers||[];
+    state.pl={id,name:sel.options[sel.selectedIndex].textContent,at:Date.now(),nb:bks.length,mk:parsePlayerOdds(bks)};
+    $('#plMk').innerHTML='';
+  }catch(e){state.pl=null;st.textContent='No se pudo consultar: '+e.message;btn.disabled=false;return}
+  btn.disabled=false;renderCmpPl();
+});
+function renderCmpPl(){
+  const st=$('#plStatus'),box=$('#plList'),selMk=$('#plMk'),pl=state.pl;
+  $('#plMulti').checked=LS.get('tg:plmulti',true)!==false;
+  if(!pl){box.innerHTML='';selMk.innerHTML='<option value="">Primero traé las cuotas de un partido</option>';if(!/No se pudo/.test(st.textContent))st.textContent='';return}
+  if(!bookTokens().length){st.textContent='';box.innerHTML='<div class="empty">Marcá tus casas en <b>Ahora → Filtros y mis casas</b>.</div>';return}
+  // Solo mis casas; mercados ordenados por cantidad de renglones comparables.
+  const mks=[];
+  for(const [name,rows] of pl.mk){
+    const rs=[];
+    for(const r of rows.values()){const of=[...r.of].filter(([bk])=>isMine(bk));if(of.length)rs.push({label:r.label,of:new Map(of)})}
+    if(rs.length)mks.push({name,rs,cmp:rs.filter(r=>r.of.size>1).length});
+  }
+  mks.sort((x,y)=>y.cmp-x.cmp||y.rs.length-x.rs.length||x.name.localeCompare(y.name));
+  if(!mks.length){selMk.innerHTML='<option value="">Sin mercados de jugadores</option>';box.innerHTML='';st.textContent=pl.nb?`${pl.name}: tus casas no cotizan mercados de jugadores en este partido.`:`${pl.name}: la API no tiene cuotas para este partido todavía.`;return}
+  const keep=selMk.value;
+  selMk.innerHTML=mks.map(m=>`<option value="${esc(m.name)}">${esc(m.name)} (${m.cmp} comparables)</option>`).join('');
+  if(mks.some(m=>m.name===keep))selMk.value=keep;
+  const m=mks.find(x=>x.name===selMk.value)||mks[0],multi=$('#plMulti').checked,q=plNorm($('#plP').value);
+  const cols=[...new Set(m.rs.flatMap(r=>[...r.of.keys()]))].sort((x,y)=>x.localeCompare(y));
+  const rows=m.rs.filter(r=>(!multi||r.of.size>1)&&(!q||plNorm(r.label).includes(q))).sort((x,y)=>y.of.size-x.of.size||Math.max(...x.of.values())-Math.max(...y.of.values())||x.label.localeCompare(y.label));
+  st.textContent=`${pl.name} · cuotas de ${ago(pl.at)} · ${rows.length} de ${m.rs.length} renglones.`;
+  if(!rows.length){box.innerHTML=`<div class="empty">${multi?'Ningún jugador cotizado por 2 o más de tus casas en este mercado. Probá desmarcando la casilla.':'Nada con ese filtro.'}</div>`;return}
+  const f2=n=>n.toFixed(2).replace('.',',');
+  box.innerHTML='<table class="mk pl"><thead><tr><th style="text-align:left">Jugador / línea</th>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'<th>Dif.</th></tr></thead><tbody>'+rows.map(r=>{
+    const v=[...r.of.values()].sort((a,b)=>b-a),best=v[0],dif=v.length>1&&v[0]>v[1]?'+'+Math.round((v[0]/v[1]-1)*100)+'%':'—';
+    return `<tr><td style="text-align:left">${esc(r.label)}</td>`+cols.map(c=>{const o=r.of.get(c);return `<td class="mono${o&&o===best&&v.length>1?' best':''}">${o?f2(o):'—'}</td>`}).join('')+`<td class="mono">${dif}</td></tr>`}).join('')
+    +'</tbody></table><p class="small">En verde, la casa que más paga. <b>Dif.</b>: cuánto más paga que la segunda. Confirmá la cuota y que sea la misma línea en tu casa antes de apostar. Si una casa escribe distinto el nombre de un jugador, puede salir en dos renglones.</p>';
+}
 $('#btnPmTest').addEventListener('click',async()=>{
   const st=$('#pmtStatus'),box=$('#pmtList'),btn=$('#btnPmTest'),id=$('#pmFx').value;
   if(!id){st.textContent='Elegí un partido.';return}
@@ -1819,9 +1891,10 @@ async function cmpCsv(){
 }
 async function renderCmp(){
   if(route().v!=='cmp')return;
-  const mode=LS.get('tg:cmpmode','now')==='log'?'log':'now';
-  $('#v-cmp').classList.toggle('log',mode==='log');
+  const m0=LS.get('tg:cmpmode','now'),mode=m0==='log'?'log':m0==='pl'&&!isGuest()?'pl':'now';
+  $('#v-cmp').classList.toggle('log',mode==='log');$('#v-cmp').classList.toggle('pl',mode==='pl');
   $$('#cmpmode [data-cmpmode]').forEach(b=>b.classList.toggle('on',b.dataset.cmpmode===mode));
+  if(mode==='pl'){await fillFxSel('#plFx','#plQ');renderCmpPl();return}
   const day=String(LS.get('tg:cmpday','0')),f=cmpFilters(),list=$('#cmpList');
   $$('#cmpday [data-cmpday]').forEach(b=>b.classList.toggle('on',b.dataset.cmpday===day));
   $$('#cmpmin [data-cmin]').forEach(b=>b.classList.toggle('on',Number(b.dataset.cmin)===f.min));
