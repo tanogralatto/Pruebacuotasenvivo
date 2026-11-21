@@ -6,12 +6,26 @@ import { doc, setDoc, increment, serverTimestamp } from "https://www.gstatic.com
 
 const TZ = 'America/Argentina/Buenos_Aires';
 const FLUSH_MS = 30 * 60 * 1000;
+// Además se envía el conteo al panel «Accesos» de Fútbol Data Lab, que junta el consumo de las
+// apps que usan la misma clave. Días en UTC, como el cupo diario de API-Football.
+const REPORT_URL = 'https://replica-futbol-sync.tanogralatto.workers.dev/usage-report';
+let report = {};
+function sendReport() {
+  if (!Object.keys(report).length) return;
+  const body = JSON.stringify({ app: 'cuotas', counts: report });
+  report = {};
+  try {
+    const ok = navigator.sendBeacon && navigator.sendBeacon(REPORT_URL, new Blob([body], { type: 'text/plain' }));
+    if (!ok) fetch(REPORT_URL, { method: 'POST', body, keepalive: true, headers: { 'content-type': 'text/plain' } }).catch(() => {});
+  } catch (e) { /* solo estadísticas */ }
+}
 export const usageDay = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: TZ });
 
 export function startApiUsage(db, auth, appName) {
   let pending = {}, timer = null;
   async function flush() {
     clearTimeout(timer); timer = null;
+    sendReport();
     const u = auth.currentUser;
     if (!u || !Object.keys(pending).length) return;
     const batch = pending; pending = {};
@@ -32,6 +46,8 @@ export function startApiUsage(db, auth, appName) {
     const last4 = String(key || '').trim().slice(-4) || 'sin clave';
     const k = usageDay() + '|' + last4;
     pending[k] = (pending[k] || 0) + 1;
+    const utc = new Date().toISOString().slice(0, 10);
+    report[utc] = (report[utc] || 0) + 1;
     if (!timer) timer = setTimeout(flush, FLUSH_MS);
   };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
