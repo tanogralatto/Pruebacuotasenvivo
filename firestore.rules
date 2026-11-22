@@ -30,6 +30,22 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
+    // ===== betpractice =====
+    // Datos de API-Football compartidos (partidos, temporadas y cuotas) entre el dueño
+    // y las personas habilitadas en betpractice (acceso_tanoapp/{uid}.cuotasreales == true).
+    function cuotasRealesHabilitado() {
+      return tanoOwner() || (request.auth != null
+        && get(/databases/$(database)/documents/acceso_tanoapp/$(request.auth.uid)).data.get('cuotasreales', false) == true);
+    }
+    match /cuotasreales_cache/{key} {
+      allow read: if cuotasRealesHabilitado();
+      allow create, update: if cuotasRealesHabilitado()
+        && request.resource.data.keys().hasOnly(['v', 't', 'by', 'n'])
+        && request.resource.data.v is string
+        && request.resource.data.by == request.auth.uid;
+    }
+    // ===== fin betpractice =====
+
     // Lista de mails con permiso de ver Alpha. La edita solo el dueño desde ⚙︎ → Compartir.
     match /tanoapp_alpha_compartir/lista {
       allow read: if tanoOwner()
