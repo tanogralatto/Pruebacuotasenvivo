@@ -1883,20 +1883,27 @@ async function cmpLogRows(f){
 }
 async function renderCmpLog(f){
   const list=$('#cmpList'),rows=await cmpLogRows(f),done=rows.filter(x=>x.u!=null),pend=rows.length-done.length;
+  // Pendientes de partidos que ya deberían haber terminado (mismo margen que usa la liquidación).
+  const late=x=>x.e.ts*1000<=Date.now()-2.5*3600e3,waiting=rows.filter(x=>x.u==null&&late(x)).length;
   $('#cmpStatus').textContent='';
   const creg=await loadCreg(),total=Object.keys(creg).length;
   if(!rows.length){list.innerHTML=total?`<div class="empty">Hay ${total} apuestas registradas, pero ninguna pasa los filtros de arriba. Probá sin rango de EV, sin rango de cuotas o desmarcando «Solo mis casas» / «Solo contra Pinnacle».</div>`:'<div class="empty">Todavía no hay nada registrado. Desde ahora, cada vez que traigas cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guardan las apuestas que pagan más que el mercado, y se liquidan solas cuando terminan los partidos.</div>';return}
   const sgn=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
   const sum=l=>{const d=l.filter(x=>x.u!=null),n=d.length,u=d.reduce((t,x)=>t+x.u,0),w=d.filter(x=>x.r>0).length,c=l.filter(x=>x.clv!=null);return {all:l.length,n,u,w,roi:n?u/n:null,cn:c.length,cw:c.filter(x=>x.clv>0).length,cm:c.length?c.reduce((t,x)=>t+x.clv,0)/c.length:null}};
   const T=sum(rows),cls=v=>v>0?'c-g':v<0?'c-b':'';
-  let h=`<div class="tiles"><div class="tile"><div class="l">Resultado</div><div class="v ${cls(T.u)}">${T.n?sgn(T.u)+' u':'—'}</div><div class="small">${T.n} liquidadas · ${pend} pendientes</div></div>
+  let h=`<div class="tiles"><div class="tile"><div class="l">Resultado</div><div class="v ${cls(T.u)}">${T.n?sgn(T.u)+' u':'—'}</div><div class="small">${T.n} liquidadas · ${pend-waiting} por jugar · ${waiting} sin resultado</div></div>
     <div class="tile"><div class="l">ROI</div><div class="v ${cls(T.roi)}">${T.n?spct(T.roi):'—'}</div><div class="small">1 u por apuesta</div></div>
     <div class="tile"><div class="l">Le ganó al cierre</div><div class="v ${T.cn?cls(T.cm):''}">${T.cn?pct(T.cw/T.cn,0):'—'}</div><div class="small">${T.cn?'CLV promedio '+spct(T.cm):'sin precio de cierre todavía'}</div></div></div>`;
   const row=(name,l)=>{const x=sum(l);return `<tr><td>${name}</td><td>${x.n}/${x.all}</td><td>${x.n?pct(x.w/x.n,0):'—'}</td><td class="${cls(x.u)}">${x.n?sgn(x.u):'—'}</td><td class="${cls(x.roi)}">${x.n?spct(x.roi):'—'}</td><td class="${cls(x.cm)}">${x.cn?spct(x.cm):'—'}</td></tr>`};
   const table=(title,groups)=>{let t=`<div class="xs" style="margin-top:10px"><table class="lg cmplg"><thead><tr><th>${title}</th><th title="Liquidadas / registradas">Liq.</th><th>Acert.</th><th>Unid.</th><th>ROI</th><th>CLV</th></tr></thead><tbody>`;for(const [n,l] of groups)if(l.length)t+=row(n,l);return t+'</tbody></table></div>'};
-  const band=(lo,hi)=>rows.filter(x=>x.adv>=lo&&x.adv<hi);
-  h+=table('Ventaja',[['0 a 2%',band(0,0.02)],['2 a 5%',band(0.02,0.05)],['5 a 10%',band(0.05,0.10)],['10 a 15%',band(0.10,0.15)],['⚠︎ más de 15%',band(0.15,99)]]);
+  const band=(lo,hi)=>rows.filter(x=>evPct(x.adv)>=lo&&evPct(x.adv)<hi); // mismo redondeo que el filtro de EV
+  h+=table('Ventaja',[['0 a 2%',band(0,2)],['2 a 5%',band(2,5)],['5 a 10%',band(5,10)],['10 a 15%',band(10,15)],['⚠︎ 15% o más',band(15,Infinity)]]);
   h+=table('Mercado',Object.entries(CMP_MKN).map(([k,n])=>[n,rows.filter(x=>x.e.g===k)]));
+  if(pend){
+    h+=`<div class="xs" style="margin-top:10px"><table class="lg cmplg"><thead><tr><th>Pendientes</th><th>Por jugar</th><th>Sin resultado</th></tr></thead><tbody>`;
+    for(const [k,n] of Object.entries(CMP_MKN)){const l=rows.filter(x=>x.e.g===k&&x.u==null),w=l.filter(late).length;if(l.length)h+=`<tr><td>${n}</td><td>${l.length-w}</td><td class="${w?'c-m':''}">${w}</td></tr>`}
+    h+=`</tbody></table></div><p class="small" style="margin:6px 0 0"><b>Por jugar</b>: todavía no empezó, o empezó hace menos de 2 horas y media. <b>Sin resultado</b>: ya debería haber terminado y falta liquidarla (↻ Actualizar todo). Si sigue ahí, el partido se postergó o API-Football no trae el dato, que pasa sobre todo en córners.</p>`;
+  }
   h+=table('Cuota',[['hasta 1,50',rows.filter(x=>x.pr<1.5)],['1,50 a 2,00',rows.filter(x=>x.pr>=1.5&&x.pr<2)],['2,00 a 3,00',rows.filter(x=>x.pr>=2&&x.pr<3)],['3,00 o más',rows.filter(x=>x.pr>=3)]]);
   h+=table('Referencia',[['Pinnacle',rows.filter(x=>x.e.sh&&!x.e.es)],['≈ Pinnacle',rows.filter(x=>x.e.sh&&x.e.es)],['Mediana',rows.filter(x=>!x.e.sh)]]);
   const byBk=new Map();for(const x of rows){if(!byBk.has(x.bk))byBk.set(x.bk,[]);byBk.get(x.bk).push(x)}
