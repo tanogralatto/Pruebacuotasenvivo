@@ -1319,10 +1319,10 @@ function packMy(r){
   const x=(r.of||[]).find(([b])=>re.test(b));return x?[x[1],x[0]]:0;
 }
 function packDay(day){
-  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0,r.p>0?+r.p.toFixed(4):null,packMy(r),r.es==null?null:r.es,r.mb||0]);return o})};
+  return {date:day.date,ts:day.ts,oddsTs:day.oddsTs,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0,r.p>0?+r.p.toFixed(4):null,packMy(r),r.es==null?null:r.es,r.mb||0]);return o})};
 }
 function unpackDay(d){
-  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh,pp,my,es,mb])=>{const bet=parseKey(k);const r={k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0,p:pp>0?pp:f>0?1/f:null};if(Array.isArray(my))r.my=my;if(es!=null)r.es=es;if(Array.isArray(mb))r.mb=mb;return r});return o})};
+  return {date:d.date,ts:d.ts,oddsTs:d.oddsTs,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh,pp,my,es,mb])=>{const bet=parseKey(k);const r={k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0,p:pp>0?pp:f>0?1/f:null};if(Array.isArray(my))r.my=my;if(es!=null)r.es=es;if(Array.isArray(mb))r.mb=mb;return r});return o})};
 }
 function mergeReg(local,cloud){
   for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
@@ -1787,7 +1787,14 @@ async function refreshAllOdds(ui){
       day.oddsTs=Date.now();await DB.set('day:'+d,day);state.days[d]=day;
     }
     await DB.set('first',first);await DB.set('esp',esp);await DB.set('areg',areg);trimCreg(creg);await DB.set('creg',creg);if(betsDirty)await saveBets();
-    st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.`;state.lastCalls=state.calls;scheduleQuota();
+    // Se sube a la cuenta, como en Partidos: así las ven tus otros dispositivos y con quien compartís.
+    let cloud='';
+    if(n&&window.tgCloud&&window.tgCloud.user){
+      st.textContent='Guardando en tu cuenta…';
+      try{state.prec=state.prec||await DB.get('prec');await cloudPush();cloud=' Guardadas en tu cuenta.'}
+      catch(e){cloud=' No se pudieron guardar en tu cuenta: '+e.message}
+    }else if(n)cloud=' Quedaron solo en este dispositivo: entrá con ☁︎ para guardarlas en tu cuenta.';
+    st.textContent=`Cuotas actualizadas: ${n} partidos · ${state.calls} consultas a la API.${cloud}`;state.lastCalls=state.calls;scheduleQuota();
   }catch(e){st.textContent=e.message;st.classList.add('err')}
   pg.classList.add('hidden');state.running=false;$(ui.btn).disabled=false;
   const keep=st.textContent,err=st.classList.contains('err');await ui.render();st.textContent=keep;st.classList.toggle('err',err);
@@ -2704,7 +2711,7 @@ const C=window.tgCloud={user:null,guest:false,dataUid:null,
     const old=await getDoc(ref('meta')),prevMeta=old.exists()?JSON.parse(old.data().v):{};
     const meta={updated,bf,days:{},regMonths:Object.assign({},prevMeta.regMonths||{}),ts:Date.now()};
     for(const [d,x] of Object.entries(days))meta.days[d]=await putText('day_'+d,x);
-    if(prec)meta.prec=await putText('prec',prec);
+    if(prec)meta.prec=await putText('prec',prec);else if(prevMeta.prec)meta.prec=prevMeta.prec;
     if(areg)meta.areg=await putText('areg',areg);else if(prevMeta.areg)meta.areg=prevMeta.areg;
     if(cfg)await setDoc(ref('cfg'),{v:JSON.stringify(cfg)});
     // Registro del comparador: un documento por día de partido. Solo se reescriben los últimos días (los que
