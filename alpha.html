@@ -259,6 +259,16 @@ table.cmplg th,table.cmplg td{padding:8px 6px}
 #v-cmp:not(.pl) .cmp-pl,#v-cmp.pl .cmp-now,#v-cmp.pl>.tools,#v-cmp.pl #cmpf,#v-cmp.pl #cmpStatus,#v-cmp.pl #cmpList{display:none!important}
 table.pl td.best{color:var(--good);font-weight:700}
 .cmpodd{width:80px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--text);font:inherit;font-family:var(--mono)}
+.mksel{position:relative;flex:0 1 280px;min-width:0}
+.mksel>button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.mksel>button.on{border-color:var(--acc)}
+.mksel>button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mksel>button::after{content:"▾";color:var(--muted)}
+.mkpop{position:absolute;z-index:15;top:calc(100% + 4px);right:0;width:100%;min-width:270px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.mkpop label{display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer}
+.mkpop label:hover{background:var(--line)}
+.mkpop input{accent-color:var(--acc);flex:none;margin:0}
+@media(max-width:520px){.mksel{flex:1 1 100%}}
 .cmpbooks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .cmpbooks button{background:none;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:13px;padding:4px 10px}
 .cmpbooks button.on{color:#04211e;background:var(--acc);border-color:var(--acc)}
@@ -385,7 +395,7 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
     <ol>
       <li>Tocá <b>↻ Actualizar todo</b> en Partidos, o <b>↻ Actualizar cuotas</b> acá si ya actualizaste hoy.</li>
       <li>En <b>Filtros y mis casas</b>, marcá las casas donde tenés cuenta y activá <b>Solo mis casas</b>.</li>
-      <li>Si querés, poné un rango de cuota (por ejemplo, de 1,50 a 2,00) y una ventaja mínima.</li>
+      <li>Si querés, poné un rango de cuota (por ejemplo, de 1,50 a 2,00) y un rango de EV (por ejemplo, de 2 a 10). El EV es la ventaja.</li>
       <li>Elegí una apuesta, entrá a tu casa y confirmá que la cuota siga igual o más alta. Si bajó de la <b>Justa</b>, ya no tiene ventaja.</li>
       <li>Si apostás, tocá <b>＋</b> para anotarla en Mis apuestas.</li>
     </ol>
@@ -416,7 +426,7 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
   <div class="row"><div class="seg" id="cmpmode"><button data-cmpmode="now">Ahora</button><button data-cmpmode="log">Registro</button><button data-cmpmode="pl" class="owner-only">Jugadores</button></div><div class="seg cmp-now" id="cmpday"><button data-cmpday="0">Hoy</button><button data-cmpday="1">Mañana</button></div></div>
   <div class="oddsbar cmp-now"><button class="btn pri owner-only" id="btnCmpOdds">↻ Actualizar cuotas</button><span class="small" id="cmpOddsWhen"></span></div>
   <div class="prog hidden" id="cmpProg"><i></i></div>
-  <p class="small cmp-log" style="margin:10px 0 0">Cada vez que traés cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guarda, antes del partido, cada apuesta en la que alguna casa paga más que el mercado, con la cuota de ese momento. Después del partido se liquida a <b>1 unidad</b> por apuesta. Se aplican los mismos filtros de arriba (mercado, cuotas, ventaja mínima, mis casas, Pinnacle).</p>
+  <p class="small cmp-log" style="margin:10px 0 0">Cada vez que traés cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guarda, antes del partido, cada apuesta en la que alguna casa paga más que el mercado, con la cuota de ese momento. Después del partido se liquida a <b>1 unidad</b> por apuesta. Se aplican los mismos filtros de arriba (mercado, cuotas, EV, mis casas, Pinnacle).</p>
   <div class="cmp-pl">
     <p class="small" style="margin:10px 0 0">Para un partido, muestra cuánto paga cada una de <b>tus casas</b> por el mismo jugador (goleador, tiros, tarjetas…) y cuál paga más. <b>Es solo comparación de precios: no indica que la apuesta tenga valor.</b> Pinnacle no cotiza jugadores, así que no hay precio de mercado, y estos mercados tienen mucho margen. Cada partido gasta <b>1 consulta</b>.</p>
     <div class="field"><input id="plQ" type="search" placeholder="Buscar equipo o liga" autocomplete="off"><select id="plFx" style="min-width:0;flex:1 1 220px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:inherit"></select><button class="btn pri" id="btnPl">Traer cuotas de jugadores</button></div>
@@ -425,10 +435,10 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
     <div class="status" id="plStatus"></div>
     <div id="plList"></div>
   </div>
-  <div class="tools"><input type="search" id="cmpq" placeholder="Buscar equipo"><select id="cmpmk"><option value="">Todos los mercados</option><option value="res">Resultado (1X2 y doble oportunidad)</option><option value="goles">Goles del partido</option><option value="ambos">Ambos marcan</option><option value="equipo">Goles por equipo</option><option value="hand">Hándicap asiático</option><option value="corners">Córners</option></select></div>
+  <div class="tools"><input type="search" id="cmpq" placeholder="Buscar equipo"><div class="mksel" id="cmpmk"><button type="button" id="cmpmkBtn" aria-expanded="false" aria-controls="cmpmkPop"><span>Todos los mercados</span></button><div class="mkpop hidden" id="cmpmkPop" role="group" aria-label="Mercados"><label><input type="checkbox" value="" autocomplete="off" checked> <b>Todos los mercados</b></label><label><input type="checkbox" value="res" autocomplete="off"> Resultado (1X2 y doble oportunidad)</label><label><input type="checkbox" value="goles" autocomplete="off"> Goles del partido</label><label><input type="checkbox" value="ambos" autocomplete="off"> Ambos marcan</label><label><input type="checkbox" value="equipo" autocomplete="off"> Goles por equipo</label><label><input type="checkbox" value="hand" autocomplete="off"> Hándicap asiático</label><label><input type="checkbox" value="corners" autocomplete="off"> Córners</label></div></div></div>
   <details class="filters box" id="cmpf"><summary><b>Filtros y mis casas</b> <span class="small" id="cmpfSum"></span></summary>
     <div class="fl"><div class="fl-h"><b>Cuota</b> <span class="small">(dejá vacío para no limitar)</span></div><div class="row"><label class="small row" style="gap:6px">desde <input id="cmplo" type="text" inputmode="decimal" placeholder="1,50" class="cmpodd"></label><label class="small row" style="gap:6px">hasta <input id="cmphi" type="text" inputmode="decimal" placeholder="2,00" class="cmpodd"></label><button type="button" class="btn" id="cmpOddClear" style="padding:6px 10px;font-size:13px">Borrar</button></div></div>
-    <div class="fl"><div class="fl-h"><b>Ventaja mínima</b></div><div class="seg" id="cmpmin"><button data-cmin="0">Todas</button><button data-cmin="2">+2%</button><button data-cmin="5">+5%</button><button data-cmin="10">+10%</button></div></div>
+    <div class="fl"><div class="fl-h"><b>EV</b> <span class="small">(la ventaja, en %; dejá vacío para no limitar)</span></div><div class="row"><label class="small row" style="gap:6px">desde <input id="cmpevlo" type="text" inputmode="decimal" placeholder="2" class="cmpodd"></label><label class="small row" style="gap:6px">hasta <input id="cmpevhi" type="text" inputmode="decimal" placeholder="10" class="cmpodd"></label><button type="button" class="btn" id="cmpEvClear" style="padding:6px 10px;font-size:13px">Borrar</button></div></div>
     <div class="row" style="margin-top:10px;gap:14px">
       <label class="small row" style="gap:6px"><input type="checkbox" id="cmpMine" style="accent-color:var(--acc)"> Solo mis casas</label>
       <label class="small row" style="gap:6px"><input type="checkbox" id="cmpPin" style="accent-color:var(--acc)"> Solo contra Pinnacle (más confiable)</label>
@@ -1791,10 +1801,11 @@ function cmpOffers(r){
   if(Array.isArray(r.my))add(r.my[1],r.my[0]);
   return [...by].filter(([,pr])=>pr*r.m>1).sort((x,y)=>y[1]-x[1]);
 }
-// Aplica los filtros de cuota, mis casas y ventaja mínima a [{bk,pr,adv}]; deja la mejor primero.
+// EV en %, con un decimal como se ve en la lista (así «hasta 5» incluye lo que dice +5%).
+const evPct=adv=>Math.round(adv*1000)/10;
+// Aplica los filtros de cuota, EV y mis casas a [{bk,pr,adv}]; deja la mejor primero.
 function cmpPick(list,f){
-  list=list.filter(x=>x.adv>0&&(!f.lo||x.pr>=f.lo-1e-9)&&(!f.hi||x.pr<=f.hi+1e-9)&&(!f.mine||isMine(x.bk))).sort((x,y)=>y.pr-x.pr);
-  return list.length&&list[0].adv*100>=f.min?list:[];
+  return list.filter(x=>x.adv>0&&(!f.lo||x.pr>=f.lo-1e-9)&&(!f.hi||x.pr<=f.hi+1e-9)&&(!f.evLo||evPct(x.adv)>=f.evLo)&&(!f.evHi||evPct(x.adv)<=f.evHi)&&(!f.mine||isMine(x.bk))).sort((x,y)=>y.pr-x.pr);
 }
 /* ---------------- registro del comparador ---------------- */
 // Se guarda (una sola vez) cada línea en la que alguna casa paga más que el mercado, con las casas y cuotas de
@@ -1820,7 +1831,7 @@ function cmpLines(a,f){
   const out=[];
   for(const r of a.rows||[]){
     if(!(r.m>0&&r.m<1)||!okCornerRow(r))continue;
-    const g=CMP_MK[String(r.k).split(':')[0]];if(!g||(f.mk&&g!==f.mk))continue;
+    const g=CMP_MK[String(r.k).split(':')[0]];if(!g||(f.mk.length&&!f.mk.includes(g)))continue;
     if(f.pin&&!r.sh)continue;
     const list=cmpPick(cmpOffers(r).map(([bk,pr])=>({bk,pr,adv:pr*r.m-1})),f);
     if(!list.length)continue;
@@ -1831,7 +1842,23 @@ function cmpLines(a,f){
 // Cuota escrita a mano: acepta coma o punto; vacío o inválido = sin límite.
 const oddIn=v=>{const n=Number(String(v==null?'':v).trim().replace(',','.'));return n>1&&n<1000?n:0};
 const cmpRange=()=>{let lo=oddIn(LS.get('tg:clo','')),hi=oddIn(LS.get('tg:chi',''));if(lo&&hi&&lo>hi)[lo,hi]=[hi,lo];return {lo,hi}};
-const cmpFilters=()=>({...cmpRange(),min:Number(LS.get('tg:cmin',2)),mine:LS.get('tg:cmine',false)===true,pin:LS.get('tg:cpin',true)!==false,sort:LS.get('tg:csort','adv'),mk:$('#cmpmk').value});
+// EV escrito a mano, en %: acepta coma o punto, «+» y «%»; vacío o inválido = sin límite.
+const evIn=v=>{const n=Number(String(v==null?'':v).replace(/[+%\s]/g,'').replace(',','.'));return n>0&&n<1000?n:0};
+// Si todavía no se escribió un «desde», vale la ventaja mínima que estaba elegida antes con los botones (tg:cmin).
+const cmpEvRange=()=>{let evLo=evIn(LS.get('tg:cevlo',LS.get('tg:cmin',2))),evHi=evIn(LS.get('tg:cevhi',''));if(evLo&&evHi&&evLo>evHi)[evLo,evHi]=[evHi,evLo];return {evLo,evHi}};
+const cmpFilters=()=>({...cmpRange(),...cmpEvRange(),mine:LS.get('tg:cmine',false)===true,pin:LS.get('tg:cpin',true)!==false,sort:LS.get('tg:csort','adv'),mk:state.cmpMk||[]});
+// Mercados elegidos en el desplegable (se puede más de uno). Lista vacía = todos. No se guarda: al recargar vuelve a todos.
+const CMP_MKN={res:'Resultado',goles:'Goles del partido',ambos:'Ambos marcan',equipo:'Goles por equipo',hand:'Hándicap asiático',corners:'Córners'};
+const CMP_MKS={...CMP_MKN,goles:'Goles',equipo:'Goles equipo',hand:'Hándicap'}; // cortos, para el botón
+function setCmpMk(list){
+  const all=Object.keys(CMP_MKN),s=all.filter(k=>list.includes(k)),sel=s.length===all.length?[]:s,btn=$('#cmpmkBtn');
+  state.cmpMk=sel;
+  $$('#cmpmkPop input').forEach(i=>{i.checked=i.value?sel.includes(i.value):!sel.length});
+  btn.firstElementChild.textContent=!sel.length?'Todos los mercados':sel.length===1?CMP_MKN[sel[0]]:sel.length===2?sel.map(k=>CMP_MKS[k]).join(' + '):sel.length+' mercados';
+  btn.title=sel.map(k=>CMP_MKN[k]).join(', ');
+  btn.classList.toggle('on',sel.length>0);
+}
+function openCmpMk(open){$('#cmpmkPop').classList.toggle('hidden',!open);$('#cmpmkBtn').setAttribute('aria-expanded',String(open))}
 function renderCmpBooks(d){
   const names=new Set(BOOKS);
   if(d)for(const a of d.fx)for(const r of a.rows||[]){if(r.bk)names.add(r.bk);for(const [bk] of r.of||[])names.add(bk)}
@@ -1844,7 +1871,7 @@ function renderCmpBooks(d){
 async function cmpLogRows(f){
   const creg=await loadCreg(),q=$('#cmpq').value.trim().toLowerCase(),out=[],now=Date.now();
   for(const e of Object.values(creg)){
-    if(f.mk&&e.g!==f.mk)continue;
+    if(f.mk.length&&!f.mk.includes(e.g))continue;
     if(f.pin&&!e.sh)continue;
     if(q&&!(e.hn+' '+e.an).toLowerCase().includes(q))continue;
     const list=cmpPick((e.of||[]).map(([bk,pr])=>({bk,pr,adv:pr*e.m-1})),f);if(!list.length)continue;
@@ -1858,7 +1885,7 @@ async function renderCmpLog(f){
   const list=$('#cmpList'),rows=await cmpLogRows(f),done=rows.filter(x=>x.u!=null),pend=rows.length-done.length;
   $('#cmpStatus').textContent='';
   const creg=await loadCreg(),total=Object.keys(creg).length;
-  if(!rows.length){list.innerHTML=total?`<div class="empty">Hay ${total} apuestas registradas, pero ninguna pasa los filtros de arriba. Probá con «Ventaja mínima: Todas», sin rango de cuotas o desmarcando «Solo mis casas» / «Solo contra Pinnacle».</div>`:'<div class="empty">Todavía no hay nada registrado. Desde ahora, cada vez que traigas cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guardan las apuestas que pagan más que el mercado, y se liquidan solas cuando terminan los partidos.</div>';return}
+  if(!rows.length){list.innerHTML=total?`<div class="empty">Hay ${total} apuestas registradas, pero ninguna pasa los filtros de arriba. Probá sin rango de EV, sin rango de cuotas o desmarcando «Solo mis casas» / «Solo contra Pinnacle».</div>`:'<div class="empty">Todavía no hay nada registrado. Desde ahora, cada vez que traigas cuotas (↻ Actualizar todo o ↻ Actualizar cuotas) se guardan las apuestas que pagan más que el mercado, y se liquidan solas cuando terminan los partidos.</div>';return}
   const sgn=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(2);
   const sum=l=>{const d=l.filter(x=>x.u!=null),n=d.length,u=d.reduce((t,x)=>t+x.u,0),w=d.filter(x=>x.r>0).length,c=l.filter(x=>x.clv!=null);return {all:l.length,n,u,w,roi:n?u/n:null,cn:c.length,cw:c.filter(x=>x.clv>0).length,cm:c.length?c.reduce((t,x)=>t+x.clv,0)/c.length:null}};
   const T=sum(rows),cls=v=>v>0?'c-g':v<0?'c-b':'';
@@ -1869,8 +1896,7 @@ async function renderCmpLog(f){
   const table=(title,groups)=>{let t=`<div class="xs" style="margin-top:10px"><table class="lg cmplg"><thead><tr><th>${title}</th><th title="Liquidadas / registradas">Liq.</th><th>Acert.</th><th>Unid.</th><th>ROI</th><th>CLV</th></tr></thead><tbody>`;for(const [n,l] of groups)if(l.length)t+=row(n,l);return t+'</tbody></table></div>'};
   const band=(lo,hi)=>rows.filter(x=>x.adv>=lo&&x.adv<hi);
   h+=table('Ventaja',[['0 a 2%',band(0,0.02)],['2 a 5%',band(0.02,0.05)],['5 a 10%',band(0.05,0.10)],['10 a 15%',band(0.10,0.15)],['⚠︎ más de 15%',band(0.15,99)]]);
-  const MKN={res:'Resultado',goles:'Goles del partido',ambos:'Ambos marcan',equipo:'Goles por equipo',hand:'Hándicap asiático',corners:'Córners'};
-  h+=table('Mercado',Object.entries(MKN).map(([k,n])=>[n,rows.filter(x=>x.e.g===k)]));
+  h+=table('Mercado',Object.entries(CMP_MKN).map(([k,n])=>[n,rows.filter(x=>x.e.g===k)]));
   h+=table('Cuota',[['hasta 1,50',rows.filter(x=>x.pr<1.5)],['1,50 a 2,00',rows.filter(x=>x.pr>=1.5&&x.pr<2)],['2,00 a 3,00',rows.filter(x=>x.pr>=2&&x.pr<3)],['3,00 o más',rows.filter(x=>x.pr>=3)]]);
   h+=table('Referencia',[['Pinnacle',rows.filter(x=>x.e.sh&&!x.e.es)],['≈ Pinnacle',rows.filter(x=>x.e.sh&&x.e.es)],['Mediana',rows.filter(x=>!x.e.sh)]]);
   const byBk=new Map();for(const x of rows){if(!byBk.has(x.bk))byBk.set(x.bk,[]);byBk.get(x.bk).push(x)}
@@ -1897,15 +1923,18 @@ async function renderCmp(){
   if(mode==='pl'){await fillFxSel('#plFx','#plQ');renderCmpPl();return}
   const day=String(LS.get('tg:cmpday','0')),f=cmpFilters(),list=$('#cmpList');
   $$('#cmpday [data-cmpday]').forEach(b=>b.classList.toggle('on',b.dataset.cmpday===day));
-  $$('#cmpmin [data-cmin]').forEach(b=>b.classList.toggle('on',Number(b.dataset.cmin)===f.min));
   $('#cmpMine').checked=f.mine;$('#cmpPin').checked=f.pin;$('#cmpsort').value=f.sort;
   const oddTxt=v=>v?v.toFixed(2).replace('.',','):'';
   if(document.activeElement!==$('#cmplo'))$('#cmplo').value=oddTxt(f.lo);
   if(document.activeElement!==$('#cmphi'))$('#cmphi').value=oddTxt(f.hi);
+  const evTxt=v=>v?String(v).replace('.',','):'';
+  if(document.activeElement!==$('#cmpevlo'))$('#cmpevlo').value=evTxt(f.evLo);
+  if(document.activeElement!==$('#cmpevhi'))$('#cmpevhi').value=evTxt(f.evHi);
   $('#btnCmpOdds').disabled=!!state.running;
   const mine=bookTokens();
   const range=f.lo&&f.hi?'cuota '+oddTxt(f.lo)+' a '+oddTxt(f.hi):f.lo?'cuota desde '+oddTxt(f.lo):f.hi?'cuota hasta '+oddTxt(f.hi):'';
-  $('#cmpfSum').textContent='· '+[range,f.min?'+'+f.min+'%':'todas',f.mine?'solo mis casas':'',f.pin?'solo Pinnacle':'con mediana',f.sort==='time'?'por hora':'por ventaja'].filter(Boolean).join(' · ');
+  const evRange=f.evLo&&f.evHi?'EV '+evTxt(f.evLo)+'% a '+evTxt(f.evHi)+'%':f.evLo?'EV desde '+evTxt(f.evLo)+'%':f.evHi?'EV hasta '+evTxt(f.evHi)+'%':'';
+  $('#cmpfSum').textContent='· '+[range,evRange,f.mine?'solo mis casas':'',f.pin?'solo Pinnacle':'con mediana',f.sort==='time'?'por hora':'por ventaja'].filter(Boolean).join(' · ');
   const d=await getDay(dayStr(Number(day)));
   renderCmpBooks(d);
   if(mode==='log'){await renderCmpLog(f);return}
@@ -1923,7 +1952,7 @@ async function renderCmp(){
   const rk=x=>x.best.adv>0.15?-1+x.best.adv/100:x.best.adv; // los ⚠︎ van al final
   items.sort(f.sort==='time'?(x,y)=>x.a.ts-y.a.ts||rk(y)-rk(x):(x,y)=>rk(y)-rk(x)||x.a.ts-y.a.ts);
   if(!state.running)$('#cmpStatus').textContent=items.length?`${items.length} apuestas pagan más que el mercado${f.pin&&hiddenMed?` (y ${hiddenMed} más contra la mediana: desmarcá «Solo contra Pinnacle»)`:''}.`:'';
-  if(!items.length){list.innerHTML=`<div class="empty">Ninguna casa paga más que el mercado con esos filtros.${f.lo||f.hi?' Probá con un rango de cuotas más amplio.':''}${f.min?' Probá con «Ventaja mínima: Todas».':''}${f.pin&&hiddenMed?' Hay '+hiddenMed+' contra la mediana de las casas.':''}</div>`;return}
+  if(!items.length){list.innerHTML=`<div class="empty">Ninguna casa paga más que el mercado con esos filtros.${f.lo||f.hi?' Probá con un rango de cuotas más amplio.':''}${f.evLo||f.evHi?' Probá con un rango de EV más amplio.':''}${f.pin&&hiddenMed?' Hay '+hiddenMed+' contra la mediana de las casas.':''}</div>`;return}
   const fmtAdv=v=>(v>=0?'+':'')+(v*100).toLocaleString('es-AR',{maximumFractionDigits:1})+'%';
   list.innerHTML=items.slice(0,300).map(({a,r,best,others})=>{
     const warn=best.adv>0.15,ref=r.sh?(r.es?'≈ Pinnacle':'Pinnacle'):'Mediana';
@@ -2486,17 +2515,26 @@ $('#btnCmpOdds').addEventListener('click',()=>{if(!state.key){$('#cmpStatus').te
 $('#cmpmode').addEventListener('click',e=>{const b=e.target.closest('[data-cmpmode]');if(!b)return;LS.set('tg:cmpmode',b.dataset.cmpmode);renderCmp()});
 $('#cmpList').addEventListener('click',e=>{if(e.target.closest('#cmpCsv'))cmpCsv()});
 $('#cmpday').addEventListener('click',e=>{const b=e.target.closest('[data-cmpday]');if(!b)return;LS.set('tg:cmpday',b.dataset.cmpday);renderCmp()});
-$('#cmpmin').addEventListener('click',e=>{const b=e.target.closest('[data-cmin]');if(!b)return;LS.set('tg:cmin',Number(b.dataset.cmin));renderCmp()});
 $('#cmpMine').addEventListener('change',e=>{LS.set('tg:cmine',e.target.checked);renderCmp()});
 $('#cmpPin').addEventListener('change',e=>{LS.set('tg:cpin',e.target.checked);renderCmp()});
 $('#cmpsort').addEventListener('change',e=>{LS.set('tg:csort',e.target.value);renderCmp()});
-$('#cmpmk').addEventListener('change',renderCmp);
-// Rango de cuotas: se aplica al terminar de escribir (al salir del campo o con Enter).
-for(const [id,key] of [['#cmplo','tg:clo'],['#cmphi','tg:chi']]){
+// Mercados: el desplegable queda abierto mientras se marca; se cierra tocando afuera o con Escape.
+setCmpMk([]);
+$('#cmpmkBtn').addEventListener('click',()=>openCmpMk($('#cmpmkPop').classList.contains('hidden')));
+$('#cmpmkPop').addEventListener('change',e=>{
+  const k=e.target.value,s=state.cmpMk;
+  setCmpMk(!k?[]:e.target.checked?[...s,k]:s.filter(x=>x!==k));renderCmp();
+});
+document.addEventListener('click',e=>{if(!e.target.closest('#cmpmk'))openCmpMk(false)});
+$('#cmpmk').addEventListener('keydown',e=>{if(e.key==='Escape'){openCmpMk(false);$('#cmpmkBtn').focus()}});
+$('#cmpmk').addEventListener('focusout',e=>{if(e.relatedTarget&&!e.relatedTarget.closest('#cmpmk'))openCmpMk(false)});
+// Rangos de cuota y de EV: se aplican al terminar de escribir (al salir del campo o con Enter).
+for(const [id,key] of [['#cmplo','tg:clo'],['#cmphi','tg:chi'],['#cmpevlo','tg:cevlo'],['#cmpevhi','tg:cevhi']]){
   $(id).addEventListener('change',e=>{LS.set(key,String(e.target.value||'').trim());renderCmp()});
   $(id).addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur()});
 }
 $('#cmpOddClear').addEventListener('click',()=>{LS.set('tg:clo','');LS.set('tg:chi','');renderCmp()});
+$('#cmpEvClear').addEventListener('click',()=>{LS.set('tg:cevlo','');LS.set('tg:cevhi','');renderCmp()});
 $('#cmpq').addEventListener('input',renderCmp);
 $('#cmpBooks').addEventListener('click',e=>{
   const b=e.target.closest('[data-cbook]');if(!b||isGuest())return;const n=b.dataset.cbook;
