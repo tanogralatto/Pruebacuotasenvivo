@@ -403,6 +403,7 @@ body:not(.guest) .guest-only,body:not(.owner) .share-only{display:none!important
     <ul>
       <li><b>Paga</b>: la cuota de esa casa. <b>Justa</b>: la cuota que corresponde al precio del mercado.</li>
       <li><b>Ventaja</b>: cuánto paga de más. +5% = en promedio ganarías $5 cada $100.</li>
+      <li><b>Tus casas</b>: lo que paga cada una de las que marcaste, aunque no pase los filtros. <b>Sin cuota</b>: API-Football no la trae, o la trae incompleta; puede estar igual en la web de tu casa. <b>Dudosa</b>: está tan lejos del mercado que casi siempre es vieja o un error.</li>
       <li><b>⚠︎</b>: más de 15% de ventaja. Casi siempre es una cuota vieja o un error de la casa.</li>
       <li><b>Pinnacle / ≈ / Mediana</b>: contra qué se compara. Pinnacle es lo más confiable; Mediana (el resto de las casas) lo menos.</li>
     </ul>
@@ -1088,7 +1089,19 @@ function buildRows(a,o,first){
   // Mejor cuota entre tus casas (Bet365, 1xBet, Betano…), aunque paguen menos que el precio justo: la usa alpha.html.
   const myRe=new RegExp(LS.get('tg:checkbooks','bet365|1xbet|betano'),'i');
   const myBest=x=>{let b=null;for(const [bk,pr] of (x&&x.all)||[])if(myRe.test(bk)&&pr>1&&(!b||pr>b[0]))b=[pr,bk];return b};
-  a.rows=rows.map(r=>{if(!fr[r.key])fr[r.key]=r.price;const x=o.get(r.key)||{};return {my:myBest(x),k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m:r3(r.mkt),of:(r.offers||x.offers||[]).slice(0,6),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0,es:r.est?1:0}});
+  // Para el Comparador: cuota de tus casas que no está entre las ofertas (paga menos que la justa, o se descartó por
+  // alejarse mucho del mercado: tercer dato = 1). Solo en líneas que pueden aparecer ahí. mbt = casas que se buscaron.
+  a.mbt=LS.get('tg:checkbooks','bet365|1xbet|betano');
+  a.rows=rows.map(r=>{
+    if(!fr[r.key])fr[r.key]=r.price;
+    const x=o.get(r.key)||{},of=r.offers||x.offers||[],my=myBest(x),m=r3(r.mkt);
+    const row={my,k:r.key,g:r.group,l:r.label,pr:r.price,bk:r.bookmaker,f:r.fair,p:r.p,ev:r.ev,s:r.score,f0:fr[r.key],m,of:of.slice(0,20),sh:(r.sharp!=null?r.sharp:x.sharp)?1:0,es:r.est?1:0};
+    if(m>0&&(of.length||r.price*m>1||(my&&my[0]*m>1))){
+      const mb=(x.all||[]).filter(([bk,pr])=>myRe.test(bk)&&pr>1&&!of.some(y=>y[0]===bk)).map(([bk,pr])=>[bk,pr,pr*r.mkt>1?1:0]);
+      if(mb.length)row.mb=mb;
+    }
+    return row;
+  });
   a.edge=a.lam?F.matchEdge(rows):0;
   // Cuota de cierre de mis apuestas: la última lectura antes del partido.
   if(a.ts*1000>Date.now())for(const b of BETS)if(String(b.fid)===String(a.id)&&!b.res){const x=o.get(b.k);if(x&&x.mkt>0){b.mClose=x.mkt;b.closeAt=Date.now();betsDirty=true}}
@@ -1306,10 +1319,10 @@ function packMy(r){
   const x=(r.of||[]).find(([b])=>re.test(b));return x?[x[1],x[0]]:0;
 }
 function packDay(day){
-  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0,r.p>0?+r.p.toFixed(4):null,packMy(r),r.es==null?null:r.es]);return o})};
+  return {date:day.date,ts:day.ts,fx:day.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(r=>[r.k,r.pr,r.bk,r3(r.f),r3(r.ev),r.s,r.f0,r.m,r.of||[],r.sh||0,r.p>0?+r.p.toFixed(4):null,packMy(r),r.es==null?null:r.es,r.mb||0]);return o})};
 }
 function unpackDay(d){
-  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh,pp,my,es])=>{const bet=parseKey(k);const r={k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0,p:pp>0?pp:f>0?1/f:null};if(Array.isArray(my))r.my=my;if(es!=null)r.es=es;return r});return o})};
+  return {date:d.date,ts:d.ts,fx:d.fx.map(a=>{const o=Object.assign({},a);if(a.rows)o.rows=a.rows.map(([k,pr,bk,f,ev,sc,f0,m,of,sh,pp,my,es,mb])=>{const bet=parseKey(k);const r={k,g:F.groupOf(bet),l:F.betLabel(bet,a.hn,a.an),pr,bk,f,ev,s:sc,f0,m,of:of||[],sh:sh||0,p:pp>0?pp:f>0?1/f:null};if(Array.isArray(my))r.my=my;if(es!=null)r.es=es;if(Array.isArray(mb))r.mb=mb;return r});return o})};
 }
 function mergeReg(local,cloud){
   for(const [id,e] of Object.entries(cloud||{})){const l=local[id];if(!l||(!Number.isFinite(l.hg)&&Number.isFinite(e.hg))||(!l.m1x2&&e.m1x2))local[id]=e}
@@ -1805,7 +1818,8 @@ function cmpOffers(r){
 const evPct=adv=>Math.round(adv*1000)/10;
 // Aplica los filtros de cuota, EV y mis casas a [{bk,pr,adv}]; deja la mejor primero.
 function cmpPick(list,f){
-  return list.filter(x=>x.adv>0&&(!f.lo||x.pr>=f.lo-1e-9)&&(!f.hi||x.pr<=f.hi+1e-9)&&(!f.evLo||evPct(x.adv)>=f.evLo)&&(!f.evHi||evPct(x.adv)<=f.evHi)&&(!f.mine||isMine(x.bk))).sort((x,y)=>y.pr-x.pr);
+  list=list.filter(x=>x.adv>0&&(!f.lo||x.pr>=f.lo-1e-9)&&(!f.hi||x.pr<=f.hi+1e-9)&&(!f.evHi||evPct(x.adv)<=f.evHi)&&(!f.mine||isMine(x.bk))).sort((x,y)=>y.pr-x.pr);
+  return list.length&&evPct(list[0].adv)>=f.evLo?list:[]; // el EV mínimo se le pide a la mejor casa
 }
 /* ---------------- registro del comparador ---------------- */
 // Se guarda (una sola vez) cada línea en la que alguna casa paga más que el mercado, con las casas y cuotas de
@@ -1820,7 +1834,7 @@ function recordCmp(a,creg){
     const g=CMP_MK[String(r.k).split(':')[0]];if(!g)continue;
     const id=a.id+'|'+r.k,e=creg[id];
     if(e){e.mC=r3(r.m);e.cAt=Date.now();continue}
-    const of=cmpOffers(r).slice(0,8);if(!of.length)continue;
+    const of=cmpOffers(r).slice(0,20);if(!of.length)continue;
     creg[id]={fid:a.id,k:r.k,l:r.l,g,lid:a.lid,ln:a.ln,lc:a.lc,hn:a.hn,an:a.an,ts:a.ts,m:r3(r.m),sh:r.sh?1:0,es:r.es?1:0,of,pr:of[0][1],at:Date.now()};
   }
 }
@@ -1835,9 +1849,27 @@ function cmpLines(a,f){
     if(f.pin&&!r.sh)continue;
     const list=cmpPick(cmpOffers(r).map(([bk,pr])=>({bk,pr,adv:pr*r.m-1})),f);
     if(!list.length)continue;
-    out.push({a,r,g,best:list[0],others:list.slice(1,4)});
+    out.push({a,r,g,best:list[0],others:list.slice(1)});
   }
   return out;
+}
+// Tus casas marcadas, con el nombre que usa la API: [{t, re, name}].
+function cmpMyBooks(d){
+  const names=new Set(BOOKS),std={bet365:'Bet365','1xbet':'1xBet',betano:'Betano'};
+  for(const a of d.fx)for(const r of a.rows||[]){for(const [bk] of r.of||[])names.add(bk);for(const [bk] of r.mb||[])names.add(bk)}
+  return bookTokens().map(t=>{let re;try{re=new RegExp(t,'i')}catch(e){return null}return {t,re,name:[...names].find(n=>n&&re.test(n))||std[t]||t.replace(/\\/g,'')}}).filter(Boolean);
+}
+// Todas tus casas en una línea, también las que no pasan los filtros. Devuelve {items:[{bk,pr,adv,bad}], none:[casas sin
+// cuota], unk:[casas que no se buscaron en la última lectura]}.
+function cmpMineLine(a,r,books){
+  const hits=new Map(),none=[],unk=[],known=typeof a.mbt==='string'?a.mbt.split('|'):[];
+  const all=[...cmpOffers(r),...(Array.isArray(r.my)?[[r.my[1],r.my[0]]]:[]),...(r.mb||[])]; // la última lectura de una casa es la que vale
+  for(const b of books){
+    let n=0;
+    for(const [bk,pr,bad] of all)if(b.re.test(bk)){hits.set(bk,{bk,pr,adv:pr*r.m-1,bad:!!bad});n++}
+    if(!n)(known.includes(b.t)?none:unk).push(b.name);
+  }
+  return {items:[...hits.values()].sort((x,y)=>y.pr-x.pr),none,unk};
 }
 // Cuota escrita a mano: acepta coma o punto; vacío o inválido = sin límite.
 const oddIn=v=>{const n=Number(String(v==null?'':v).trim().replace(',','.'));return n>1&&n<1000?n:0};
@@ -1961,7 +1993,11 @@ async function renderCmp(){
   if(!state.running)$('#cmpStatus').textContent=items.length?`${items.length} apuestas pagan más que el mercado${f.pin&&hiddenMed?` (y ${hiddenMed} más contra la mediana: desmarcá «Solo contra Pinnacle»)`:''}.`:'';
   if(!items.length){list.innerHTML=`<div class="empty">Ninguna casa paga más que el mercado con esos filtros.${f.lo||f.hi?' Probá con un rango de cuotas más amplio.':''}${f.evLo||f.evHi?' Probá con un rango de EV más amplio.':''}${f.pin&&hiddenMed?' Hay '+hiddenMed+' contra la mediana de las casas.':''}</div>`;return}
   const fmtAdv=v=>(v>=0?'+':'')+(v*100).toLocaleString('es-AR',{maximumFractionDigits:1})+'%';
-  list.innerHTML=items.slice(0,300).map(({a,r,best,others})=>{
+  const books=cmpMyBooks(d);let unk=false;
+  const html=items.slice(0,300).map(({a,r,best,others})=>{
+    const mine=cmpMineLine(a,r,books);if(mine.unk.length)unk=true;
+    others=others.filter(o=>!isMine(o.bk)).slice(0,3); // las tuyas van en su propia línea
+    const mineTxt=mine.items.map(x=>`${esc(x.bk)} ${dec(x.pr)} <span class="${x.bad?'c-m':x.adv>0?'c-g':''}">(${x.bad?'⚠︎ ':''}${fmtAdv(x.adv)}${x.bad?', dudosa':''})</span>`).concat(mine.none.map(n=>esc(n)+' sin cuota')).join(' · ');
     const warn=best.adv>0.15,ref=r.sh?(r.es?'≈ Pinnacle':'Pinnacle'):'Mediana';
     const cls=warn?'w':best.adv>=0.05?'g':'';
     return `<div class="cmpr"><div class="hd"><span class="t">${fmtTime(a.iso)}</span><span class="m"><a href="#/partido/${a.id}">${esc(a.hn)} <span class="vsw">vs</span> ${esc(a.an)}</a></span></div>`+
@@ -1970,8 +2006,10 @@ async function renderCmp(){
       `<span class="r">${dec(best.pr)}<span class="bkn">${esc(best.bk)}</span></span>`+
       `<span class="r"><span class="chip ${cls}">${warn?'⚠︎ ':''}${fmtAdv(best.adv)}</span><span class="bkn">justa ${dec(1/r.m)} · ${ref}</span></span>`+
       `<button class="addb" data-add="${a.id}|${esc(r.k)}" title="Anotar en Mis apuestas">＋</button></div>`+
+      (mineTxt?`<div class="cmo">Tus casas: ${mineTxt}</div>`:'')+
       (others.length?`<div class="cmo">También: ${others.map(o=>esc(o.bk)+' '+dec(o.pr)+' ('+fmtAdv(o.adv)+')').join(' · ')}</div>`:'')+`</div>`;
-  }).join('')+(items.length>300?`<p class="small">Se muestran 300 de ${items.length}. Usá los filtros.</p>`:'');
+  }).join('');
+  list.innerHTML=(unk&&!isGuest()?'<p class="small">Falta leer la cuota de alguna de tus casas: tocá <b>↻ Actualizar cuotas</b> para verlas todas.</p>':'')+html+(items.length>300?`<p class="small">Se muestran 300 de ${items.length}. Usá los filtros.</p>`:'');
 }
 // Anotar una apuesta (botón ＋): la cuota y el monto los escribís vos, con los de tu casa.
 async function addBet(fid,k){
