@@ -1135,11 +1135,12 @@ function htStreak(fx,games){
 // Cuota real estilo BetPractice: veces que se dio el mercado ÷ partidos jugados, sumando los dos equipos.
 // Muestra de cada equipo: temporada actual + anterior completas (las del partido analizado), todas las
 // competiciones, local y visitante, solo partidos terminados antes del encuentro. También los promedios de goles.
-function realOdds(fx,homeGames,awayGames,market){
+// back: cuántas temporadas anteriores entran además de la actual (1 = actual + anterior; en copas, 4).
+function realOdds(fx,homeGames,awayGames,market,back=1){
   const cutoff=Math.floor(new Date(fx.iso).getTime()/1000),cur=Number(fx.season);
   const team=(games,id)=>{
     const seen=new Set();
-    const xs=(games||[]).filter(g=>g.i!==fx.id&&Number.isFinite(g.d)&&g.d<cutoff&&(Number(g.s)===cur||Number(g.s)===cur-1)&&!seen.has(g.i)&&seen.add(g.i));
+    const xs=(games||[]).filter(g=>g.i!==fx.id&&Number.isFinite(g.d)&&g.d<cutoff&&Number(g.s)<=cur&&Number(g.s)>=cur-back&&!seen.has(g.i)&&seen.add(g.i));
     const ok=xs.filter(g=>market==='ht05'?Number.isInteger(g.fh):Array.isArray(g.fs));
     const hits=ok.filter(g=>hitFor(g,market)).length;
     const ft=xs.filter(g=>Array.isArray(g.fs)&&g.fs.every(Number.isInteger)),ht=xs.filter(g=>Number.isInteger(g.fh));
@@ -1361,6 +1362,33 @@ function teamSeasonGames(id,season,current){
   p.then(()=>{teamSeasonMemo.delete(key)},()=>{teamSeasonMemo.delete(key)});
   return p;
 }
+/* Tipo de cada competición que jugó un equipo ('League', 'Cup' o 'Friendly'), para armar la muestra
+   por torneo: si el partido es de liga, solo partidos de liga; si es de copa, solo de esa copa.
+   Una consulta por equipo, 7 días en caché (force: volver a pedirla si falta una competición nueva). */
+const teamLtMemo=new Map();
+function teamLeagueTypes(id,force){
+  const ck='o05:v1:lt:'+id,c=force?null:LS.get(ck,null);
+  if(c&&c.t&&Number.isFinite(c.ts)&&Date.now()-c.ts>=0&&Date.now()-c.ts<7*24*3600*1000)return Promise.resolve(c.t);
+  if(teamLtMemo.has(id))return teamLtMemo.get(id);
+  const p=(async()=>{
+    const j=await api('/leagues',{team:id});
+    const t={};
+    for(const x of (j.response||[])){const l=x.league||{};if(l.id==null)continue;t[l.id]=/friendl/i.test(l.name||'')?'Friendly':String(l.type||'')}
+    LS.set(ck,{ts:Date.now(),t,source:'api-football-leagues'});
+    return t;
+  })();
+  teamLtMemo.set(id,p);
+  p.then(()=>{teamLtMemo.delete(id)},()=>{teamLtMemo.delete(id)});
+  return p;
+}
+const CUP_BACK=4; // copas: temporada actual + 4 anteriores (5 en total), porque se juegan pocos partidos por año
+// Texto de la muestra usada en la tarjeta.
+function scopeTxt(sc){
+  if(!sc)return 'temporada actual + anterior';
+  if(sc.kind==='league')return 'solo partidos de liga · temporada actual + anterior';
+  if(sc.kind==='cup')return 'solo '+(sc.name||'esta copa')+' · últimas '+(sc.back+1)+' temporadas';
+  return 'todas las competiciones · temporada actual + anterior';
+}
 function h2hGames(a,b){
   const key=[a,b].sort((x,y)=>x-y).join('-'), ck='o05:v3:h:'+key, c=cached(ck);
   if(c!==null) return Promise.resolve(c);
@@ -1560,16 +1588,37 @@ async function analizar(){
     pairs.set([f.hid,f.aid].sort((a,b)=>a-b).join('-'),[f.hid,f.aid]);
   }
   const tasks=[];
+  // Tipo de torneo (liga/copa) de cada competición de cada equipo: van primero porque, si el partido
+  // es de copa, agregan las temporadas viejas de esa copa a la cola.
+  const ltype=new Map(), sg=new Map();
+  const seasonTask=(id,s,cur)=>{
+    const k=id+':s'+s;if(!Number.isFinite(s)||sg.has(k))return;sg.set(k,null);
+    tasks.push(async()=>{sg.set(k,await teamSeasonGames(id,s,cur))});
+  };
+  for(const id of teams.keys()) tasks.push(async()=>{
+    const mine=fxs.filter(f=>f.hid===id||f.aid===id);
+    let t=await teamLeagueTypes(id);
+    if(mine.some(f=>!(f.lid in t)))t=await teamLeagueTypes(id,true);
+    for(const [lid,type] of Object.entries(t))if(!ltype.has(Number(lid))||type)ltype.set(Number(lid),type);
+    for(const f of mine)if(t[f.lid]==='Cup')for(let b=2;b<=CUP_BACK;b++)seasonTask(id,Number(f.season)-b,false);
+  });
   for(const id of teams.keys()) tasks.push(async()=>{tg.set(id,await teamGames(id))});
   for(const [k,[a,b]] of pairs) tasks.push(async()=>{hg.set(k,await h2hGames(a,b))});
   // Cuota real: temporada actual y anterior completas de cada equipo (la anterior queda 7 días en caché).
-  const sg=new Map();
-  for(const f of fxs)for(const id of [f.hid,f.aid])for(const s of [Number(f.season),Number(f.season)-1]){
-    const k=id+':s'+s;if(!Number.isFinite(s)||sg.has(k))continue;sg.set(k,null);
-    tasks.push(async()=>{sg.set(k,await teamSeasonGames(id,s,s===Number(f.season)))});
-  }
-  const seasonsOf=(id,f)=>{const a=sg.get(id+':s'+Number(f.season)),b=sg.get(id+':s'+(Number(f.season)-1));return a&&b?a.concat(b):null};
-  const total=tasks.length;let done=0,idx=0;
+  for(const f of fxs)for(const id of [f.hid,f.aid])for(const s of [Number(f.season),Number(f.season)-1])seasonTask(id,s,s===Number(f.season));
+  // Muestra por torneo: partido de liga → solo partidos de liga (cualquier liga del equipo, aunque haya
+  // ascendido o descendido); partido de copa → solo esa copa, últimas 5 temporadas. Si no se sabe el
+  // tipo del torneo (o es un amistoso), todas las competiciones.
+  const scopeOf=f=>{const t=ltype.get(Number(f.lid));return t==='League'?{kind:'league',back:1}:t==='Cup'?{kind:'cup',back:CUP_BACK,name:f.ln}:{kind:'all',back:1}};
+  const pickGames=(games,f,sc)=>!games?games:sc.kind==='league'?games.filter(g=>ltype.get(Number(g.l))==='League'):sc.kind==='cup'?games.filter(g=>Number(g.l)===Number(f.lid)):games;
+  const seasonsOf=(id,f,sc)=>{
+    const a=sg.get(id+':s'+Number(f.season)),b=sg.get(id+':s'+(Number(f.season)-1));
+    if(!a||!b)return null;
+    let g=a.concat(b);
+    for(let k=2;k<=sc.back;k++)g=g.concat(sg.get(id+':s'+(Number(f.season)-k))||[]);
+    return pickGames(g,f,sc);
+  };
+  let total=tasks.length,done=0,idx=0;
   prog(0,total);
   const worker=async()=>{
     while(idx<tasks.length&&!state.cancel){
@@ -1577,11 +1626,12 @@ async function analizar(){
       try{await t()}catch(e){
         if(e.message!=='Cancelado'){ if(!state.errors.includes(e.message)) state.errors.push(e.message); if(e.fatal) state.cancel=true; }
       }
-      done++;prog(done,total,state.calls+' llamadas a la API');
+      done++;prog(done,tasks.length,state.calls+' llamadas a la API');
     }
   };
   const n=parseInt($('#conc').value,10)||4;
   await Promise.all(Array.from({length:n},worker));
+  total=tasks.length;
   // Cuotas prepartido 0,5 1T: una consulta por liga seleccionada y fecha (con sus páginas),
   // no un barrido de todo el día. Se corta apenas todos los partidos de esa liga tienen cuota.
   // Se leen las cuotas de los tres mercados de la misma respuesta (no cuesta consultas extra):
@@ -1645,10 +1695,10 @@ async function analizar(){
     const leagueKey=String(f.lid)+':'+String(f.season);
     const poisson=poissonForFixture(f,leagueDataByKey.get(leagueKey),fitCache,earliest.get(leagueKey),prematchOddsByFixture.get(String(f.id))||null,bm());
     if(poisson)poisson.market=bm();
-    const sh=seasonsOf(f.hid,f),sa=seasonsOf(f.aid,f),oi=prematchOddsByFixture.get(String(f.id));
-    const real=sh&&sa?realOdds(f,sh,sa,bm()):null;
+    const sc=scopeOf(f),sh=seasonsOf(f.hid,f,sc),sa=seasonsOf(f.aid,f,sc),oi=prematchOddsByFixture.get(String(f.id));
+    const real=sh&&sa?{...realOdds(f,sh,sa,bm(),sc.back),scope:sc}:null;
     const odds=oi?((bm()==='ht05'?oi.over05:oi.best)||null):null;
-    out.push({fx:f,tr,poisson,real,odds:odds?{price:Number(odds.price),bookmaker:odds.bookmaker||''}:null,streak:{home:htStreak(f,sh||tg.get(f.hid)),away:htStreak(f,sa||tg.get(f.aid)),seasons:!!(sh&&sa)},...resumen(tr)});
+    out.push({fx:f,tr,poisson,real,odds:odds?{price:Number(odds.price),bookmaker:odds.bookmaker||''}:null,streak:{home:htStreak(f,sh||pickGames(tg.get(f.hid),f,sc)),away:htStreak(f,sa||pickGames(tg.get(f.aid),f,sc)),seasons:!!(sh&&sa),scope:sc},...resumen(tr)});
   }
   try{logPredictions(out,bm());if(bm()==='ht05')saveLambdas(out);}catch(e){state.errors.push('Registro de predicciones: '+e.message);}
   // Goles esperados del partido completo de cada equipo (los del mercado +2,5): los usa el hándicap asiático.
@@ -1873,7 +1923,7 @@ function realHtml(r){
   const team=(name,t)=>'<b>'+esc(name)+'</b> '+t.hits+'/'+t.n;
   return '<section class="poisson-panel"><div class="poisson-grid">'+
     metric('% real '+M.name,(x.rate==null?'—':fmtPct(x.rate,1))+'<small class="real-frac">'+x.hits+'/'+x.n+' partidos'+warn+'</small>','','Suma de los dos equipos: '+team(r.fx.hn,x.home)+' · '+team(r.fx.an,x.away)+'.')+
-    metric('Cuota real',x.fair?fmtNum(x.fair):'—','','1 ÷ % real. Temporada actual + anterior de cada equipo, como BetPractice.')+
+    metric('Cuota real',x.fair?fmtNum(x.fair):'—','','1 ÷ % real. Muestra de cada equipo: '+scopeTxt(x.scope)+'.')+
     metric(o?'Mejor cuota · '+esc(o.bookmaker||'casa no informada'):'Cuota prepartido '+M.name,o?Number(o.price).toFixed(2):'No disponible')+
     metric('EV',ev==null?'—':(ev>0?'+':'')+fmtNum(ev*100,1)+'%',ev==null?'':'color:'+(ev>=0?'var(--c4)':'var(--c1)'),'Cuota de la casa ÷ cuota real − 1. Verde = la casa paga más que la cuota real.')+
     (r.lams?metric('Goles esperados 1T',r.lams.ht?fmtNum(r.lams.ht.home+r.lams.ht.away)+'<small class="real-frac">Poisson · '+fmtNum(r.lams.ht.home)+' + '+fmtNum(r.lams.ht.away)+'</small>':'—','','Goles que el modelo Poisson espera en el primer tiempo (local + visita).')+
@@ -1896,7 +1946,8 @@ function streakHtml(r){
     if(t)h+=kv('Goles x partido',fmtNum(t.total))+kv('A favor',fmtNum(t.gf))+kv('En contra',fmtNum(t.ga))+kv('Goles 1T',fmtNum(t.ht));
     return h+'</div>';
   };
-  const note=s.seasons?' · todo con la temporada actual + anterior':x?' · % y goles: temporada actual + anterior':'';
+  const sc=s.scope||(x&&x.scope)||null;
+  const note=s.seasons?' · todo con '+scopeTxt(sc):x?' · % y goles: '+scopeTxt(sc):'';
   return '<div class="tc-wrap"><div class="tc-cols">'+col(r.fx.hn,'local',s.home,x&&x.home)+col(r.fx.an,'visita',s.away,x&&x.away)+'</div><div class="small tc-note">● con gol en el 1T · ○ sin gol · el más nuevo a la izquierda'+note+'</div></div>';
 }
 function cardHtml(r,i){
