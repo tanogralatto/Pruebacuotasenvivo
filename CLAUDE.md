@@ -14,10 +14,9 @@ No tocar el CSS ni el JS del modo video: quedan siempre en el archivo.
 
 Qué oculta el modo video (reglas CSS `html.demo-mode ...` en el `<style>`, comentario "MODO VIDEO"):
 - Pestaña y vista **Favoritos VIP** (y botones/textos VIP: `.vip-only`, destinos VIP, etc.)
-- Pestaña y vista **Estrategia AEG**
 - Pestaña y vista **Configuración Telegram VIP**
 - En **Historial Telegram** solo queda la pestaña **⭐ Favoritos** (se ocultan AEG,
-  dataGol, AEG prueba y VIP anteriores, y en "Agregar alerta" solo el grupo Favoritos).
+  dataGol y VIP anteriores, y en "Agregar alerta" solo el grupo Favoritos).
 
 Si el usuario pide ocultar algo más en el modo video, agregarlo a esas reglas CSS
 y a esta lista.
@@ -25,8 +24,7 @@ y a esta lista.
 Después de encender/apagar: commit, push y avisar que hay que pasarlo a `main`
 para que se vea en GitHub Pages.
 
-## Estrategia AEG oculta
+## Estrategia AEG borrada
 
-La pestaña **Estrategia AEG** está oculta siempre (no solo en modo video), a pedido del usuario:
-regla CSS `#tabStrategy,#ghStrategyView{display:none!important}` (comentario "ESTRATEGIA AEG OCULTA")
-y `if(which==='strategy')which='scanner'` en `showTab`. Para volver a mostrarla, borrar las dos cosas.
+La pestaña **Estrategia AEG** y el grupo VIP **🧪 AEG prueba** se borraron del código (AEG ahora vive en
+otra app). El VIP **💎 AEG** y **💎 dataGol** siguen. Lo guardado solo en «AEG prueba» no se muestra.
